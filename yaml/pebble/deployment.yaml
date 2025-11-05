@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pebble
+  namespace: ${PEBBLE_NAMESPACE}
+  labels:
+    app: pebble
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pebble
+  template:
+    metadata:
+      labels:
+        app: pebble
+    spec:
+      containers:
+      - name: pebble
+        image: letsencrypt/pebble:latest
+        args:
+        - pebble
+        - -config
+        - /test/config/pebble-config.json
+        - -dnsserver
+        - ${DNS_SERVER}
+        ports:
+        - name: acme
+          containerPort: 14000
+          protocol: TCP
+        - name: management
+          containerPort: 15000
+          protocol: TCP
+        env:
+        - name: PEBBLE_VA_NOSLEEP
+          value: "1"
+        - name: PEBBLE_VA_ALWAYS_VALID
+          value: "${PEBBLE_ALWAYS_VALID}"
+        volumeMounts:
+        - name: config
+          mountPath: /test/config
+          readOnly: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+      volumes:
+      - name: config
+        configMap:
+          name: pebble-config
+

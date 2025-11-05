@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fake-dns-api
+  namespace: ${FAKEDNS_NAMESPACE}
+  labels:
+    app: fake-dns-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fake-dns-api
+  template:
+    metadata:
+      labels:
+        app: fake-dns-api
+    spec:
+      serviceAccountName: fake-dns-api
+      containers:
+      - name: dns-api
+        image: registry.access.redhat.com/ubi9/python-39:latest
+        command:
+        - python3
+        - /app/dns-api.py
+        ports:
+        - name: dns
+          containerPort: 53
+          protocol: UDP
+        - name: health
+          containerPort: 8080
+          protocol: TCP
+        volumeMounts:
+        - name: script
+          mountPath: /app
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        securityContext:
+          # Need elevated privileges for port 53
+          runAsUser: 0
+      volumes:
+      - name: script
+        configMap:
+          name: fake-dns-api
+          defaultMode: 0755
+

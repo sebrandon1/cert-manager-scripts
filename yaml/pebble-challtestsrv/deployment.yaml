@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pebble-challtestsrv
+  namespace: ${PEBBLE_NAMESPACE}
+  labels:
+    app: pebble-challtestsrv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pebble-challtestsrv
+  template:
+    metadata:
+      labels:
+        app: pebble-challtestsrv
+    spec:
+      containers:
+      - name: challtestsrv
+        image: letsencrypt/pebble-challtestsrv:latest
+        args:
+        - -defaultIPv4
+        - "127.0.0.1"
+        - -defaultIPv6
+        - ""
+        - -http01
+        - ":5002"
+        - -https01
+        - ":5001"
+        - -tlsalpn01
+        - ":5001"
+        - -management
+        - ":8055"
+        ports:
+        - name: dns-udp
+          containerPort: 8053
+          protocol: UDP
+        - name: dns-tcp
+          containerPort: 8053
+          protocol: TCP
+        - name: http01
+          containerPort: 5002
+          protocol: TCP
+        - name: management
+          containerPort: 8055
+          protocol: TCP
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+

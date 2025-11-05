@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${ACMEDNS_NAMESPACE}
+  labels:
+    name: ${ACMEDNS_NAMESPACE}
+    app: acme-dns
+

@@ -7,6 +7,7 @@ This directory contains Kubernetes/OpenShift YAML manifests organized by purpose
 Each subdirectory represents a specific component or feature:
 
 - `cert-manager-operator/` - Manifests for installing the cert-manager Operator
+- `pebble/` - Manifests for deploying the Pebble ACME test server
 
 ## Variable Substitution
 
@@ -64,5 +65,66 @@ export CHANNEL="stable-v1"
 
 envsubst < yaml/cert-manager-operator/operatorgroup.yaml | oc apply -f -
 envsubst < yaml/cert-manager-operator/subscription.yaml | oc apply -f -
+```
+
+---
+
+## pebble
+
+### Files
+
+- `namespace.yaml` - Namespace for Pebble deployment
+- `configmap.yaml` - Pebble configuration (ACME server settings)
+- `deployment.yaml` - Pebble deployment
+- `service.yaml` - Service to expose Pebble within the cluster
+- `route.yaml` - Route for external access to Pebble (if needed)
+
+### Variables
+
+| Variable | Default Value | Description |
+|----------|---------------|-------------|
+| `PEBBLE_NAMESPACE` | `pebble` | Namespace for Pebble |
+| `DNS_SERVER` | `8.8.8.8:53` | DNS server for ACME validation |
+| `PEBBLE_ALWAYS_VALID` | `0` | Auto-validate challenges (1=yes, 0=no) |
+
+### What is Pebble?
+
+Pebble is a lightweight ACME test server from Let's Encrypt. It:
+- Provides a local ACME server for testing cert-manager
+- Has no rate limits (unlike Let's Encrypt production)
+- Can be configured to auto-validate challenges for easier testing
+- Runs entirely in your OpenShift cluster
+
+### Usage
+
+These manifests are applied by `install-pebble.sh`:
+
+```bash
+export PEBBLE_NAMESPACE="pebble"
+export DNS_SERVER="8.8.8.8:53"
+export PEBBLE_ALWAYS_VALID="0"
+
+envsubst < yaml/pebble/namespace.yaml | oc apply -f -
+envsubst < yaml/pebble/configmap.yaml | oc apply -f -
+envsubst < yaml/pebble/deployment.yaml | oc apply -f -
+envsubst < yaml/pebble/service.yaml | oc apply -f -
+envsubst < yaml/pebble/route.yaml | oc apply -f -
+```
+
+### Pebble Configuration
+
+The `configmap.yaml` contains Pebble's configuration:
+- **listenAddress**: ACME API endpoint (port 14000)
+- **managementListenAddress**: Management API (port 15000)
+- **httpPort/tlsPort**: Ports for HTTP-01 challenge validation
+- **externalAccountBindingRequired**: Set to false for easier testing
+
+### Accessing Pebble
+
+After deployment, Pebble is accessible at:
+- **Internal**: `https://pebble.pebble.svc.cluster.local:14000/dir`
+- **External**: Through the OpenShift route (if route is created)
+
+Use the internal URL when configuring cert-manager ClusterIssuers.
 ```
 

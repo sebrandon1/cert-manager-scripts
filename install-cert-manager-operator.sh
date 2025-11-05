@@ -225,11 +225,11 @@ display_next_steps() {
     echo "2. Check cert-manager components (may take a moment to appear):"
     echo "   oc get pods -n $CERT_MANAGER_NAMESPACE"
     echo
-    echo "3. Configure an issuer (ACME, CA, or self-signed):"
-    echo "   https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift#cert-manager-acme-dns01"
+    echo "3. Quick test DNS-01 challenges (air-gapped):"
+    echo "   make quick-test"
     echo
-    echo "4. Create certificates:"
-    echo "   https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift#cert-manager-create-certificates"
+    echo "4. Clean up test resources:"
+    echo "   make clean"
     echo
 }
 

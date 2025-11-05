@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pebble
+  namespace: ${PEBBLE_NAMESPACE}
+  labels:
+    app: pebble
+spec:
+  type: ClusterIP
+  ports:
+  - name: acme
+    port: 14000
+    targetPort: 14000
+    protocol: TCP
+  - name: management
+    port: 15000
+    targetPort: 15000
+    protocol: TCP
+  selector:
+    app: pebble
+
