@@ -1,10 +1,11 @@
-.PHONY: help check-network install-cert-manager-operator install-pebble install-fake-dns install-all create-issuer create-dns01-issuer create-certs test-all test-dns01 quick-test test-cert verify-cert clean clean-certs clean-pebble clean-fake-dns clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
+.PHONY: help lint check-network install-cert-manager-operator install-pebble install-fake-dns install-all create-issuer create-dns01-issuer create-certs test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert clean clean-certs clean-pebble clean-fake-dns clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
 
 # Default target
 help:
 	@echo "cert-manager-scripts Makefile"
 	@echo ""
 	@echo "Available targets:"
+	@echo "  lint                            - Check shell script formatting with shfmt"
 	@echo "  check-network                   - Check cluster network configuration (IPv4/IPv6/Dual-stack)"
 	@echo "  install-cert-manager-operator   - Install cert-manager Operator for Red Hat OpenShift"
 	@echo "  install-pebble                  - Install Pebble ACME test server"
@@ -15,7 +16,8 @@ help:
 	@echo "  create-certs                    - Create test certificates (HTTP-01)"
 	@echo "  test-all                        - Complete HTTP-01 setup"
 	@echo "  test-dns01                      - Complete DNS-01 setup (air-gapped)"
-	@echo "  quick-test                      - Quick end-to-end DNS-01 test (setup + test + verify)"
+	@echo "  quick-http-test                 - Quick end-to-end HTTP-01 test (setup + test + verify)"
+	@echo "  quick-dns-test                  - Quick end-to-end DNS-01 test (setup + test + verify)"
 	@echo "  test-cert                       - Create a test wildcard certificate"
 	@echo "  verify-cert                     - Verify certificate status"
 	@echo "  clean                           - Clean up all resources (keeps cert-manager-operator)"
@@ -28,24 +30,43 @@ help:
 	@echo "  help                            - Show this help message"
 	@echo ""
 
+# Lint shell scripts with shfmt
+lint:
+	@echo "Checking shell script formatting..."
+	@if command -v shfmt > /dev/null 2>&1; then \
+		shfmt -d scripts/; \
+		if [ $$? -eq 0 ]; then \
+			echo "✓ All shell scripts are properly formatted"; \
+		else \
+			echo "✗ Shell script formatting issues found"; \
+			echo "Run 'shfmt -w scripts/' to fix formatting"; \
+			exit 1; \
+		fi \
+	else \
+		echo "Error: shfmt not found. Install it with:"; \
+		echo "  macOS: brew install shfmt"; \
+		echo "  Linux: go install mvdan.cc/sh/v3/cmd/shfmt@latest"; \
+		exit 1; \
+	fi
+
 # Check cluster network configuration
 check-network:
-	@./check-cluster-network.sh
+	@./scripts/check-cluster-network.sh
 
 # Install cert-manager-operator
 install-cert-manager-operator:
 	@echo "Installing cert-manager Operator for Red Hat OpenShift..."
-	@./install-cert-manager-operator.sh
+	@./scripts/install-cert-manager-operator.sh
 
 # Install Pebble ACME test server
 install-pebble:
 	@echo "Installing Pebble ACME test server..."
-	@./install-pebble.sh
+	@./scripts/install-pebble.sh
 
 # Install fake DNS API
 install-fake-dns:
 	@echo "Installing fake DNS API for air-gapped testing..."
-	@./install-fake-dns.sh
+	@./scripts/install-fake-dns.sh
 
 # Install everything
 install-all: install-cert-manager-operator install-pebble
@@ -54,15 +75,15 @@ install-all: install-cert-manager-operator install-pebble
 
 # Create ClusterIssuer pointing to Pebble (HTTP-01)
 create-issuer:
-	@./create-issuer.sh
+	@./scripts/create-issuer.sh
 
 # Create ClusterIssuer pointing to Pebble (DNS-01)
 create-dns01-issuer:
-	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./create-dns01-issuer.sh
+	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 
 # Create test certificates
 create-certs:
-	@./create-test-certificates.sh
+	@./scripts/create-test-certificates.sh
 
 # Complete test setup: install everything + create issuer + create certificates
 test-all: install-all create-issuer create-certs
@@ -80,10 +101,10 @@ test-dns01: install-fake-dns
 	@echo "Reinstalling Pebble with fake DNS..."
 	@oc delete namespace pebble --ignore-not-found=true
 	@sleep 10
-	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 PEBBLE_ALWAYS_VALID=1 ./install-pebble.sh
+	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 PEBBLE_ALWAYS_VALID=1 ./scripts/install-pebble.sh
 	@echo ""
 	@echo "Creating DNS-01 issuer..."
-	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./create-dns01-issuer.sh
+	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 	@echo ""
 	@echo "========================================"
 	@echo "  DNS-01 Environment Ready!"
@@ -109,11 +130,49 @@ test-dns01: install-fake-dns
 	@echo "Monitor progress:"
 	@echo "  watch oc get certificate -n default"
 
-# Quick end-to-end test
-quick-test: test-dns01 test-cert
+# Quick end-to-end HTTP-01 test
+quick-http-test: install-cert-manager-operator
 	@echo ""
 	@echo "========================================"
-	@echo "  Quick Test Running..."
+	@echo "  Quick HTTP-01 Test Running..."
+	@echo "========================================"
+	@echo ""
+	@echo "Installing Pebble with ALWAYS_VALID..."
+	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble || true
+	@echo ""
+	@echo "Creating HTTP-01 ClusterIssuer..."
+	@$(MAKE) create-issuer || true
+	@echo ""
+	@echo "Creating test certificate..."
+	@CLUSTER_DOMAIN=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "apps-crc.testing"); \
+	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | oc apply -f -
+	@echo ""
+	@echo "Waiting for certificate to be issued (timeout: 3 minutes)..."
+	@timeout=180; \
+	elapsed=0; \
+	while [ $$elapsed -lt $$timeout ]; do \
+		if oc get certificate test-cert-http01 -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+			echo "✅ Certificate issued successfully!"; \
+			oc get certificate test-cert-http01 -n default; \
+			break; \
+		fi; \
+		if [ $$((elapsed % 10)) -eq 0 ]; then \
+			echo "  ⏳ Still waiting... ($$elapsed seconds elapsed)"; \
+		fi; \
+		sleep 2; \
+		elapsed=$$((elapsed + 2)); \
+	done
+	@echo ""
+	@echo "Certificate details:"
+	@oc get certificate test-cert-http01 -n default 2>/dev/null || echo "Certificate not found"
+	@echo ""
+	@echo "Quick HTTP-01 test complete! Run 'make clean' to clean up."
+
+# Quick end-to-end DNS-01 test
+quick-dns-test: test-dns01 test-cert
+	@echo ""
+	@echo "========================================"
+	@echo "  Quick DNS-01 Test Running..."
 	@echo "========================================"
 	@echo ""
 	@echo "Waiting for certificate to be issued (timeout: 5 minutes)..."
@@ -133,7 +192,7 @@ quick-test: test-dns01 test-cert
 	@echo ""
 	@$(MAKE) verify-cert
 	@echo ""
-	@echo "Quick test complete! Run 'make clean' to clean up."
+	@echo "Quick DNS-01 test complete! Run 'make clean' to clean up."
 
 # Create a test wildcard certificate
 test-cert:
