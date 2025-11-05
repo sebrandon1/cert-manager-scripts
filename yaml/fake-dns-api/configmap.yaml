@@ -1,0 +1,233 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fake-dns-api
+  namespace: ${FAKEDNS_NAMESPACE}
+data:
+  dns-api.py: |
+    #!/usr/bin/env python3
+    """
+    Fake DNS API Server for air-gapped cert-manager DNS-01 testing
+    
+    This server accepts RFC2136 DNS update requests and returns success
+    without actually updating any DNS. Used with Pebble ALWAYS_VALID=1
+    for testing DNS-01 challenges in air-gapped environments.
+    """
+    
+    import socket
+    import struct
+    import threading
+    import logging
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    class HealthCheckHandler(BaseHTTPRequestHandler):
+        """HTTP server for health checks"""
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'OK\n')
+        
+        def log_message(self, format, *args):
+            pass  # Suppress HTTP logs
+    
+    def handle_dns_query(data, addr):
+        """
+        Handle DNS query/update. For updates (opcode=5), return success.
+        For SOA queries, return a fake SOA record to make cert-manager happy.
+        """
+        try:
+            # Parse DNS header
+            if len(data) < 12:
+                return None
+            
+            transaction_id = data[0:2]
+            flags = struct.unpack('>H', data[2:4])[0]
+            qdcount = struct.unpack('>H', data[4:6])[0]
+            
+            # Extract opcode (bits 11-14)
+            opcode = (flags >> 11) & 0x0F
+            
+            # DNS UPDATE has opcode = 5
+            if opcode == 5:
+                logger.info(f"Received DNS UPDATE from {addr} - returning success")
+                # Build response: same ID, response flag, opcode=5, no error
+                response_flags = 0x8000 | (5 << 11) | 0x0000  # QR=1, OPCODE=5, RCODE=0 (NOERROR)
+                response = transaction_id + struct.pack('>H', response_flags) + data[4:12]
+                return response
+            # DNS QUERY (opcode=0)
+            elif opcode == 0 and qdcount > 0:
+                # Parse query to check if it's asking for SOA
+                try:
+                    # Skip header, parse first question
+                    offset = 12
+                    qname_parts = []
+                    while offset < len(data):
+                        length = data[offset]
+                        if length == 0:
+                            offset += 1
+                            break
+                        if length > 63:
+                            break
+                        qname_parts.append(data[offset+1:offset+1+length].decode('utf-8', errors='ignore'))
+                        offset += 1 + length
+                    
+                    if offset + 4 <= len(data):
+                        qtype = struct.unpack('>H', data[offset:offset+2])[0]
+                        qname = '.'.join(qname_parts)
+                        
+                        # NS query (qtype=2) - Return fake NS record
+                        if qtype == 2:
+                            logger.info(f"Received NS query for {qname} from {addr} - returning fake NS")
+                            
+                            # Build minimal NS response
+                            # QR=1, AA=1 (authoritative), OPCODE=0, RCODE=0
+                            response_flags = 0x8400
+                            response = transaction_id + struct.pack('>H', response_flags)
+                            response += struct.pack('>HHHH', 1, 1, 0, 0)  # 1 question, 1 answer, 0 authority, 0 additional
+                            response += data[12:offset+4]  # Copy question section
+                            
+                            # Answer section: name pointer + NS record
+                            response += b'\xc0\x0c'  # Name pointer to question
+                            response += struct.pack('>HHI', 2, 1, 300)  # TYPE=NS, CLASS=IN, TTL=300
+                            
+                            # NS RDATA: ns.fake-dns.local
+                            ns_data = b''
+                            for part in ['ns', 'fake-dns', 'local']:
+                                ns_data += bytes([len(part)]) + part.encode()
+                            ns_data += b'\x00'
+                            
+                            response += struct.pack('>H', len(ns_data)) + ns_data
+                            return response
+                        
+                        # SOA query (qtype=6)
+                        elif qtype == 6:
+                            logger.info(f"Received SOA query for {qname} from {addr} - returning fake SOA")
+                            
+                            # Build minimal SOA response
+                            # QR=1, AA=1 (authoritative), OPCODE=0, RCODE=0
+                            response_flags = 0x8400
+                            response = transaction_id + struct.pack('>H', response_flags)
+                            response += struct.pack('>HHHH', 1, 1, 0, 0)  # 1 question, 1 answer, 0 authority, 0 additional
+                            response += data[12:offset+4]  # Copy question section
+                            
+                            # Answer section: name pointer + SOA record
+                            response += b'\xc0\x0c'  # Name pointer to question
+                            response += struct.pack('>HHI', 6, 1, 300)  # TYPE=SOA, CLASS=IN, TTL=300
+                            
+                            # SOA RDATA
+                            soa_data = b''
+                            # MNAME: ns.fake-dns.local
+                            for part in ['ns', 'fake-dns', 'local']:
+                                soa_data += bytes([len(part)]) + part.encode()
+                            soa_data += b'\x00'
+                            # RNAME: admin.fake-dns.local
+                            for part in ['admin', 'fake-dns', 'local']:
+                                soa_data += bytes([len(part)]) + part.encode()
+                            soa_data += b'\x00'
+                            # SERIAL, REFRESH, RETRY, EXPIRE, MINIMUM
+                            soa_data += struct.pack('>IIIII', 1, 3600, 600, 86400, 300)
+                            
+                            response += struct.pack('>H', len(soa_data)) + soa_data
+                            return response
+                        
+                        # TXT query (qtype=16) - Return fake TXT record for ACME challenges
+                        elif qtype == 16:
+                            logger.info(f"Received TXT query for {qname} from {addr} - returning fake TXT")
+                            
+                            # Build minimal TXT response
+                            # QR=1, AA=1 (authoritative), OPCODE=0, RCODE=0
+                            response_flags = 0x8400
+                            response = transaction_id + struct.pack('>H', response_flags)
+                            response += struct.pack('>HHHH', 1, 1, 0, 0)  # 1 question, 1 answer, 0 authority, 0 additional
+                            response += data[12:offset+4]  # Copy question section
+                            
+                            # Answer section: name pointer + TXT record
+                            response += b'\xc0\x0c'  # Name pointer to question
+                            response += struct.pack('>HHI', 16, 1, 300)  # TYPE=TXT, CLASS=IN, TTL=300
+                            
+                            # TXT RDATA: fake challenge token
+                            # For ACME DNS-01 challenges, return a dummy token
+                            txt_value = b'fake-acme-challenge-token'
+                            txt_data = bytes([len(txt_value)]) + txt_value
+                            
+                            response += struct.pack('>H', len(txt_data)) + txt_data
+                            return response
+                        
+                        # A query (qtype=1) or AAAA query (qtype=28) - Return NODATA (no error, but no answer)
+                        elif qtype == 1 or qtype == 28:
+                            qtype_name = "A" if qtype == 1 else "AAAA"
+                            logger.info(f"Received {qtype_name} query for {qname} from {addr} - returning NODATA")
+                            
+                            # Build NODATA response (authoritative, no error, but no answer)
+                            # QR=1, AA=1 (authoritative), OPCODE=0, RCODE=0
+                            response_flags = 0x8400
+                            response = transaction_id + struct.pack('>H', response_flags)
+                            response += struct.pack('>HHHH', 1, 0, 0, 0)  # 1 question, 0 answers, 0 authority, 0 additional
+                            response += data[12:offset+4]  # Copy question section
+                            return response
+                except Exception as e:
+                    logger.error(f"Error parsing DNS query: {e}")
+                
+                # Log the qtype for unhandled query types
+                try:
+                    if offset + 4 <= len(data):
+                        qtype = struct.unpack('>H', data[offset:offset+2])[0]
+                        logger.info(f"Received DNS query type {qtype} for {qname} from {addr} - returning NOERROR with no answer")
+                        # Return NOERROR with no answers (like NODATA)
+                        response_flags = 0x8400  # QR=1, AA=1
+                        response = transaction_id + struct.pack('>H', response_flags)
+                        response += struct.pack('>HHHH', 1, 0, 0, 0)  # 1 question, 0 answers
+                        response += data[12:offset+4]  # Copy question section
+                        return response
+                except Exception as e:
+                    logger.error(f"Error handling unhandled query type: {e}")
+                
+                logger.info(f"Received unparseable DNS query from {addr} - returning SERVFAIL")
+                response_flags = 0x8002  # Response, SERVFAIL
+                response = transaction_id + struct.pack('>H', response_flags) + data[4:12]
+                return response
+            else:
+                logger.info(f"Received DNS opcode={opcode} from {addr} - returning SERVFAIL")
+                response_flags = 0x8002  # Response, SERVFAIL
+                response = transaction_id + struct.pack('>H', response_flags) + data[4:12]
+                return response
+                
+        except Exception as e:
+            logger.error(f"Error handling DNS packet: {e}")
+            return None
+    
+    def start_dns_server(port=53):
+        """Start UDP DNS server"""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(('0.0.0.0', port))
+        logger.info(f"DNS server listening on UDP port {port}")
+        
+        while True:
+            try:
+                data, addr = sock.recvfrom(512)
+                response = handle_dns_query(data, addr)
+                if response:
+                    sock.sendto(response, addr)
+            except Exception as e:
+                logger.error(f"Error in DNS server: {e}")
+    
+    def start_health_server(port=8080):
+        """Start HTTP health check server"""
+        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+        logger.info(f"Health check server listening on HTTP port {port}")
+        server.serve_forever()
+    
+    if __name__ == '__main__':
+        logger.info("Starting fake DNS API server for air-gapped testing")
+        
+        # Start DNS server in background thread
+        dns_thread = threading.Thread(target=start_dns_server, daemon=True)
+        dns_thread.start()
+        
+        # Start health server in main thread
+        start_health_server()
+

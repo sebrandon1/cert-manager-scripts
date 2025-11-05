@@ -1,0 +1,17 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: pebble-acme
+  namespace: ${PEBBLE_NAMESPACE}
+  labels:
+    app: pebble
+spec:
+  to:
+    kind: Service
+    name: pebble
+  port:
+    targetPort: acme
+  tls:
+    termination: passthrough
+    insecureEdgeTerminationPolicy: None
+

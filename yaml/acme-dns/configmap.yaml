@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: acme-dns-config
+  namespace: ${ACMEDNS_NAMESPACE}
+data:
+  config.cfg: |
+    [general]
+    # DNS interface
+    listen = ":53"
+    # Protocol, "both", "both4", "both6", "udp", "udp4", "udp6" or "tcp", "tcp4", "tcp6"
+    protocol = "both"
+    # Domain name to serve the requests off of
+    domain = "acme-dns.local"
+    # Zone name server
+    nsname = "ns1.acme-dns.local"
+    # Admin email address
+    nsadmin = "admin.acme-dns.local"
+    # Predefined records served in addition to the TXT
+    records = [
+        "acme-dns.local. A 127.0.0.1",
+        "ns1.acme-dns.local. A 127.0.0.1",
+    ]
+
+    [database]
+    engine = "sqlite3"
+    connection = "/var/lib/acme-dns/acme-dns.db"
+
+    [api]
+    ip = "0.0.0.0"
+    port = "8080"
+    tls = "none"
+    
+    [logconfig]
+    loglevel = "info"
+    logtype = "stdout"
+

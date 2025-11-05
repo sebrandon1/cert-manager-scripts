@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pebble-challtestsrv
+  namespace: ${PEBBLE_NAMESPACE}
+  labels:
+    app: pebble-challtestsrv
+spec:
+  type: ClusterIP
+  ports:
+  - name: dns-udp
+    port: 8053
+    targetPort: 8053
+    protocol: UDP
+  - name: dns-tcp
+    port: 8053
+    targetPort: 8053
+    protocol: TCP
+  - name: management
+    port: 8055
+    targetPort: 8055
+    protocol: TCP
+  selector:
+    app: pebble-challtestsrv
+

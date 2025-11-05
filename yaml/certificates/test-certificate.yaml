@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${CERT_NAME}
+  namespace: ${CERT_NAMESPACE}
+spec:
+  # Secret where certificate will be stored
+  secretName: ${CERT_SECRET_NAME}
+  
+  # Certificate duration
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
+  
+  # Reference to ClusterIssuer
+  issuerRef:
+    name: ${ISSUER_NAME}
+    kind: ClusterIssuer
+    group: cert-manager.io
+  
+  # Common name
+  commonName: ${CERT_COMMON_NAME}
+  
+  # DNS names for the certificate
+  dnsNames:
+  - ${CERT_DNS_NAME}
+  
+  # Use HTTP-01 challenge
+  # Note: For wildcard certs, you must use DNS-01 challenge
+
