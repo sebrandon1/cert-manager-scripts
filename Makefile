@@ -1,4 +1,4 @@
-.PHONY: help lint check-network install-cert-manager-operator install-pebble install-fake-dns install-all create-issuer create-dns01-issuer create-certs test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert clean clean-certs clean-pebble clean-fake-dns clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
+.PHONY: help lint check-network install-cert-manager-operator install-pebble install-fake-dns install-all create-issuer create-dns01-issuer create-certs test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert troubleshoot check-cert check-issuer diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
 
 # Default target
 help:
@@ -20,6 +20,11 @@ help:
 	@echo "  quick-dns-test                  - Quick end-to-end DNS-01 test (setup + test + verify)"
 	@echo "  test-cert                       - Create a test wildcard certificate"
 	@echo "  verify-cert                     - Verify certificate status"
+	@echo "  troubleshoot                    - Run all troubleshooting diagnostics"
+	@echo "  check-cert CERT=<name> NS=<ns>  - Check specific certificate status"
+	@echo "  check-issuer ISSUER=<name>      - Check specific ClusterIssuer status"
+	@echo "  diagnose-http01                 - Diagnose HTTP-01 challenge issues"
+	@echo "  diagnose-dns01                  - Diagnose DNS-01 challenge issues"
 	@echo "  clean                           - Clean up all resources (keeps cert-manager-operator)"
 	@echo "  clean-certs                     - Clean up certificates and challenges only"
 	@echo "  clean-pebble                    - Clean up Pebble only"
@@ -232,6 +237,37 @@ verify-cert:
 		echo "Check logs:"; \
 		echo "  oc logs -n cert-manager deployment/cert-manager --tail=50"; \
 	fi
+
+# Run all troubleshooting diagnostics
+troubleshoot:
+	@./scripts/troubleshooting/check-all.sh
+
+# Check specific certificate
+check-cert:
+	@if [ -z "$(CERT)" ] || [ -z "$(NS)" ]; then \
+		echo "Usage: make check-cert CERT=<certificate-name> NS=<namespace>"; \
+		echo "Example: make check-cert CERT=test-cert-simple NS=default"; \
+		exit 1; \
+	fi
+	@./scripts/troubleshooting/check-certificate.sh $(CERT) $(NS)
+
+# Check specific issuer
+check-issuer:
+	@if [ -z "$(ISSUER)" ]; then \
+		echo "Usage: make check-issuer ISSUER=<issuer-name>"; \
+		echo "Example: make check-issuer ISSUER=pebble-issuer"; \
+		exit 1; \
+	fi
+	@./scripts/troubleshooting/check-issuer.sh $(ISSUER)
+
+# Diagnose HTTP-01 issues
+diagnose-http01:
+	@./scripts/troubleshooting/diagnose-http01.sh
+
+# Diagnose DNS-01 issues
+diagnose-dns01:
+	@./scripts/troubleshooting/diagnose-dns01.sh
+
 
 # Clean up certificates, orders, and challenges
 clean-certs:

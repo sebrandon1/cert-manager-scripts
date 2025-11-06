@@ -153,6 +153,21 @@ create_test_certificates() {
 	log_info "All test certificates created."
 }
 
+# Function to show HTTP-01 validation flow
+show_http01_flow() {
+	echo
+	log_info "========================================"
+	log_info "  HTTP-01 Validation Flow"
+	log_info "========================================"
+	echo
+	echo "✅ cert-manager requests a certificate from Pebble"
+	echo "✅ Pebble responds with a challenge token"
+	echo "✅ cert-manager creates a temporary HTTP endpoint with the token"
+	echo "✅ Pebble validates by fetching the token via HTTP"
+	echo "✅ Certificate is issued upon successful validation"
+	echo
+}
+
 # Function to wait for certificates
 wait_for_certificates() {
 	log_info "Waiting for certificates to be issued..."
@@ -160,6 +175,7 @@ wait_for_certificates() {
 
 	local max_wait=60
 	local wait_time=0
+	local shown_flow=false
 
 	while [ $wait_time -lt $max_wait ]; do
 		local all_ready=true
@@ -171,6 +187,14 @@ wait_for_certificates() {
 
 				if [ "$ready" != "True" ]; then
 					all_ready=false
+
+					# Show flow once when challenges are detected
+					if [ "$shown_flow" = false ]; then
+						if oc get challenge -n "$CERT_NAMESPACE" 2>/dev/null | grep -q "test-cert"; then
+							show_http01_flow
+							shown_flow=true
+						fi
+					fi
 				fi
 			fi
 		done
