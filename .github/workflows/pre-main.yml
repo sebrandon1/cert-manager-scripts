@@ -1,0 +1,101 @@
+name: Pre-Main Testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SHELL: /bin/bash
+  KUBECONFIG: '/home/runner/.crc/machines/crc/kubeconfig'
+
+jobs:
+  shell-format-check:
+    name: Shell Script Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Shfmt
+        uses: mfinelli/setup-shfmt@a25fda4c1fe115aec0f85e04126610841bc3141d # v4.0.1
+
+      - name: Shfmt
+        run: shfmt -d .
+
+  integration-test:
+    name: Integration Test (OCP 4.19 + HTTP-01)
+    runs-on: ubuntu-latest
+    needs: shell-format-check
+    if: needs.shell-format-check.result == 'success'
+    steps:
+      - name: Check if CRC_PULL_SECRET exists
+        env:
+          super_secret: ${{ secrets.CRC_PULL_SECRET }}
+        if: ${{ env.super_secret == '' }}
+        run: |
+          echo "CRC_PULL_SECRET is not set"
+          exit 1
+
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Deploy the OCP Cluster
+        uses: palmsoftware/quick-ocp@v0.0.20
+        with:
+          ocpPullSecret: $OCP_PULL_SECRET
+          bundleCache: true
+          desiredOCPVersion: 4.19
+          waitForOperatorsReady: true
+        env:
+          OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
+
+      - name: Verify cluster access
+        run: |
+          oc version
+          oc whoami
+          oc get nodes
+
+      - name: Run quick HTTP-01 test
+        run: |
+          cd ${{ github.workspace }}
+          make quick-http-test
+
+      - name: Display component status
+        if: always()
+        run: |
+          echo "=== Component Status ==="
+          echo ""
+          echo "cert-manager pods:"
+          oc get pods -n cert-manager || true
+          echo ""
+          echo "Pebble pods:"
+          oc get pods -n pebble || true
+          echo ""
+          echo "ClusterIssuer status:"
+          oc get clusterissuer -o wide || true
+          echo ""
+          echo "Certificate status:"
+          oc get certificate -n default || true
+          echo ""
+          echo "CertificateRequest status:"
+          oc get certificaterequest -n default || true
+          echo ""
+          echo "Order status:"
+          oc get order -n default || true
+          echo ""
+          echo "Challenge status:"
+          oc get challenge -n default || true
+          echo ""
+          echo "Recent cert-manager logs:"
+          oc logs -n cert-manager deployment/cert-manager --tail=30 || true
+
