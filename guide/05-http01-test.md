@@ -42,15 +42,33 @@ oc get secret -n default | grep test-certificate
 
 ## Step 5: Inspect Certificate Content (Optional)
 
-To view the actual certificate:
+First, find your certificate secret name:
+
+```bash
+oc get secret -n default | grep tls
+```
+
+Then view the actual certificate (replace `<secret-name>` with your secret name from above):
 
 ```bash
 oc get secret <secret-name> -n default -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
 ```
 
+Example with the test-cert-http01 certificate:
+
+```bash
+oc get secret test-cert-http01-tls -n default -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
+```
+
 ## Troubleshooting
 
-If the certificate doesn't become ready:
+If the certificate doesn't become ready, use the automated diagnostic script:
+
+```bash
+./scripts/troubleshooting/diagnose-http01.sh
+```
+
+Or check manually:
 
 ```bash
 oc describe certificaterequest -n default
@@ -58,7 +76,13 @@ oc describe order -n default
 oc describe challenge -n default
 ```
 
-These commands show the validation progress and any errors.
+### Common Issues
+
+- **Certificate stays in "Not Ready" status** - See [Certificate Not Ready](08-troubleshooting.md#certificate-not-ready)
+- **HTTP-01 challenge failures** - See [HTTP-01 Challenge Failures](08-troubleshooting.md#http-01-challenge-failures)
+- **"Account does not exist" errors** - See [ACME Account Does Not Exist Error](08-troubleshooting.md#acme-account-does-not-exist-error) (common after Pebble restarts)
+
+For comprehensive troubleshooting, see the [full Troubleshooting Guide](08-troubleshooting.md).
 
 ## What's Next?
 

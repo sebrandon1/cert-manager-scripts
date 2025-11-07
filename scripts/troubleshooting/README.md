@@ -37,13 +37,23 @@ make troubleshoot
 **Description:** Detailed certificate diagnostics  
 **Usage:**
 ```bash
+# Check all certificates across all namespaces
+./scripts/troubleshooting/check-certificate.sh
+
+# Check specific certificate
 ./scripts/troubleshooting/check-certificate.sh <certificate-name> <namespace>
-# or
+
+# Or use make commands
 make check-cert CERT=<name> NS=<namespace>
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# Check all certificates
+./scripts/troubleshooting/check-certificate.sh
+
+# Check specific certificate
+./scripts/troubleshooting/check-certificate.sh test-cert-simple default
 make check-cert CERT=test-cert-simple NS=default
 ```
 
@@ -61,13 +71,23 @@ make check-cert CERT=test-cert-simple NS=default
 **Description:** ClusterIssuer configuration and status check  
 **Usage:**
 ```bash
+# Check all ClusterIssuers
+./scripts/troubleshooting/check-issuer.sh
+
+# Check specific ClusterIssuer
 ./scripts/troubleshooting/check-issuer.sh <clusterissuer-name>
-# or
+
+# Or use make commands
 make check-issuer ISSUER=<name>
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# Check all ClusterIssuers
+./scripts/troubleshooting/check-issuer.sh
+
+# Check specific ClusterIssuers
+./scripts/troubleshooting/check-issuer.sh pebble-issuer
 make check-issuer ISSUER=pebble-issuer
 make check-issuer ISSUER=pebble-dns01-issuer
 ```
@@ -137,17 +157,22 @@ make diagnose-dns01
 
 ### Diagnosing a Failed Certificate
 
-1. **Check the certificate:**
+1. **Check all certificates to identify issues:**
+   ```bash
+   ./scripts/troubleshooting/check-certificate.sh
+   ```
+
+2. **Or check a specific certificate:**
    ```bash
    make check-cert CERT=my-cert NS=default
    ```
 
-2. **If HTTP-01 challenge, run HTTP-01 diagnostics:**
+3. **If HTTP-01 challenge, run HTTP-01 diagnostics:**
    ```bash
    make diagnose-http01
    ```
 
-3. **If DNS-01 challenge, run DNS-01 diagnostics:**
+4. **If DNS-01 challenge, run DNS-01 diagnostics:**
    ```bash
    make diagnose-dns01
    ```
@@ -155,6 +180,9 @@ make diagnose-dns01
 ### Verifying ClusterIssuer Setup
 
 ```bash
+# Check all ClusterIssuers
+./scripts/troubleshooting/check-issuer.sh
+
 # Check specific issuer
 make check-issuer ISSUER=pebble-issuer
 

@@ -19,6 +19,7 @@ spec:
       containers:
       - name: dns-api
         image: registry.access.redhat.com/ubi9/python-39:latest
+        imagePullPolicy: IfNotPresent
         command:
         - python3
         - /app/dns-api.py

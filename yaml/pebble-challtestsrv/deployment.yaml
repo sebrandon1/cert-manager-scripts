@@ -18,6 +18,7 @@ spec:
       containers:
       - name: challtestsrv
         image: letsencrypt/pebble-challtestsrv:latest
+        imagePullPolicy: IfNotPresent
         args:
         - -defaultIPv4
         - "127.0.0.1"

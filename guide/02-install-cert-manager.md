@@ -20,7 +20,7 @@ This will:
 The operator will take a few moments to install. Wait for it to be ready:
 
 ```bash
-oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -l operators.coreos.com/cert-manager-operator.cert-manager-operator -n cert-manager-operator --timeout=300s
+oc wait --for=jsonpath='{.status.phase}'=Succeeded csv -l operators.coreos.com/openshift-cert-manager-operator.cert-manager-operator -n cert-manager-operator --timeout=300s
 ```
 
 Or watch the installation progress:
