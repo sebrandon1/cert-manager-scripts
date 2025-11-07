@@ -204,6 +204,16 @@ display_next_steps() {
 	log_info "  ClusterIssuer Created!"
 	log_info "========================================"
 	echo
+	log_info "HTTP-01 Validation Flow:"
+	echo
+	echo "When you create a certificate:"
+	echo
+	echo "✅ cert-manager requests a certificate from Pebble"
+	echo "✅ Pebble responds with a challenge token"
+	echo "✅ cert-manager creates a temporary HTTP endpoint with the token"
+	echo "✅ Pebble validates by fetching the token via HTTP"
+	echo "✅ Certificate is issued upon successful validation"
+	echo
 	echo "Next steps:"
 	echo
 	echo "1. View ClusterIssuer details:"

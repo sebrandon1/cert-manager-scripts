@@ -60,6 +60,18 @@ if oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 	echo
 	log_info "DNS-01 ClusterIssuer created!"
 	echo
+	log_info "========================================"
+	log_info "  DNS-01 Validation Flow"
+	log_info "========================================"
+	echo
+	echo "When you create a wildcard certificate:"
+	echo
+	echo "✅ cert-manager requests a certificate from Pebble"
+	echo "✅ Pebble provides a DNS challenge token"
+	echo "✅ cert-manager creates a TXT record via the fake DNS API"
+	echo "✅ Pebble validates by querying the DNS record"
+	echo "✅ Certificate is issued upon successful validation"
+	echo
 	echo "Next steps:"
 	echo "1. Create a wildcard certificate:"
 	echo "   oc apply -f - <<EOF"
