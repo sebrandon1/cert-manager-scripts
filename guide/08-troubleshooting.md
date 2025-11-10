@@ -10,10 +10,16 @@ We provide automated troubleshooting scripts to quickly diagnose issues:
 # Run all diagnostics
 ./scripts/troubleshooting/check-all.sh
 
+# Check all certificates
+./scripts/troubleshooting/check-certificate.sh
+
 # Check specific certificate
 ./scripts/troubleshooting/check-certificate.sh <cert-name> <namespace>
 
-# Check ClusterIssuer
+# Check all ClusterIssuers
+./scripts/troubleshooting/check-issuer.sh
+
+# Check specific ClusterIssuer
 ./scripts/troubleshooting/check-issuer.sh <issuer-name>
 
 # Diagnose HTTP-01 issues
@@ -29,7 +35,13 @@ If your certificate stays in `Ready: False` status:
 
 ### Check Certificate Details
 
-Use the automated script:
+Use the automated script to check all certificates:
+
+```bash
+./scripts/troubleshooting/check-certificate.sh
+```
+
+Or check a specific certificate:
 
 ```bash
 ./scripts/troubleshooting/check-certificate.sh <certificate-name> <namespace>
@@ -174,6 +186,20 @@ oc get svc -n cert-manager cert-manager-webhook
 
 ### Check Issuer Status
 
+Use the automated script to check all issuers:
+
+```bash
+./scripts/troubleshooting/check-issuer.sh
+```
+
+Or check a specific issuer:
+
+```bash
+./scripts/troubleshooting/check-issuer.sh <issuer-name>
+```
+
+Or manually:
+
 ```bash
 oc describe clusterissuer <issuer-name>
 ```
@@ -190,6 +216,45 @@ curl -k https://${PEBBLE_URL}/dir
 ```
 
 You should see the ACME directory endpoints.
+
+## ACME Account Does Not Exist Error
+
+If you see errors like `accountDoesNotExist: Account https://pebble.pebble.svc.cluster.local:14000/my-account/X not found`, this happens when Pebble restarts and loses its ephemeral ACME account data.
+
+**This is normal and expected behavior with Pebble** - it doesn't persist account data between restarts.
+
+### When This Happens
+
+- Pebble pod restarts or crashes
+- You reinstall Pebble
+- Your cluster restarts
+- Testing after a long break
+
+### Quick Fix
+
+Delete the cached ACME account secrets and let cert-manager re-register:
+
+```bash
+# Delete ACME account secrets
+oc delete secret pebble-issuer-account-key pebble-dns01-issuer-account-key -n cert-manager
+
+# Delete any stuck certificate requests
+oc delete certificaterequest -n <namespace> --all
+
+# Optional: Delete and recreate stuck certificates
+oc delete certificate <cert-name> -n <namespace>
+oc apply -f yaml/certificates/test-certificate.yaml
+```
+
+### Verify Fix
+
+Check that the ClusterIssuer has a new account registered:
+
+```bash
+oc describe clusterissuer pebble-issuer | grep -A 5 "Status:"
+```
+
+You should see a new `Uri` with a fresh account ID.
 
 ## General Debugging Tips
 

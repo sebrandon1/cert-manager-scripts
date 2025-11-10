@@ -161,7 +161,7 @@ echo "  Active Challenges"
 echo "========================================"
 echo
 
-CHALLENGES=$(oc get challenge -A 2>/dev/null | grep -v "^NAMESPACE" | wc -l || echo "0")
+CHALLENGES=$(oc get challenge -A 2>/dev/null | grep -v "^NAMESPACE" | wc -l | xargs || echo "0")
 
 if [ "$CHALLENGES" -gt 0 ]; then
 	log_info "Found $CHALLENGES active challenge(s):"
@@ -194,7 +194,7 @@ if ! oc get clusterissuer &>/dev/null; then
 fi
 
 # Check if any issuer is ready
-READY_ISSUERS=$(oc get clusterissuer -o json 2>/dev/null | jq -r '.items[] | select(.status.conditions[]? | select(.type=="Ready" and .status=="True")) | .metadata.name' | wc -l || echo "0")
+READY_ISSUERS=$(oc get clusterissuer -o json 2>/dev/null | jq -r '.items[] | select(.status.conditions[]? | select(.type=="Ready" and .status=="True")) | .metadata.name' | wc -l | xargs || echo "0")
 if [ "$READY_ISSUERS" -eq 0 ] && oc get clusterissuer &>/dev/null; then
 	log_warn "No ClusterIssuers are ready"
 	ISSUES=$((ISSUES + 1))
