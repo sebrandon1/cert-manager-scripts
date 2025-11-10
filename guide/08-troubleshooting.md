@@ -27,6 +27,9 @@ We provide automated troubleshooting scripts to quickly diagnose issues:
 
 # Diagnose DNS-01 issues
 ./scripts/troubleshooting/diagnose-dns01.sh
+
+# Check workload partitioning configuration
+./scripts/troubleshooting/check-workload-partitioning.sh
 ```
 
 ## Certificate Not Ready
@@ -255,6 +258,41 @@ oc describe clusterissuer pebble-issuer | grep -A 5 "Status:"
 ```
 
 You should see a new `Uri` with a fresh account ID.
+
+## Workload Partitioning Issues
+
+If you're deploying cert-manager on Single Node OpenShift (SNO) or compact clusters with workload partitioning enabled, verify that cert-manager pods are NOT configured with workload partitioning annotations.
+
+### Check Workload Partitioning Configuration
+
+```bash
+./scripts/troubleshooting/check-workload-partitioning.sh
+# or
+make check-workload-partitioning
+```
+
+### Why This Matters
+
+Workload partitioning isolates management workloads in SNO/compact clusters. cert-manager should NOT use workload partitioning because:
+- cert-manager needs to run on all node types
+- Restricting to management CPU sets can cause performance issues
+- cert-manager webhook needs to be accessible cluster-wide
+
+### Symptoms
+
+- cert-manager webhook timeouts
+- Slow certificate issuance
+- Pods scheduled only on specific nodes
+
+### Fix
+
+If workload partitioning is incorrectly configured:
+
+1. Remove annotations from CertManager CR
+2. Remove annotations from cert-manager namespace
+3. Restart cert-manager pods
+
+See the [workload partitioning check script](../scripts/troubleshooting/check-workload-partitioning.sh) for detailed recommendations.
 
 ## General Debugging Tips
 
