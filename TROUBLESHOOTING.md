@@ -256,6 +256,45 @@ oc logs -n cert-manager deployment/cert-manager | grep -i challenge
 
 ---
 
+## Workload Partitioning Issues
+
+### cert-manager and Workload Partitioning
+
+**Important:** cert-manager pods should NOT be configured with workload partitioning annotations in SNO/compact clusters.
+
+**Check configuration:**
+```bash
+make check-workload-partitioning
+```
+
+**Why this matters:**
+- Workload partitioning isolates management workloads to specific CPU sets
+- cert-manager needs to run on all node types
+- Restricting cert-manager can cause performance and accessibility issues
+
+**Symptoms:**
+- cert-manager webhook timeouts or failures
+- Slow certificate issuance
+- Pods only scheduled on management nodes
+
+**Verification:**
+The workload partitioning check verifies that cert-manager pods do NOT have the `target.workload.openshift.io/management` annotation.
+
+**How to fix:**
+If the check fails, remove workload partitioning annotations from:
+1. CertManager custom resource
+2. cert-manager namespace
+3. cert-manager deployments
+
+Then restart cert-manager pods:
+```bash
+oc rollout restart deployment/cert-manager -n cert-manager
+oc rollout restart deployment/cert-manager-webhook -n cert-manager
+oc rollout restart deployment/cert-manager-cainjector -n cert-manager
+```
+
+---
+
 ## Network Issues
 
 For IPv4, IPv6, and dual-stack configuration issues, see [NETWORK-SUPPORT.md](./NETWORK-SUPPORT.md).

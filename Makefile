@@ -1,4 +1,4 @@
-.PHONY: help lint check-network install-cert-manager-operator install-pebble install-fake-dns install-all create-issuer create-dns01-issuer create-certs test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert troubleshoot check-cert check-issuer diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
+.PHONY: help lint check-network check-workload-partitioning install-cert-manager-operator install-pebble install-fake-dns install-all create-issuer create-dns01-issuer create-certs test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert troubleshoot check-cert check-issuer diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
 
 # Default target
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "Available targets:"
 	@echo "  lint                            - Check shell script formatting with shfmt"
 	@echo "  check-network                   - Check cluster network configuration (IPv4/IPv6/Dual-stack)"
+	@echo "  check-workload-partitioning     - Verify cert-manager pods are not using workload partitioning"
 	@echo "  install-cert-manager-operator   - Install cert-manager Operator for Red Hat OpenShift"
 	@echo "  install-pebble                  - Install Pebble ACME test server"
 	@echo "  install-fake-dns                - Install fake DNS API for air-gapped DNS-01 testing"
@@ -57,6 +58,10 @@ lint:
 # Check cluster network configuration
 check-network:
 	@./scripts/check-cluster-network.sh
+
+# Check workload partitioning configuration
+check-workload-partitioning:
+	@./scripts/troubleshooting/check-workload-partitioning.sh
 
 # Install cert-manager-operator
 install-cert-manager-operator:

@@ -153,6 +153,39 @@ make diagnose-dns01
 
 ---
 
+### 6. check-workload-partitioning.sh
+**Description:** Verify cert-manager pods are NOT using workload partitioning  
+**Usage:**
+```bash
+./scripts/troubleshooting/check-workload-partitioning.sh
+# or
+make check-workload-partitioning
+```
+
+**Checks:**
+- cert-manager pod annotations for workload partitioning
+- Deployment template annotations
+- Provides recommendations if issues are found
+
+**Provides:**
+- Status of each cert-manager pod
+- Workload partitioning annotation detection
+- Deployment configuration verification
+- Recommendations for fixing issues
+
+**Why This Matters:**
+Workload partitioning is used to isolate management workloads in SNO/compact clusters. cert-manager should NOT be configured with workload partitioning because:
+- cert-manager needs to run on all node types
+- Restricting to management CPU sets can cause performance issues
+- cert-manager webhook needs to be accessible cluster-wide
+
+**Use When:**
+- Verifying cert-manager configuration on SNO/compact clusters
+- Troubleshooting cert-manager performance issues
+- Validating cluster configuration before RAN/Edge deployments
+
+---
+
 ## Common Workflows
 
 ### Diagnosing a Failed Certificate

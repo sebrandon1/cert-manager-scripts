@@ -30,11 +30,69 @@ jobs:
       - name: Shfmt
         run: shfmt -d .
 
-  integration-test:
-    name: Integration Test (OCP 4.19 + HTTP-01)
+  shellcheck:
+    name: ShellCheck Analysis
     runs-on: ubuntu-latest
-    needs: shell-format-check
-    if: needs.shell-format-check.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: |
+          echo "Running ShellCheck on all shell scripts..."
+          find scripts/ -type f -name "*.sh" -print0 | xargs -0 shellcheck --severity=error --shell=bash
+
+  workload-partitioning-check:
+    name: Validate Workload Partitioning Check Script
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify workload partitioning check script exists
+        run: ./scripts/workflows/verify-workload-partitioning-script-exists.sh
+
+      - name: Verify script is executable
+        run: ./scripts/workflows/verify-script-executable.sh
+
+      - name: Check script syntax
+        run: |
+          bash -n scripts/troubleshooting/check-workload-partitioning.sh
+          echo "✅ Script syntax is valid"
+
+      - name: Verify Makefile target exists
+        run: ./scripts/workflows/verify-makefile-target.sh
+
+      - name: Verify documentation mentions workload partitioning
+        run: ./scripts/workflows/verify-documentation.sh
+
+  verify-structure:
+    name: Verify Repository Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify directory structure
+        run: ./scripts/workflows/verify-directory-structure.sh
+
+      - name: Verify key files exist
+        run: ./scripts/workflows/verify-key-files.sh
+
+  integration-test:
+    name: Integration Test (OCP 4.19)
+    runs-on: ubuntu-latest
+    needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure]
+    if: |
+      needs.shell-format-check.result == 'success' &&
+      needs.shellcheck.result == 'success' &&
+      needs.workload-partitioning-check.result == 'success' &&
+      needs.verify-structure.result == 'success'
     steps:
       - name: Check if CRC_PULL_SECRET exists
         env:
@@ -60,42 +118,25 @@ jobs:
           OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
 
       - name: Verify cluster access
-        run: |
-          oc version
-          oc whoami
-          oc get nodes
+        run: ./scripts/workflows/verify-cluster-access.sh
 
       - name: Run quick HTTP-01 test
-        run: |
-          cd ${{ github.workspace }}
-          make quick-http-test
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_on: error
+          command: make quick-http-test
+
+      - name: Verify workload partitioning configuration
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: make check-workload-partitioning
 
       - name: Display component status
         if: always()
-        run: |
-          echo "=== Component Status ==="
-          echo ""
-          echo "cert-manager pods:"
-          oc get pods -n cert-manager || true
-          echo ""
-          echo "Pebble pods:"
-          oc get pods -n pebble || true
-          echo ""
-          echo "ClusterIssuer status:"
-          oc get clusterissuer -o wide || true
-          echo ""
-          echo "Certificate status:"
-          oc get certificate -n default || true
-          echo ""
-          echo "CertificateRequest status:"
-          oc get certificaterequest -n default || true
-          echo ""
-          echo "Order status:"
-          oc get order -n default || true
-          echo ""
-          echo "Challenge status:"
-          oc get challenge -n default || true
-          echo ""
-          echo "Recent cert-manager logs:"
-          oc logs -n cert-manager deployment/cert-manager --tail=30 || true
+        run: ./scripts/workflows/display-component-status.sh
 
