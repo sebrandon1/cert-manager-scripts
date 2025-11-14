@@ -58,9 +58,13 @@ Run `make help` to see all available targets. Key targets include:
 
 - `make quick-http-test` / `make quick-dns-test` - Complete end-to-end tests
 - `make check-network` - Check cluster network configuration
+- `make check-network-stack` - Detect IPv4/IPv6/dual-stack cluster configuration
 - `make check-workload-partitioning` - Verify cert-manager pods are not using workload partitioning
 - `make install-all` - Install cert-manager-operator and Pebble
 - `make create-issuer` / `make create-dns01-issuer` - Create ClusterIssuers
+- `make create-certs` - Create test certificates (HTTP-01)
+- `make create-apiserver-cert` - Create API server certificate
+- `make verify-apiserver-cert` - Verify API server certificate doesn't break cluster access
 - `make test-cert` / `make verify-cert` - Test and verify certificates
 - `make clean` - Clean up all resources (keeps operator)
 

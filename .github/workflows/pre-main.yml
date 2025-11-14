@@ -114,13 +114,32 @@ jobs:
         with:
           ocpPullSecret: $OCP_PULL_SECRET
           bundleCache: true
-          desiredOCPVersion: 4.19
+          desiredOCPVersion: 4.20
           waitForOperatorsReady: true
         env:
           OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
 
+      - name: Initial cluster health check
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 5
+          retry_on: error
+          retry_wait_seconds: 30
+          command: ./scripts/workflows/verify-cluster-access.sh
+
       - name: Verify cluster access
-        run: ./scripts/workflows/verify-cluster-access.sh
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: ./scripts/workflows/verify-cluster-access.sh
+
+      - name: Wait for cluster to stabilize
+        run: |
+          echo "Waiting 30 seconds for cluster to stabilize..."
+          sleep 30
 
       - name: Run quick HTTP-01 test
         uses: nick-fields/retry@v3
@@ -137,6 +156,41 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: make check-workload-partitioning
+
+      - name: Check network stack configuration
+        run: make check-network-stack
+
+      - name: Verify cluster connection before API server cert test
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: ./scripts/workflows/verify-cluster-access.sh
+
+      - name: Create and verify API server certificate
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          on_retry_command: |
+            echo "Test failed, attempting cluster recovery..."
+            ./scripts/workflows/recover-cluster.sh || echo "Recovery attempt failed"
+            sleep 10
+          command: |
+            # Verify cluster is still accessible before starting
+            ./scripts/workflows/verify-cluster-access.sh
+            # Create the certificate
+            make create-apiserver-cert
+            # Verify the certificate doesn't break cluster access
+            make verify-apiserver-cert
+
+      - name: Final cluster health check
+        if: always()
+        run: |
+          echo "Running final cluster health check..."
+          ./scripts/workflows/verify-cluster-access.sh || echo "⚠️  Cluster may be unstable"
 
       - name: Display component status
         if: always()

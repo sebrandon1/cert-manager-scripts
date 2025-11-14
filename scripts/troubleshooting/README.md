@@ -186,6 +186,44 @@ Workload partitioning is used to isolate management workloads in SNO/compact clu
 
 ---
 
+### 7. verify-apiserver-certificate.sh
+**Description:** Verify that cert-manager issued API server certificate doesn't break cluster access  
+**Usage:**
+```bash
+./scripts/troubleshooting/verify-apiserver-certificate.sh
+# or
+make verify-apiserver-cert
+```
+
+**Checks:**
+- API server is accessible
+- Certificate is properly issued and valid
+- oc commands work correctly
+- Certificate details match expected values
+- API server configuration
+
+**Provides:**
+- API server connectivity verification
+- Certificate status and expiration
+- Certificate SANs and issuer details
+- Recommendations if issues are detected
+
+**Why This Matters:**
+API server certificates are critical for cluster access. This verifies that:
+- cert-manager can safely manage API server certificates
+- Certificates don't break cluster connectivity
+- Certificate renewal won't cause outages
+- Useful for RAN/Core/Hub deployments where cert-manager manages critical certificates
+
+**Use When:**
+- After creating API server certificates with cert-manager
+- Validating cert-manager integration with API server
+- Troubleshooting cluster access issues
+- Testing certificate renewal scenarios
+- Verifying RAN/Edge cluster configurations
+
+---
+
 ## Common Workflows
 
 ### Diagnosing a Failed Certificate
