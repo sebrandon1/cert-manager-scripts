@@ -8,34 +8,33 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Get script directory and source common library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
+	# shellcheck source=../lib/common.sh
+	source "$SCRIPT_DIR/lib/common.sh"
+	load_env
+	setup_cleanup
+else
+	# Fallback if common.sh doesn't exist
+	RED='\033[0;31m'
+	GREEN='\033[0;32m'
+	YELLOW='\033[1;33m'
+	BLUE='\033[0;34m'
+	NC='\033[0m'
+	log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
+	log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+	log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+	log_success() { echo -e "${GREEN}[SUCCESS]${NC} $*"; }
+fi
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-YAML_DIR="${SCRIPT_DIR}/../yaml/cert-manager-operator"
+YAML_DIR="${SCRIPT_DIR}/yaml/cert-manager-operator"
 
-# Configuration (exported for envsubst)
-export OPERATOR_NAMESPACE="cert-manager-operator"
-export CERT_MANAGER_NAMESPACE="cert-manager"
-export OPERATOR_NAME="openshift-cert-manager-operator"
-export CHANNEL="stable-v1"
-
-# Function to print colored messages
-log_info() {
-	echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-	echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-	echo -e "${RED}[ERROR]${NC} $1"
-}
+# Configuration (exported for envsubst, can be overridden via .env)
+export OPERATOR_NAMESPACE="${OPERATOR_NAMESPACE:-cert-manager-operator}"
+export CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+export OPERATOR_NAME="${OPERATOR_NAME:-openshift-cert-manager-operator}"
+export CHANNEL="${CHANNEL:-stable-v1}"
 
 # Function to check if oc is installed and user is logged in
 check_prerequisites() {

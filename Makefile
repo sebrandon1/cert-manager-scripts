@@ -1,222 +1,159 @@
-.PHONY: help lint check-network check-workload-partitioning install-cert-manager-operator install-pebble install-fake-dns install-all create-issuer create-dns01-issuer create-certs test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert troubleshoot check-cert check-issuer diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
+# ────────────────────────────────────────────────────────────────────────────────
+# Color Definitions
+# ────────────────────────────────────────────────────────────────────────────────
+RESET := \033[0m
+BOLD := \033[1m
+DIM := \033[2m
+
+# Text Colors
+RED := \033[31m
+GREEN := \033[32m
+YELLOW := \033[33m
+BLUE := \033[34m
+MAGENTA := \033[35m
+CYAN := \033[36m
+WHITE := \033[37m
+
+# Background Colors
+BG_RED := \033[41m
+BG_GREEN := \033[42m
+BG_YELLOW := \033[43m
+BG_BLUE := \033[44m
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Target Definitions
+# ────────────────────────────────────────────────────────────────────────────────
+.PHONY: all help banner preflight lint install-cert-manager-operator install-pebble \
+        install-fake-dns install-all create-issuer create-dns01-issuer create-certs \
+        test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert \
+        troubleshoot check-cert check-issuer check-network check-workload-partitioning \
+        diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
+        clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
 
 # Default target
-help:
-	@echo "cert-manager-scripts Makefile"
+all: help
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Main Targets
+# ────────────────────────────────────────────────────────────────────────────────
+
+banner:
 	@echo ""
-	@echo "Available targets:"
-	@echo "  lint                            - Check shell script formatting with shfmt"
-	@echo "  check-network                   - Check cluster network configuration (IPv4/IPv6/Dual-stack)"
-	@echo "  check-workload-partitioning     - Verify cert-manager pods are not using workload partitioning"
-	@echo "  install-cert-manager-operator   - Install cert-manager Operator for Red Hat OpenShift"
-	@echo "  install-pebble                  - Install Pebble ACME test server"
-	@echo "  install-fake-dns                - Install fake DNS API for air-gapped DNS-01 testing"
-	@echo "  install-all                     - Install cert-manager-operator and Pebble"
-	@echo "  create-issuer                   - Create ClusterIssuer pointing to Pebble (HTTP-01)"
-	@echo "  create-dns01-issuer             - Create ClusterIssuer pointing to Pebble (DNS-01)"
-	@echo "  create-certs                    - Create test certificates (HTTP-01)"
-	@echo "  test-all                        - Complete HTTP-01 setup"
-	@echo "  test-dns01                      - Complete DNS-01 setup (air-gapped)"
-	@echo "  quick-http-test                 - Quick end-to-end HTTP-01 test (setup + test + verify)"
-	@echo "  quick-dns-test                  - Quick end-to-end DNS-01 test (setup + test + verify)"
-	@echo "  test-cert                       - Create a test wildcard certificate"
-	@echo "  verify-cert                     - Verify certificate status"
-	@echo "  troubleshoot                    - Run all troubleshooting diagnostics"
-	@echo "  check-cert CERT=<name> NS=<ns>  - Check specific certificate status"
-	@echo "  check-issuer ISSUER=<name>      - Check specific ClusterIssuer status"
-	@echo "  diagnose-http01                 - Diagnose HTTP-01 challenge issues"
-	@echo "  diagnose-dns01                  - Diagnose DNS-01 challenge issues"
-	@echo "  clean                           - Clean up all resources (keeps cert-manager-operator)"
-	@echo "  clean-certs                     - Clean up certificates and challenges only"
-	@echo "  clean-pebble                    - Clean up Pebble only"
-	@echo "  clean-fake-dns                  - Clean up fake DNS only"
-	@echo "  clean-issuers                   - Clean up ClusterIssuers only"
-	@echo "  clean-temp                      - Clean up temporary files"
-	@echo "  uninstall-cert-manager-operator - Uninstall cert-manager Operator (WARNING!)"
-	@echo "  help                            - Show this help message"
+	@echo "$(CYAN)$(BOLD)"
+	@echo "  ╔═══════════════════════════════════════════════════════════════╗"
+	@echo "  ║         CERT-MANAGER SCRIPTS TOOLKIT              ║"
+	@echo "  ║             OpenShift Automation                              ║"
+	@echo "  ╚═══════════════════════════════════════════════════════════════╝"
+	@echo "$(RESET)"
+
+help: banner ## Show this help message
+	@echo "$(BOLD)$(BLUE)Available Commands:$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)Setup & Validation:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|check-network|check-workload)"
+	@echo ""
+	@echo "$(YELLOW)Installation:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(install-)"
+	@echo ""
+	@echo "$(YELLOW)Issuers & Certificates:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(create-|test-cert|verify-cert)"
+	@echo ""
+	@echo "$(YELLOW)Quick Tests:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(quick-|test-all|test-dns01)"
+	@echo ""
+	@echo "$(YELLOW)Troubleshooting:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer)"
+	@echo ""
+	@echo "$(YELLOW)Cleanup:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(clean|uninstall)"
+	@echo ""
+	@echo "$(DIM)Usage: make <command>$(RESET)"
 	@echo ""
 
-# Lint shell scripts with shfmt
-lint:
-	@echo "Checking shell script formatting..."
-	@if command -v shfmt > /dev/null 2>&1; then \
-		shfmt -d scripts/; \
-		if [ $$? -eq 0 ]; then \
-			echo "✓ All shell scripts are properly formatted"; \
-		else \
-			echo "✗ Shell script formatting issues found"; \
-			echo "Run 'shfmt -w scripts/' to fix formatting"; \
-			exit 1; \
-		fi \
-	else \
-		echo "Error: shfmt not found. Install it with:"; \
-		echo "  macOS: brew install shfmt"; \
-		echo "  Linux: go install mvdan.cc/sh/v3/cmd/shfmt@latest"; \
-		exit 1; \
+# ────────────────────────────────────────────────────────────────────────────────
+# Setup & Validation
+# ────────────────────────────────────────────────────────────────────────────────
+
+preflight: ## Check all dependencies and prerequisites
+	@./scripts/preflight-check.sh
+	@echo ""
+
+lint: ## Check shell script formatting with shfmt and shellcheck
+	@echo "$(BOLD)$(BLUE)Linting Bash scripts...$(RESET)"
+	@if ! command -v shellcheck >/dev/null 2>&1; then \
+	  echo "$(RED)shellcheck not found. Please install it:$(RESET)"; \
+	  echo "$(DIM)  macOS: brew install shellcheck$(RESET)"; \
+	  echo "$(DIM)  Linux: apt-get install shellcheck or dnf install ShellCheck$(RESET)"; \
+	  exit 1; \
 	fi
+	@echo "$(DIM)  Running shellcheck...$(RESET)"
+	@find . -name '*.sh' -type f -not -path './venv/*' | xargs shellcheck -e SC1091,SC2034,SC2086,SC2155,SC2046,SC2181,SC2126,SC2329 || (echo "$(RED)shellcheck failed!$(RESET)" && exit 1)
+	@if ! command -v shfmt >/dev/null 2>&1; then \
+	  echo "$(RED)shfmt not found. Please install it:$(RESET)"; \
+	  echo "$(DIM)  macOS: brew install shfmt$(RESET)"; \
+	  echo "$(DIM)  Linux: go install mvdan.cc/sh/v3/cmd/shfmt@latest$(RESET)"; \
+	  exit 1; \
+	fi
+	@echo "$(DIM)  Running shfmt...$(RESET)"
+	@shfmt -d scripts/ lib/ || (echo "$(RED)shfmt formatting check failed!$(RESET)" && echo "$(YELLOW)To fix: shfmt -w scripts/ lib/$(RESET)" && exit 1)
+	@echo "$(GREEN)Bash linting passed!$(RESET)"
 
-# Check cluster network configuration
-check-network:
+check-network: ## Check cluster network configuration (IPv4/IPv6/Dual-stack)
 	@./scripts/check-cluster-network.sh
 
-# Check workload partitioning configuration
-check-workload-partitioning:
+check-workload-partitioning: ## Verify cert-manager pods are not using workload partitioning
 	@./scripts/troubleshooting/check-workload-partitioning.sh
 
-# Install cert-manager-operator
-install-cert-manager-operator:
-	@echo "Installing cert-manager Operator for Red Hat OpenShift..."
+# ────────────────────────────────────────────────────────────────────────────────
+# Installation
+# ────────────────────────────────────────────────────────────────────────────────
+
+install-cert-manager-operator: ## Install cert-manager Operator for Red Hat OpenShift
+	@echo "$(BOLD)$(BLUE)Installing cert-manager Operator...$(RESET)"
 	@./scripts/install-cert-manager-operator.sh
-
-# Install Pebble ACME test server
-install-pebble:
-	@echo "Installing Pebble ACME test server..."
-	@./scripts/install-pebble.sh
-
-# Install fake DNS API
-install-fake-dns:
-	@echo "Installing fake DNS API for air-gapped testing..."
-	@./scripts/install-fake-dns.sh
-
-# Install everything
-install-all: install-cert-manager-operator install-pebble
+	@echo "$(GREEN)cert-manager Operator installation completed!$(RESET)"
 	@echo ""
-	@echo "All components installed successfully!"
 
-# Create ClusterIssuer pointing to Pebble (HTTP-01)
-create-issuer:
+install-pebble: ## Install Pebble ACME test server
+	@echo "$(BOLD)$(BLUE)Installing Pebble ACME test server...$(RESET)"
+	@./scripts/install-pebble.sh
+	@echo ""
+
+install-fake-dns: ## Install fake DNS API for air-gapped DNS-01 testing
+	@echo "$(BOLD)$(BLUE)Installing fake DNS API for air-gapped testing...$(RESET)"
+	@./scripts/install-fake-dns.sh
+	@echo ""
+
+install-all: install-cert-manager-operator install-pebble ## Install cert-manager-operator and Pebble
+	@echo ""
+	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
+	@echo "  ╔═════════════════════════════════════════════════════════════╗"
+	@echo "  ║         All components installed successfully!              ║"
+	@echo "  ╚═════════════════════════════════════════════════════════════╝"
+	@echo "$(RESET)"
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Issuers & Certificates
+# ────────────────────────────────────────────────────────────────────────────────
+
+create-issuer: ## Create ClusterIssuer pointing to Pebble (HTTP-01)
 	@./scripts/create-issuer.sh
 
-# Create ClusterIssuer pointing to Pebble (DNS-01)
-create-dns01-issuer:
+create-dns01-issuer: ## Create ClusterIssuer pointing to Pebble (DNS-01)
 	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 
-# Create test certificates
-create-certs:
+create-certs: ## Create test certificates (HTTP-01)
 	@./scripts/create-test-certificates.sh
 
-# Complete test setup: install everything + create issuer + create certificates
-test-all: install-all create-issuer create-certs
-	@echo ""
-	@echo "========================================" 
-	@echo "  Complete Test Environment Ready!"
-	@echo "========================================"
-	@echo ""
-	@echo "You can now test certificate issuance with:"
-	@echo "  oc get certificate -A"
-	@echo "  oc get order,challenge -A"
-
-# Complete DNS-01 test setup (air-gapped)
-test-dns01: install-fake-dns
-	@echo "Reinstalling Pebble with fake DNS..."
-	@oc delete namespace pebble --ignore-not-found=true
-	@sleep 10
-	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 PEBBLE_ALWAYS_VALID=1 ./scripts/install-pebble.sh
-	@echo ""
-	@echo "Creating DNS-01 issuer..."
-	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
-	@echo ""
-	@echo "========================================"
-	@echo "  DNS-01 Environment Ready!"
-	@echo "========================================"
-	@echo ""
-	@echo "Test with a wildcard certificate:"
-	@echo "  oc apply -f - <<EOF"
-	@echo "  apiVersion: cert-manager.io/v1"
-	@echo "  kind: Certificate"
-	@echo "  metadata:"
-	@echo "    name: wildcard-test"
-	@echo "    namespace: default"
-	@echo "  spec:"
-	@echo "    secretName: wildcard-test-tls"
-	@echo "    issuerRef:"
-	@echo "      name: pebble-dns01-issuer"
-	@echo "      kind: ClusterIssuer"
-	@echo "    dnsNames:"
-	@echo "    - '*.example.com'"
-	@echo "    - 'example.com'"
-	@echo "  EOF"
-	@echo ""
-	@echo "Monitor progress:"
-	@echo "  watch oc get certificate -n default"
-
-# Quick end-to-end HTTP-01 test
-quick-http-test: install-cert-manager-operator
-	@echo ""
-	@echo "========================================"
-	@echo "  Quick HTTP-01 Test Running..."
-	@echo "========================================"
-	@echo ""
-	@echo "Installing Pebble with ALWAYS_VALID..."
-	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble || true
-	@echo ""
-	@echo "Creating HTTP-01 ClusterIssuer..."
-	@$(MAKE) create-issuer || true
-	@echo ""
-	@echo "Creating test certificate..."
-	@CLUSTER_DOMAIN=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "apps-crc.testing"); \
-	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | oc apply -f -
-	@echo ""
-	@echo "Waiting for certificate to be issued (timeout: 3 minutes)..."
-	@timeout=180; \
-	elapsed=0; \
-	while [ $$elapsed -lt $$timeout ]; do \
-		if oc get certificate test-cert-http01 -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
-			echo "✅ Certificate issued successfully!"; \
-			oc get certificate test-cert-http01 -n default; \
-			break; \
-		fi; \
-		if [ $$((elapsed % 10)) -eq 0 ]; then \
-			echo "  ⏳ Still waiting... ($$elapsed seconds elapsed)"; \
-		fi; \
-		sleep 2; \
-		elapsed=$$((elapsed + 2)); \
-	done
-	@echo ""
-	@echo "Certificate details:"
-	@oc get certificate test-cert-http01 -n default 2>/dev/null || echo "Certificate not found"
-	@echo ""
-	@echo "Quick HTTP-01 test complete! Run 'make clean' to clean up."
-
-# Quick end-to-end DNS-01 test
-quick-dns-test: test-dns01 test-cert
-	@echo ""
-	@echo "========================================"
-	@echo "  Quick DNS-01 Test Running..."
-	@echo "========================================"
-	@echo ""
-	@echo "Waiting for certificate to be issued (timeout: 5 minutes)..."
-	@timeout=300; \
-	elapsed=0; \
-	while [ $$elapsed -lt $$timeout ]; do \
-		if oc get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
-			echo "✅ Certificate issued successfully!"; \
-			break; \
-		fi; \
-		if [ $$((elapsed % 10)) -eq 0 ]; then \
-			echo "  ⏳ Still waiting... ($$elapsed seconds elapsed)"; \
-		fi; \
-		sleep 2; \
-		elapsed=$$((elapsed + 2)); \
-	done
-	@echo ""
-	@$(MAKE) verify-cert
-	@echo ""
-	@echo "Quick DNS-01 test complete! Run 'make clean' to clean up."
-
-# Create a test wildcard certificate
-test-cert:
+test-cert: ## Create a test wildcard certificate (DNS-01)
 	@echo "Creating test wildcard certificate..."
 	@printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: wildcard-test\n  namespace: default\nspec:\n  secretName: wildcard-test-tls\n  issuerRef:\n    name: pebble-dns01-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - "*.example.com"\n  - "example.com"\n' | oc apply -f -
 	@echo "Certificate created. Run 'make verify-cert' to check status."
 
-# Verify certificate status
-verify-cert:
+verify-cert: ## Verify certificate status
 	@echo ""
-	@echo "========================================"
-	@echo "  Certificate Status"
-	@echo "========================================"
-	@echo ""
+	@echo "$(BOLD)Certificate Status$(RESET)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@oc get certificate wildcard-test -n default 2>/dev/null || echo "Certificate not found"
 	@echo ""
 	@echo "Orders:"
@@ -226,114 +163,172 @@ verify-cert:
 	@oc get challenge -n default 2>/dev/null || echo "No challenges found"
 	@echo ""
 	@if oc get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
-		echo "✅ Certificate is READY!"; \
-		echo ""; \
-		echo "View certificate details:"; \
-		echo "  oc get secret wildcard-test-tls -n default -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout"; \
+		echo "$(GREEN)Certificate is READY!$(RESET)"; \
 	else \
-		echo "⏳ Certificate is still being issued..."; \
-		echo ""; \
-		echo "Monitor progress with:"; \
-		echo "  watch oc get certificate -n default"; \
-		echo ""; \
-		echo "Check challenges:"; \
-		echo "  oc get challenge -n default"; \
-		echo ""; \
-		echo "Check logs:"; \
-		echo "  oc logs -n cert-manager deployment/cert-manager --tail=50"; \
+		echo "$(YELLOW)Certificate is still being issued...$(RESET)"; \
 	fi
 
-# Run all troubleshooting diagnostics
-troubleshoot:
+# ────────────────────────────────────────────────────────────────────────────────
+# Quick Tests
+# ────────────────────────────────────────────────────────────────────────────────
+
+test-all: install-all create-issuer create-certs ## Complete HTTP-01 setup (install + issuer + certs)
+	@echo ""
+	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
+	@echo "  ╔═════════════════════════════════════════════════════════════╗"
+	@echo "  ║         Complete Test Environment Ready!                    ║"
+	@echo "  ╚═════════════════════════════════════════════════════════════╝"
+	@echo "$(RESET)"
+	@echo ""
+	@echo "You can now test certificate issuance with:"
+	@echo "  oc get certificate -A"
+	@echo "  oc get order,challenge -A"
+
+test-dns01: install-fake-dns ## Complete DNS-01 setup (air-gapped)
+	@echo "Reinstalling Pebble with fake DNS..."
+	@oc delete namespace pebble --ignore-not-found=true
+	@sleep 10
+	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 PEBBLE_ALWAYS_VALID=1 ./scripts/install-pebble.sh
+	@echo ""
+	@echo "Creating DNS-01 issuer..."
+	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
+	@echo ""
+	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
+	@echo "  ╔═════════════════════════════════════════════════════════════╗"
+	@echo "  ║         DNS-01 Environment Ready!                           ║"
+	@echo "  ╚═════════════════════════════════════════════════════════════╝"
+	@echo "$(RESET)"
+	@echo ""
+	@echo "Test with: make test-cert"
+	@echo "Monitor progress: watch oc get certificate -n default"
+
+quick-http-test: install-cert-manager-operator ## Quick end-to-end HTTP-01 test
+	@echo ""
+	@echo "$(BOLD)$(BLUE)Quick HTTP-01 Test Running...$(RESET)"
+	@echo ""
+	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble || true
+	@$(MAKE) create-issuer || true
+	@CLUSTER_DOMAIN=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "apps-crc.testing"); \
+	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | oc apply -f -
+	@echo ""
+	@echo "Waiting for certificate (timeout: 3 minutes)..."
+	@timeout=180; elapsed=0; \
+	while [ $$elapsed -lt $$timeout ]; do \
+		if oc get certificate test-cert-http01 -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
+			break; \
+		fi; \
+		if [ $$((elapsed % 10)) -eq 0 ]; then echo "  Still waiting... ($$elapsed seconds)"; fi; \
+		sleep 2; elapsed=$$((elapsed + 2)); \
+	done
+	@echo ""
+	@echo "Quick HTTP-01 test complete! Run 'make clean' to clean up."
+
+quick-dns-test: test-dns01 test-cert ## Quick end-to-end DNS-01 test
+	@echo ""
+	@echo "$(BOLD)$(BLUE)Quick DNS-01 Test Running...$(RESET)"
+	@echo ""
+	@echo "Waiting for certificate (timeout: 5 minutes)..."
+	@timeout=300; elapsed=0; \
+	while [ $$elapsed -lt $$timeout ]; do \
+		if oc get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
+			break; \
+		fi; \
+		if [ $$((elapsed % 10)) -eq 0 ]; then echo "  Still waiting... ($$elapsed seconds)"; fi; \
+		sleep 2; elapsed=$$((elapsed + 2)); \
+	done
+	@$(MAKE) verify-cert
+	@echo ""
+	@echo "Quick DNS-01 test complete! Run 'make clean' to clean up."
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Troubleshooting
+# ────────────────────────────────────────────────────────────────────────────────
+
+troubleshoot: ## Run all troubleshooting diagnostics
 	@./scripts/troubleshooting/check-all.sh
 
-# Check specific certificate
-check-cert:
+check-cert: ## Check specific certificate (CERT=name NS=namespace)
 	@if [ -z "$(CERT)" ] || [ -z "$(NS)" ]; then \
-		echo "Usage: make check-cert CERT=<certificate-name> NS=<namespace>"; \
-		echo "Example: make check-cert CERT=test-cert-simple NS=default"; \
+		echo "$(YELLOW)Usage: make check-cert CERT=<name> NS=<namespace>$(RESET)"; \
+		echo "$(DIM)Example: make check-cert CERT=test-cert NS=default$(RESET)"; \
 		exit 1; \
 	fi
 	@./scripts/troubleshooting/check-certificate.sh $(CERT) $(NS)
 
-# Check specific issuer
-check-issuer:
+check-issuer: ## Check specific ClusterIssuer (ISSUER=name)
 	@if [ -z "$(ISSUER)" ]; then \
-		echo "Usage: make check-issuer ISSUER=<issuer-name>"; \
-		echo "Example: make check-issuer ISSUER=pebble-issuer"; \
+		echo "$(YELLOW)Usage: make check-issuer ISSUER=<name>$(RESET)"; \
+		echo "$(DIM)Example: make check-issuer ISSUER=pebble-issuer$(RESET)"; \
 		exit 1; \
 	fi
 	@./scripts/troubleshooting/check-issuer.sh $(ISSUER)
 
-# Diagnose HTTP-01 issues
-diagnose-http01:
+diagnose-http01: ## Diagnose HTTP-01 challenge issues
 	@./scripts/troubleshooting/diagnose-http01.sh
 
-# Diagnose DNS-01 issues
-diagnose-dns01:
+diagnose-dns01: ## Diagnose DNS-01 challenge issues
 	@./scripts/troubleshooting/diagnose-dns01.sh
 
+# ────────────────────────────────────────────────────────────────────────────────
+# Cleanup
+# ────────────────────────────────────────────────────────────────────────────────
 
-# Clean up certificates, orders, and challenges
-clean-certs:
-	@echo "Cleaning up certificates, orders, and challenges..."
+clean-certs: ## Clean up certificates, orders, and challenges
+	@echo "$(BOLD)$(YELLOW)Cleaning up certificates...$(RESET)"
 	@oc delete certificates --all -n default --ignore-not-found=true
 	@oc delete certificaterequests --all -n default --ignore-not-found=true
 	@oc delete orders --all -n default --ignore-not-found=true
 	@oc delete challenges --all -n default --ignore-not-found=true
-	@oc delete secrets wildcard-test-tls test-cert-simple-tls test-cert-app-tls test-cert-api-tls -n default --ignore-not-found=true
-	@echo "Certificates cleaned."
+	@oc delete secrets wildcard-test-tls test-cert-simple-tls test-cert-app-tls test-cert-api-tls test-cert-http01-tls -n default --ignore-not-found=true
+	@echo "$(GREEN)Certificates cleaned.$(RESET)"
 
-# Clean up Pebble
-clean-pebble:
-	@echo "Cleaning up Pebble..."
+clean-pebble: ## Clean up Pebble ACME test server
+	@echo "$(BOLD)$(YELLOW)Cleaning up Pebble...$(RESET)"
 	@oc delete namespace pebble --ignore-not-found=true
 	@oc delete secret pebble-dns01-issuer-account-key pebble-issuer-account-key -n cert-manager --ignore-not-found=true
-	@echo "Pebble cleaned."
+	@echo "$(GREEN)Pebble cleaned.$(RESET)"
 
-# Clean up fake DNS
-clean-fake-dns:
-	@echo "Cleaning up fake DNS..."
+clean-fake-dns: ## Clean up fake DNS API
+	@echo "$(BOLD)$(YELLOW)Cleaning up fake DNS...$(RESET)"
 	@oc delete namespace fake-dns --ignore-not-found=true
-	@echo "Fake DNS cleaned."
+	@echo "$(GREEN)Fake DNS cleaned.$(RESET)"
 
-# Clean up DNS configuration
-clean-dns-config:
+clean-dns-config: ## Restore DNS configuration
 	@echo "Restoring DNS configuration..."
 	@oc patch dns.operator.openshift.io/default --type=json -p='[{"op": "remove", "path": "/spec/servers"}]' 2>/dev/null || true
 	@echo "DNS configuration restored."
 
-# Clean up ClusterIssuers
-clean-issuers:
-	@echo "Cleaning up ClusterIssuers..."
+clean-issuers: ## Clean up ClusterIssuers
+	@echo "$(BOLD)$(YELLOW)Cleaning up ClusterIssuers...$(RESET)"
 	@oc delete clusterissuer pebble-issuer pebble-dns01-issuer --ignore-not-found=true
 	@oc delete secret rfc2136-credentials -n default --ignore-not-found=true
-	@echo "ClusterIssuers cleaned."
+	@echo "$(GREEN)ClusterIssuers cleaned.$(RESET)"
 
-# Clean everything except cert-manager-operator
-clean: clean-certs clean-issuers clean-pebble clean-fake-dns clean-dns-config
-	@echo ""
-	@echo "========================================"
-	@echo "  Cleanup Complete!"
-	@echo "========================================"
-	@echo ""
-	@echo "cert-manager-operator is still installed."
-	@echo "To test again, run: make test-dns01"
-
-# Clean temporary files
-clean-temp:
+clean-temp: ## Clean up temporary files
 	@echo "Cleaning temporary files..."
 	@find . -name "*.tmp" -delete
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
 
-# Uninstall cert-manager-operator (use with caution)
-uninstall-cert-manager-operator:
-	@echo "WARNING: This will uninstall cert-manager-operator!"
+clean: clean-certs clean-issuers clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
+	@echo ""
+	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
+	@echo "  ╔═════════════════════════════════════════════════════════════╗"
+	@echo "  ║                  Cleanup Complete!                          ║"
+	@echo "  ╚═════════════════════════════════════════════════════════════╝"
+	@echo "$(RESET)"
+	@echo ""
+	@echo "cert-manager-operator is still installed."
+	@echo "To test again, run: make test-dns01"
+
+uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
+	@echo "$(RED)$(BOLD)WARNING: This will uninstall cert-manager-operator!$(RESET)"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
 	@echo "Uninstalling cert-manager-operator..."
 	@oc delete subscription cert-manager-operator -n openshift-cert-manager-operator --ignore-not-found=true
 	@oc delete csv -n openshift-cert-manager-operator -l operators.coreos.com/cert-manager-operator.openshift-cert-manager-operator --ignore-not-found=true
 	@oc delete namespace openshift-cert-manager-operator --ignore-not-found=true
-	@echo "cert-manager-operator uninstalled."
+	@echo "$(GREEN)cert-manager-operator uninstalled.$(RESET)"
