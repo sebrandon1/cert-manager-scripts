@@ -119,27 +119,50 @@ jobs:
         env:
           OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
 
-      - name: Initial cluster health check
+      - name: Basic cluster connectivity check
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
-          max_attempts: 5
+          timeout_minutes: 2
+          max_attempts: 10
           retry_on: error
-          retry_wait_seconds: 30
-          command: ./scripts/workflows/verify-cluster-access.sh
+          retry_wait_seconds: 15
+          command: |
+            echo "Checking basic cluster connectivity..."
+            oc whoami
+            oc get nodes
+            echo "Basic connectivity OK"
 
-      - name: Verify cluster access
+      - name: Wait for cluster operators to stabilize
+        run: |
+          echo "Waiting for cluster operators to stabilize (up to 5 minutes)..."
+          timeout=300
+          elapsed=0
+          while [ $elapsed -lt $timeout ]; do
+            # Count operators that are not Available=True or have Degraded=True or Progressing=True
+            degraded=$(oc get clusteroperators --no-headers 2>/dev/null | awk '($3!="True" || $4=="True" || $5=="True")' | wc -l | xargs)
+            if [ "$degraded" -eq 0 ]; then
+              echo "All cluster operators are healthy!"
+              oc get clusteroperators
+              break
+            fi
+            if [ $((elapsed % 30)) -eq 0 ]; then
+              echo "Still waiting... ($elapsed seconds, $degraded operators not ready)"
+            fi
+            sleep 10
+            elapsed=$((elapsed + 10))
+          done
+          # Continue even if some operators are still stabilizing
+          echo "Cluster operator status:"
+          oc get clusteroperators || true
+
+      - name: Full cluster health check
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 5
           max_attempts: 3
           retry_on: error
+          retry_wait_seconds: 30
           command: ./scripts/workflows/verify-cluster-access.sh
-
-      - name: Wait for cluster to stabilize
-        run: |
-          echo "Waiting 30 seconds for cluster to stabilize..."
-          sleep 30
 
       - name: Run quick HTTP-01 test
         uses: nick-fields/retry@v3
