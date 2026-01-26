@@ -103,7 +103,8 @@ echo
 
 # Test 7: Check node readiness
 log_info "Checking node readiness..."
-NOT_READY=$(oc get nodes --no-headers 2>/dev/null | grep -v " Ready " | wc -l | xargs)
+# Use || true to prevent grep from failing when all nodes are Ready (grep returns 1 on no match)
+NOT_READY=$(oc get nodes --no-headers 2>/dev/null | { grep -v " Ready " || true; } | wc -l | xargs)
 if [ "$NOT_READY" -eq 0 ]; then
 	log_info "✅ All nodes are Ready"
 else
