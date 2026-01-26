@@ -88,7 +88,9 @@ jobs:
     name: Integration Test (OCP 4.19)
     runs-on: ubuntu-latest
     needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure]
+    # Skip integration tests for Dependabot PRs (no access to secrets)
     if: |
+      github.actor != 'dependabot[bot]' &&
       needs.shell-format-check.result == 'success' &&
       needs.shellcheck.result == 'success' &&
       needs.workload-partitioning-check.result == 'success' &&
