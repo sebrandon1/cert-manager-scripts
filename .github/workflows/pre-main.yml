@@ -206,6 +206,19 @@ jobs:
             ./scripts/workflows/verify-cluster-access.sh
             # Create the certificate
             make create-apiserver-cert
+            # Wait for cluster to stabilize after certificate creation
+            echo "Waiting for cluster to stabilize..."
+            sleep 10
+            # Re-verify cluster connectivity before verification
+            echo "Re-checking cluster connectivity..."
+            for i in 1 2 3 4 5; do
+              if oc whoami &>/dev/null && oc get nodes &>/dev/null; then
+                echo "Cluster connectivity confirmed"
+                break
+              fi
+              echo "Waiting for cluster connectivity (attempt $i/5)..."
+              sleep 5
+            done
             # Verify the certificate doesn't break cluster access
             make verify-apiserver-cert
 
