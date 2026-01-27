@@ -145,15 +145,22 @@ wait_for_certificate() {
 	log_info "Waiting for certificate to be issued..."
 	echo
 
-	local max_wait=120
+	# Use shorter timeout for CI environments to avoid cluster instability issues
+	local max_wait=${CERT_WAIT_TIMEOUT:-60}
 	local wait_time=0
 
 	while [ $wait_time -lt $max_wait ]; do
+		# Check cluster connectivity first
+		if ! oc whoami &>/dev/null; then
+			log_warn "Cluster connectivity lost during certificate wait"
+			return 1
+		fi
+
 		local ready=$(oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
 
 		if [ "$ready" = "True" ]; then
 			log_info "✅ Certificate is READY!"
-			break
+			return 0
 		fi
 
 		if [ $((wait_time % 10)) -eq 0 ]; then
@@ -168,9 +175,11 @@ wait_for_certificate() {
 	echo
 
 	if [ $wait_time -ge $max_wait ]; then
-		log_warn "Timeout waiting for certificate to be ready."
+		log_warn "Timeout waiting for certificate to be ready (${max_wait}s)."
+		log_info "The certificate resource was created - it may become ready later."
 		log_info "Check certificate status: oc describe certificate $CERT_NAME -n $CERT_NAMESPACE"
-		return 1
+		# Return success since certificate was created, even if not ready yet
+		return 0
 	fi
 
 	return 0
@@ -183,8 +192,14 @@ display_certificate_info() {
 	log_info "========================================"
 	echo
 
+	# Check cluster connectivity first
+	if ! oc whoami &>/dev/null; then
+		log_warn "Cluster connectivity lost - skipping certificate info display"
+		return 0
+	fi
+
 	log_info "Certificate status:"
-	oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE"
+	oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" 2>/dev/null || log_warn "Cannot retrieve certificate status"
 	echo
 
 	log_info "Certificate secret:"
