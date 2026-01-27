@@ -25,8 +25,9 @@ BG_BLUE := \033[44m
 # ────────────────────────────────────────────────────────────────────────────────
 .PHONY: all help banner preflight lint install-cert-manager-operator install-pebble \
         install-fake-dns install-all create-issuer create-dns01-issuer create-certs \
+        create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert \
-        troubleshoot check-cert check-issuer check-network check-workload-partitioning \
+        troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
 
@@ -56,7 +57,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(install-)"
 	@echo ""
 	@echo "$(YELLOW)Issuers & Certificates:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(create-|test-cert|verify-cert)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(create-|test-cert|verify-)"
 	@echo ""
 	@echo "$(YELLOW)Quick Tests:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(quick-|test-all|test-dns01)"
@@ -101,6 +102,9 @@ lint: ## Check shell script formatting with shfmt and shellcheck
 check-network: ## Check cluster network configuration (IPv4/IPv6/Dual-stack)
 	@./scripts/check-cluster-network.sh
 
+check-network-stack: ## Detect and verify IPv4/IPv6/dual-stack cluster configuration
+	@./scripts/troubleshooting/check-network-stack.sh
+
 check-workload-partitioning: ## Verify cert-manager pods are not using workload partitioning
 	@./scripts/troubleshooting/check-workload-partitioning.sh
 
@@ -144,6 +148,12 @@ create-dns01-issuer: ## Create ClusterIssuer pointing to Pebble (DNS-01)
 
 create-certs: ## Create test certificates (HTTP-01)
 	@./scripts/create-test-certificates.sh
+
+create-apiserver-cert: ## Create API server certificate
+	@./scripts/create-apiserver-certificate.sh
+
+verify-apiserver-cert: ## Verify API server certificate
+	@./scripts/troubleshooting/verify-apiserver-certificate.sh
 
 test-cert: ## Create a test wildcard certificate (DNS-01)
 	@echo "Creating test wildcard certificate..."

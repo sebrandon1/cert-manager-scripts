@@ -17,10 +17,9 @@ spec:
     spec:
       containers:
       - name: pebble
-        image: letsencrypt/pebble:latest
+        image: ghcr.io/letsencrypt/pebble:latest
         imagePullPolicy: IfNotPresent
         args:
-        - pebble
         - -config
         - /test/config/pebble-config.json
         - -dnsserver
