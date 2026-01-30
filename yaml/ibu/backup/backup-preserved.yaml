@@ -1,0 +1,28 @@
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: ${BACKUP_NAME}
+  namespace: openshift-adp
+  labels:
+    app: ibu-cert-test
+    scenario: preserved
+  # LCA-style annotation for resource preservation
+  # This tells the Lifecycle Agent which resources to preserve during IBU
+  # Format: <apiGroup>/<version>/<resourceType>/<namespace>/<resourceName>
+  # Note: In actual LCA usage, this annotation causes LCA to:
+  # 1. Apply lca.openshift.io/backup label to specified resources
+  # 2. Add labelSelector to this Backup CR
+  # For simulation, we use labelSelector directly
+spec:
+  includedNamespaces:
+    - ${TARGET_NAMESPACE}
+  includedResources:
+    - certificates.cert-manager.io
+    - secrets
+  # Select only resources labeled for preservation
+  # In real IBU, LCA applies these labels based on apply-label annotation
+  labelSelector:
+    matchLabels:
+      lca.openshift.io/backup: ${BACKUP_NAME}
+  storageLocation: velero-1
+  ttl: 720h0m0s

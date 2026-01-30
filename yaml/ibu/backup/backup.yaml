@@ -1,0 +1,22 @@
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: ${BACKUP_NAME}
+  namespace: openshift-adp
+  labels:
+    app: ibu-cert-test
+spec:
+  includedNamespaces:
+    - ${TARGET_NAMESPACE}
+  includedResources:
+    - certificates.cert-manager.io
+    - secrets
+    - configmaps
+  # Note: CertificateRequests are excluded because they are transient
+  # and cert-manager will create new ones when reconciling certificates
+  labelSelector:
+    matchExpressions:
+      - key: app
+        operator: Exists
+  storageLocation: velero-1
+  ttl: 720h0m0s

@@ -1,0 +1,36 @@
+apiVersion: oadp.openshift.io/v1alpha1
+kind: DataProtectionApplication
+metadata:
+  name: velero
+  namespace: openshift-adp
+spec:
+  configuration:
+    velero:
+      defaultPlugins:
+        - openshift
+        - aws
+        - csi
+      resourceTimeout: 10m
+    nodeAgent:
+      enable: true
+      uploaderType: kopia
+  backupLocations:
+    - velero:
+        provider: aws
+        default: true
+        objectStorage:
+          bucket: velero
+          prefix: ibu-test
+        config:
+          region: minio
+          s3ForcePathStyle: "true"
+          s3Url: http://minio.minio.svc.cluster.local:9000
+          insecureSkipTLSVerify: "true"
+        credential:
+          key: cloud
+          name: cloud-credentials
+  snapshotLocations:
+    - velero:
+        provider: aws
+        config:
+          region: minio

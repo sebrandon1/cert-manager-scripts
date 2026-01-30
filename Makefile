@@ -29,7 +29,9 @@ BG_BLUE := \033[44m
         test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert \
         troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
-        clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator
+        clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator \
+        install-minio install-oadp install-ibu-prereqs capture-cert-state \
+        test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu
 
 # Default target
 all: help
@@ -64,6 +66,9 @@ help: banner ## Show this help message
 	@echo ""
 	@echo "$(YELLOW)Troubleshooting:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer)"
+	@echo ""
+	@echo "$(YELLOW)IBU Testing:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp)"
 	@echo ""
 	@echo "$(YELLOW)Cleanup:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(clean|uninstall)"
@@ -280,6 +285,78 @@ diagnose-http01: ## Diagnose HTTP-01 challenge issues
 
 diagnose-dns01: ## Diagnose DNS-01 challenge issues
 	@./scripts/troubleshooting/diagnose-dns01.sh
+
+# ────────────────────────────────────────────────────────────────────────────────
+# IBU Testing
+# ────────────────────────────────────────────────────────────────────────────────
+
+install-minio: ## Install MinIO object storage for OADP
+	@echo "$(BOLD)$(BLUE)Installing MinIO object storage...$(RESET)"
+	@./scripts/ibu/install-minio.sh
+	@echo ""
+
+install-oadp: ## Install OADP operator for backup/restore
+	@echo "$(BOLD)$(BLUE)Installing OADP operator...$(RESET)"
+	@./scripts/ibu/install-oadp.sh
+	@echo ""
+
+install-ibu-prereqs: install-minio install-oadp ## Install IBU test prerequisites (MinIO + OADP)
+	@echo ""
+	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
+	@echo "  ╔═════════════════════════════════════════════════════════════╗"
+	@echo "  ║         IBU Prerequisites Installed!                        ║"
+	@echo "  ╚═════════════════════════════════════════════════════════════╝"
+	@echo "$(RESET)"
+
+capture-cert-state: ## Capture current certificate state for IBU testing
+	@./scripts/ibu/capture-cert-state.sh
+
+test-ibu-certs: ## Run IBU certificate loss simulation (Scenario 1)
+	@echo "$(BOLD)$(BLUE)Running IBU certificate loss test (Scenario 1)...$(RESET)"
+	@./scripts/ibu/run-ibu-test.sh
+	@echo ""
+
+test-ibu-preserved: ## Run IBU certificate preservation test (Scenario 2)
+	@echo "$(BOLD)$(BLUE)Running IBU certificate preservation test (Scenario 2)...$(RESET)"
+	@./scripts/ibu/run-ibu-preserved-test.sh
+	@echo ""
+
+test-ibu-both: ## Run both IBU scenarios (loss and preservation)
+	@echo "$(BOLD)$(BLUE)Running both IBU test scenarios...$(RESET)"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  Scenario 1: Certificate Loss (default IBU behavior)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@$(MAKE) test-ibu-certs
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  Scenario 2: Certificate Preservation (with LCA labels)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@$(MAKE) test-ibu-preserved
+	@echo ""
+	@echo "$(GREEN)Both IBU test scenarios completed!$(RESET)"
+
+quick-ibu-test: install-cert-manager-operator install-ibu-prereqs ## End-to-end IBU certificate loss test
+	@echo "$(BOLD)$(BLUE)Setting up test environment...$(RESET)"
+	@$(MAKE) quick-dns-test || true
+	@echo ""
+	@echo "$(BOLD)$(BLUE)Running IBU certificate loss test...$(RESET)"
+	@./scripts/ibu/run-ibu-test.sh
+
+clean-ibu: ## Clean up IBU test resources (MinIO, OADP, backups)
+	@echo "$(BOLD)$(YELLOW)Cleaning up IBU test resources...$(RESET)"
+	@oc delete backup -n openshift-adp -l app=ibu-cert-test --ignore-not-found=true 2>/dev/null || true
+	@oc delete restore -n openshift-adp -l app=ibu-cert-test --ignore-not-found=true 2>/dev/null || true
+	@oc delete certificate ibu-test-cert -n default --ignore-not-found=true 2>/dev/null || true
+	@oc delete secret ibu-test-cert-tls -n default --ignore-not-found=true 2>/dev/null || true
+	@oc delete dataprotectionapplication velero -n openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@oc delete secret cloud-credentials -n openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@oc delete subscription redhat-oadp-operator -n openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@oc delete csv -n openshift-adp -l operators.coreos.com/redhat-oadp-operator.openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@oc delete namespace openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@oc delete namespace minio --ignore-not-found=true 2>/dev/null || true
+	@rm -rf /tmp/ibu-cert-state 2>/dev/null || true
+	@echo "$(GREEN)IBU test resources cleaned.$(RESET)"
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Cleanup

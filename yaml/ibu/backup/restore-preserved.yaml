@@ -1,0 +1,22 @@
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: ${RESTORE_NAME}
+  namespace: openshift-adp
+  labels:
+    app: ibu-cert-test
+    scenario: preserved
+spec:
+  backupName: ${BACKUP_NAME}
+  includedNamespaces:
+    - ${TARGET_NAMESPACE}
+  includedResources:
+    - certificates.cert-manager.io
+    - secrets
+  # Restore preserves the original certificate and secret data
+  # Because we backed up the specific labeled resources with their raw data,
+  # the restore will bring back the original certificates without regeneration
+  restorePVs: false
+  # Preserve the existing resource policy ensures we don't conflict
+  # with any resources that might exist
+  existingResourcePolicy: update
