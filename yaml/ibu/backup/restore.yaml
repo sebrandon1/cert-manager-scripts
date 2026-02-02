@@ -1,3 +1,8 @@
+# Scenario 1: Default IBU Restore (No Preservation)
+#
+# Restores the Certificate CR but the TLS secret data is not preserved.
+# After restore, cert-manager detects the missing/invalid secret and
+# immediately triggers certificate reissuance with new keys.
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
@@ -10,8 +15,8 @@ spec:
   includedNamespaces:
     - ${TARGET_NAMESPACE}
   includedResources:
-    - certificates.cert-manager.io
-    - secrets
-    - configmaps
+    - certificates.cert-manager.io  # Restored (was in backup)
+    - secrets                       # TLS secrets not restored (weren't backed up)
+    - configmaps                    # App configmaps if present
   # Note: CertificateRequests are excluded - cert-manager creates new ones
   restorePVs: false

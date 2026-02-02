@@ -78,6 +78,28 @@ Pebble is a small ACME test server from Let's Encrypt that runs locally in your 
 - `shellcheck` for linting (`brew install shellcheck` on macOS)
 - `shfmt` for shell formatting (`brew install shfmt` on macOS)
 
+## IBU Certificate Validation Report
+
+Validation testing for cert-manager certificate behavior during OpenShift Image-Based Upgrade (IBU) operations. Full report: https://gist.github.com/sebrandon1/71f33b35aea2aa4cf9edda855201c8fc
+
+### Key Findings
+
+| Scenario | Behavior | Result |
+|----------|----------|--------|
+| **Scenario 1 (Default)** | Standard backup/restore | Certificates regenerated with new checksums - original keys lost |
+| **Scenario 2 (LCA Labels)** | Resources labeled with `lca.openshift.io/apply-label` | Certificates preserved with matching checksums |
+
+### LCA Apply-Label Mechanism
+
+Format: `<apiGroup>/<version>/<resourceType>/<namespace>/<resourceName>`
+
+The Lifecycle Agent applies `lca.openshift.io/backup` labels to specified resources, which are then included in the backup using a labelSelector, ensuring raw certificate data is retained during restore.
+
+### Recommendations
+
+- **Preserve certificates** when they're long-lived, shared with external systems, or where regeneration causes operational issues
+- **Allow regeneration** for short-lived, auto-renewed certificates during IBU
+
 ## Code Style
 
 ### Bash

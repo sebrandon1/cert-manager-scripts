@@ -1,3 +1,11 @@
+# Scenario 1: Default IBU Backup (No Preservation)
+#
+# This mimics what LCA does by default. The labelSelector requires an 'app'
+# label, which cert-manager-generated TLS secrets don't have. So while
+# 'secrets' is listed in includedResources, the TLS secrets are effectively
+# excluded by the selector. The Certificate CR gets backed up, but not the
+# TLS secret. After restore, cert-manager sees no valid TLS secret and
+# immediately reissues with new keys.
 apiVersion: velero.io/v1
 kind: Backup
 metadata:
@@ -9,9 +17,9 @@ spec:
   includedNamespaces:
     - ${TARGET_NAMESPACE}
   includedResources:
-    - certificates.cert-manager.io
-    - secrets
-    - configmaps
+    - certificates.cert-manager.io  # Backed up (has app label)
+    - secrets                       # TLS secrets excluded (no app label)
+    - configmaps                    # App configmaps if present
   # Note: CertificateRequests are excluded because they are transient
   # and cert-manager will create new ones when reconciling certificates
   labelSelector:

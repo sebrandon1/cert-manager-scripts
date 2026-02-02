@@ -1,3 +1,9 @@
+# Scenario 2: LCA-Style Restore (Certificate Preservation)
+#
+# Restores the original Certificate CRs and TLS Secrets with their raw data
+# intact. The certificates come back with the same keys and checksums as
+# before the IBU - no reissuance occurs. Use this when certificate continuity
+# matters (long-lived CAs, certs shared with external systems, etc.).
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
@@ -11,8 +17,8 @@ spec:
   includedNamespaces:
     - ${TARGET_NAMESPACE}
   includedResources:
-    - certificates.cert-manager.io
-    - secrets
+    - certificates.cert-manager.io  # Restored with original metadata
+    - secrets                       # TLS secrets restored with original keys
   # Restore preserves the original certificate and secret data
   # Because we backed up the specific labeled resources with their raw data,
   # the restore will bring back the original certificates without regeneration

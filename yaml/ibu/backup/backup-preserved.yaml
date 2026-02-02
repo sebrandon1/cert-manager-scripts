@@ -1,3 +1,13 @@
+# Scenario 2: LCA-Style Backup (Certificate Preservation)
+#
+# This backup uses the lca.openshift.io/backup labelSelector to capture
+# specifically labeled Certificate CRs and TLS Secrets, including the raw
+# certificate and private key data. After restore, the original certificates
+# are preserved with matching checksums - no reissuance occurs.
+#
+# In a real IBU, customers add the lca.openshift.io/apply-label annotation
+# to their Backup CR, and LCA automatically applies the labels and selector.
+# This simulation applies labels manually to mimic that behavior.
 apiVersion: velero.io/v1
 kind: Backup
 metadata:
@@ -17,8 +27,8 @@ spec:
   includedNamespaces:
     - ${TARGET_NAMESPACE}
   includedResources:
-    - certificates.cert-manager.io
-    - secrets
+    - certificates.cert-manager.io  # Backed up (has lca.openshift.io/backup label)
+    - secrets                       # TLS secrets backed up (labeled, includes raw data)
   # Select only resources labeled for preservation
   # In real IBU, LCA applies these labels based on apply-label annotation
   labelSelector:
