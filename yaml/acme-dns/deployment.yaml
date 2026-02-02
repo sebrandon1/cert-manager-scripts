@@ -1,3 +1,8 @@
+# ACME-DNS: Deployment
+#
+# Deploys the joohoi/acme-dns container which provides a specialized DNS server
+# for ACME DNS-01 challenges. Stores TXT records in sqlite3 and exposes both
+# DNS and API interfaces for automated certificate issuance.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

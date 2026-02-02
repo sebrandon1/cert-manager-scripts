@@ -1,3 +1,8 @@
+# Pebble: Deployment
+#
+# Deploys Let's Encrypt's Pebble ACME test server. Configurable DNS server for
+# challenge validation and PEBBLE_VA_ALWAYS_VALID mode for air-gapped testing
+# where challenges auto-succeed without actual validation.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

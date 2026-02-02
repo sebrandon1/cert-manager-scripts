@@ -1,3 +1,7 @@
+# Pebble: Namespace
+#
+# Creates the namespace for Pebble, Let's Encrypt's small ACME test server.
+# Used for local certificate testing without rate limits or internet access.
 apiVersion: v1
 kind: Namespace
 metadata:

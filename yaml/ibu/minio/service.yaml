@@ -1,3 +1,7 @@
+# MinIO: Service
+#
+# Exposes MinIO's S3-compatible API (port 9000) and web console (port 9001).
+# OADP/Velero connects to port 9000 for backup storage operations.
 apiVersion: v1
 kind: Service
 metadata:

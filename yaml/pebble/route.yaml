@@ -1,3 +1,7 @@
+# Pebble: OpenShift Route
+#
+# Creates an external route to Pebble's ACME endpoint using TLS passthrough.
+# Allows external access to the local ACME server for testing purposes.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

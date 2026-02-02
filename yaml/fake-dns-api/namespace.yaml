@@ -1,3 +1,7 @@
+# Fake DNS API: Namespace
+#
+# Creates the namespace for the fake DNS API server used in air-gapped testing
+# environments where real DNS updates are not possible or desired.
 apiVersion: v1
 kind: Namespace
 metadata:

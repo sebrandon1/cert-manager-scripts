@@ -1,3 +1,8 @@
+# Pebble ClusterIssuer: DNS-01 Webhook
+#
+# ClusterIssuer for DNS-01 challenges using a webhook solver placeholder.
+# Designed for use with Pebble's ALWAYS_VALID mode where actual DNS updates
+# are not required and challenges auto-succeed.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:

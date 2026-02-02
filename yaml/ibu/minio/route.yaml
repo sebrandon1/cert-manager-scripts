@@ -1,3 +1,7 @@
+# MinIO: Console Route
+#
+# Creates an OpenShift Route for the MinIO web console with edge TLS termination.
+# Provides external access for browsing backups and managing buckets.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

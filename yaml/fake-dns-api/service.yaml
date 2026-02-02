@@ -1,3 +1,7 @@
+# Fake DNS API: Service
+#
+# Exposes the fake DNS API with UDP port 53 for DNS queries and TCP port 8080
+# for health checks. Used with Pebble ALWAYS_VALID mode for testing.
 apiVersion: v1
 kind: Service
 metadata:

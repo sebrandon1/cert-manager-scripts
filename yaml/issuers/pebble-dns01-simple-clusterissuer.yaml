@@ -1,3 +1,8 @@
+# Pebble ClusterIssuer: DNS-01 RFC2136
+#
+# ClusterIssuer for DNS-01 challenges using RFC2136 dynamic DNS updates.
+# Works with the fake DNS API server for air-gapped testing where Pebble's
+# ALWAYS_VALID mode auto-validates challenges regardless of actual DNS state.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:

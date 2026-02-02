@@ -1,3 +1,7 @@
+# MinIO: Persistent Volume Claim
+#
+# Requests 10Gi of persistent storage for MinIO's data directory. Stores
+# Velero backups including Kubernetes resources and certificate secrets.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

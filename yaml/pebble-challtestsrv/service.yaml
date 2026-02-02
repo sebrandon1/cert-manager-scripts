@@ -1,3 +1,7 @@
+# Pebble Challenge Test Server: Service
+#
+# Exposes the challenge test server with DNS (port 8053) and management (port 8055)
+# interfaces. Provides mock DNS responses for Pebble's ACME challenge validation.
 apiVersion: v1
 kind: Service
 metadata:
