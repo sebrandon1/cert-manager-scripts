@@ -1,3 +1,7 @@
+# Dependabot: Configuration
+#
+# Configures Dependabot to check for GitHub Actions updates daily. Keeps CI
+# workflows current with the latest action versions for security and features.
 ---
 version: 2
 updates:

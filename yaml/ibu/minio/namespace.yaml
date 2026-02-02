@@ -1,3 +1,7 @@
+# MinIO: Namespace
+#
+# Creates the namespace for MinIO, an S3-compatible object storage server.
+# Used as the backup target for OADP/Velero during IBU testing.
 apiVersion: v1
 kind: Namespace
 metadata:

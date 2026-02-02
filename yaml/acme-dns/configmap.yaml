@@ -1,3 +1,7 @@
+# ACME-DNS: Configuration
+#
+# Configuration for the ACME-DNS server including DNS listener settings (:53),
+# API endpoint (:8080), and sqlite3 database for storing challenge records.
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,3 +1,8 @@
+# OADP: DataProtectionApplication
+#
+# Configures Velero with AWS, OpenShift, and CSI plugins pointing to MinIO for
+# S3-compatible backup storage. Enables Kopia-based node agent for file-level
+# backups and sets a 10-minute resource timeout for operations.
 apiVersion: oadp.openshift.io/v1alpha1
 kind: DataProtectionApplication
 metadata:

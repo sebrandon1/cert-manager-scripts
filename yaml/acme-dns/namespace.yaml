@@ -1,3 +1,7 @@
+# ACME-DNS: Namespace
+#
+# Creates the namespace for the ACME-DNS server, which provides a specialized
+# DNS server for ACME DNS-01 challenges with automatic TXT record management.
 apiVersion: v1
 kind: Namespace
 metadata:

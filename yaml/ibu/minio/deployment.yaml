@@ -1,3 +1,8 @@
+# MinIO: Deployment
+#
+# Deploys MinIO object storage server with health checks and persistent storage.
+# Credentials are sourced from the minio-credentials secret. Uses Recreate
+# strategy to ensure clean storage handoff during updates.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

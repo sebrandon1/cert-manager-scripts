@@ -1,3 +1,7 @@
+# Pebble: Configuration
+#
+# Pebble server configuration specifying ACME endpoint (port 14000) and
+# management interface (port 15000). Uses built-in test certificates.
 apiVersion: v1
 kind: ConfigMap
 metadata:

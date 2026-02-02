@@ -1,3 +1,8 @@
+# Fake DNS API: Deployment
+#
+# Runs the fake DNS API server on UBI9 Python. Accepts RFC2136 DNS updates and
+# responds to SOA/TXT queries for air-gapped cert-manager DNS-01 testing.
+# Requires root privileges for binding to privileged port 53.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -1,3 +1,7 @@
+# Pebble: Service
+#
+# Exposes Pebble's ACME server (port 14000) and management interface (port 15000)
+# within the cluster for cert-manager to use as a local ACME CA.
 apiVersion: v1
 kind: Service
 metadata:

@@ -1,3 +1,7 @@
+# ACME-DNS: Service
+#
+# Exposes the ACME-DNS server with DNS ports (UDP/TCP 53) for challenge
+# resolution and HTTP API port (8080) for TXT record registration.
 apiVersion: v1
 kind: Service
 metadata:

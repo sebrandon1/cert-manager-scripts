@@ -1,3 +1,7 @@
+# OADP: Namespace
+#
+# Creates the openshift-adp namespace for the OpenShift API for Data Protection
+# operator. Enables cluster monitoring for OADP metrics collection.
 apiVersion: v1
 kind: Namespace
 metadata:

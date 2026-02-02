@@ -1,3 +1,8 @@
+# Pebble Challenge Test Server: Deployment
+#
+# Deploys pebble-challtestsrv which provides a mock DNS/HTTP server for ACME
+# challenge testing. Supports HTTP-01, TLS-ALPN-01, and DNS-01 challenges
+# with a management API to configure responses.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
