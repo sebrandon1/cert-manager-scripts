@@ -1,4 +1,8 @@
 #!/bin/bash
+################################################################################
+# Script: verify-documentation.sh
+# Description: Verify that workload partitioning is documented in markdown files
+################################################################################
 
 set -euo pipefail
 

@@ -1,5 +1,8 @@
 #!/bin/bash
-# preflight-check.sh - Validate all dependencies before running workflows
+################################################################################
+# Script: preflight-check.sh
+# Description: Validate all dependencies and prerequisites before running workflows
+################################################################################
 #
 # Usage: ./scripts/preflight-check.sh
 #        make preflight

@@ -1,4 +1,8 @@
 #!/bin/bash
+################################################################################
+# Script: verify-directory-structure.sh
+# Description: Verify that required repository directories exist
+################################################################################
 
 set -euo pipefail
 

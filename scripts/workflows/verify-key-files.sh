@@ -1,4 +1,8 @@
 #!/bin/bash
+################################################################################
+# Script: verify-key-files.sh
+# Description: Verify that required repository files exist (README, Makefile, etc.)
+################################################################################
 
 set -euo pipefail
 
