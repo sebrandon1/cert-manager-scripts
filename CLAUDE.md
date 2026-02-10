@@ -4,107 +4,149 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Scripts for testing and managing cert-manager-operator on OpenShift clusters with local ACME testing using Pebble. Provides a complete workflow for testing certificate issuance without requiring public DNS or internet connectivity.
+Automation toolkit for testing cert-manager-operator on OpenShift clusters using Pebble (a local ACME test server from Let's Encrypt). Supports both HTTP-01 and DNS-01 challenge types, air-gapped environments, and IBU (Image-Based Upgrade) certificate validation. Runs entirely within the cluster without requiring public DNS or internet connectivity.
 
-## Common Commands
+## Commands
 
-### Quick Start
+### Linting & Validation
 ```bash
-make install-cert-manager-operator  # Install cert-manager-operator
-make quick-dns-test                 # Setup Pebble, fake DNS, and test wildcard cert
-make clean                          # Clean up when done
+make lint          # Run shellcheck + shfmt on all scripts (CI gate)
+make preflight     # Check all tool dependencies and cluster prerequisites
 ```
 
-### Verification
+### Quick End-to-End Tests
 ```bash
-make verify-cert  # Check certificate progress
+make quick-http-test   # Install operator + Pebble (ALWAYS_VALID=1) + HTTP-01 cert
+make quick-dns-test    # Install fake DNS + Pebble + DNS-01 wildcard cert
 ```
 
-### Individual Steps
+### Step-by-Step Workflow
 ```bash
+make install-cert-manager-operator
 make install-pebble
-make install-fake-dns
-make create-issuer
-make test-cert
+make install-fake-dns       # For air-gapped DNS-01
+make create-issuer          # HTTP-01 ClusterIssuer
+make create-dns01-issuer    # DNS-01 ClusterIssuer
+make test-cert              # Create wildcard cert
+make verify-cert            # Check cert status
+```
+
+### Troubleshooting
+```bash
+make troubleshoot                          # Run all diagnostics
+make check-cert CERT=name NS=namespace     # Debug specific certificate
+make check-issuer ISSUER=name              # Debug specific ClusterIssuer
+make diagnose-http01                       # HTTP-01 challenge issues
+make diagnose-dns01                        # DNS-01 challenge issues
 ```
 
 ### IBU Testing
 ```bash
-make install-ibu-prereqs  # Install MinIO + OADP
-make test-ibu-certs       # Run IBU certificate loss simulation
-make quick-ibu-test       # End-to-end IBU test
-make clean-ibu            # Clean up IBU resources
+make install-ibu-prereqs   # Install MinIO + OADP
+make test-ibu-certs        # Scenario 1: certificate loss (default IBU)
+make test-ibu-preserved    # Scenario 2: certificate preservation (LCA labels)
+make test-ibu-both         # Run both scenarios
+make quick-ibu-test        # End-to-end IBU test
 ```
 
-### Linting
+### Cleanup
 ```bash
-make lint      # Run shellcheck and shfmt on all scripts
-make preflight # Check all dependencies and prerequisites
+make clean         # Remove certs, issuers, Pebble, fake DNS (keeps operator)
+make clean-ibu     # Remove IBU resources (MinIO, OADP, backups)
+make uninstall-cert-manager-operator   # Remove operator (interactive confirm)
+```
+
+### Fix Formatting
+```bash
+shfmt -w scripts/ lib/    # Auto-fix shell formatting
 ```
 
 ## Architecture
 
-- **`scripts/`** - Main automation scripts
-  - **`scripts/ibu/`** - IBU (Image-Based Upgrade) testing scripts
-  - **`scripts/troubleshooting/`** - Diagnostic and troubleshooting scripts
-  - **`scripts/workflows/`** - Workflow automation helpers
-- **`lib/`** - Shared shell library functions (common.sh)
-- **`yaml/`** - Kubernetes/OpenShift manifests
-- **`guide/`** - Step-by-step guides
-- **`docs/`** - Additional documentation
+### Execution Flow
+```
+Makefile targets → scripts/*.sh → lib/common.sh (shared utilities)
+                                → yaml/ templates (envsubst substitution)
+                                → oc apply to cluster
+```
 
-## Key Documentation
+All YAML manifests use `${VARIABLE}` placeholders processed by `envsubst` at apply time. Variables are exported in scripts with defaults: `export VAR="${VAR:-default}"`.
 
-| File | Description |
-|------|-------------|
-| `INSTALLATION.md` | Cert-manager installation guide |
-| `DNS01-SETUP.md` | DNS-01 challenge configuration |
-| `PEBBLE-USAGE.md` | Using Pebble for local ACME testing |
-| `NETWORK-SUPPORT.md` | Network configuration details |
-| `IBU-TESTING.md` | IBU certificate loss validation |
-| `TROUBLESHOOTING.md` | Common issues and solutions |
-| `CONTRIBUTING.md` | Contribution guidelines |
-| `.env.example` | Environment variable examples |
+### Script Categories
 
-## What is Pebble?
+- **`scripts/`** — Core automation (install, create, check operations)
+- **`scripts/ibu/`** — IBU testing: backup/restore simulation via OADP + MinIO (not real IBU)
+- **`scripts/troubleshooting/`** — Diagnostic scripts for certs, issuers, DNS, HTTP challenges
+- **`scripts/workflows/`** — CI/CD helpers (cluster access verification, recovery, validation)
+- **`lib/common.sh`** — Shared library sourced by scripts
 
-Pebble is a small ACME test server from Let's Encrypt that runs locally in your cluster. Test cert-manager without rate limits, public DNS, or internet connectivity.
+### YAML Manifests (`yaml/`)
 
-## Requirements
+Organized by component: `cert-manager-operator/`, `pebble/`, `fake-dns-api/`, `issuers/`, `certificates/`, `acme-dns/`, `pebble-challtestsrv/`, `ibu/` (with `minio/`, `oadp/`, `backup/` subdirs).
 
-- OpenShift cluster (4.20+)
-- `oc` CLI with cluster-admin privileges
-- `envsubst` command (`brew install gettext` on macOS)
-- `shellcheck` for linting (`brew install shellcheck` on macOS)
-- `shfmt` for shell formatting (`brew install shfmt` on macOS)
+### Key Environment Variables
 
-## IBU Certificate Validation Report
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `PEBBLE_ALWAYS_VALID` | `0` | Set to `1` to skip real ACME challenge validation (quick testing) |
+| `DNS_SERVER` | `8.8.8.8:53` | Override for fake DNS: `fake-dns-api.fake-dns.svc.cluster.local:53` |
+| `OPERATOR_NAMESPACE` | `cert-manager-operator` | Operator install namespace |
+| `PEBBLE_NAMESPACE` | `pebble` | Pebble server namespace |
+| `LOG_LEVEL` | `info` | `quiet\|error\|warn\|info\|debug` — controls common.sh logging |
+| `DRY_RUN` | `false` | Enable dry-run mode |
 
-Validation testing for cert-manager certificate behavior during OpenShift Image-Based Upgrade (IBU) operations. Full report: https://gist.github.com/sebrandon1/71f33b35aea2aa4cf9edda855201c8fc
+### lib/common.sh API
 
-### Key Findings
+Scripts source this library for shared functionality:
+```bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+```
+
+Key functions:
+- **Logging**: `log_error`, `log_warn`, `log_info`, `log_success`, `log_debug` — color-aware, respects `LOG_LEVEL`
+- **Dependencies**: `require_cmd oc yq jq` — validates commands with install hints
+- **Cluster**: `require_cluster` / `require_cluster_admin` — validates connectivity and privileges
+- **Environment**: `load_env` — loads `.env` from script or parent directory
+- **Retry**: `retry <max_attempts> <delay> <command...>` — exponential backoff
+- **Wait**: `wait_for_resource <type/name> <namespace> <timeout>` — polls resource readiness
+- **Cleanup**: `setup_cleanup` + `register_temp_file` — trap-based cleanup with duration tracking
+- **Output**: `print_summary "Key1" "Val1" "Key2" "Val2"` — formatted summary table
+
+## IBU Certificate Validation
+
+Testing cert-manager behavior during OpenShift Image-Based Upgrade operations. Full report: https://gist.github.com/sebrandon1/71f33b35aea2aa4cf9edda855201c8fc
 
 | Scenario | Behavior | Result |
 |----------|----------|--------|
-| **Scenario 1 (Default)** | Standard backup/restore | Certificates regenerated with new checksums - original keys lost |
+| **Scenario 1 (Default)** | Standard backup/restore | Certificates regenerated with new checksums — original keys lost |
 | **Scenario 2 (LCA Labels)** | Resources labeled with `lca.openshift.io/apply-label` | Certificates preserved with matching checksums |
 
-### LCA Apply-Label Mechanism
+The LCA (Lifecycle Agent) apply-label format is `<apiGroup>/<version>/<resourceType>/<namespace>/<resourceName>`. This ensures resources are included in backups via labelSelector, retaining raw certificate data during restore.
 
-Format: `<apiGroup>/<version>/<resourceType>/<namespace>/<resourceName>`
-
-The Lifecycle Agent applies `lca.openshift.io/backup` labels to specified resources, which are then included in the backup using a labelSelector, ensuring raw certificate data is retained during restore.
-
-### Recommendations
-
-- **Preserve certificates** when they're long-lived, shared with external systems, or where regeneration causes operational issues
-- **Allow regeneration** for short-lived, auto-renewed certificates during IBU
+**Preserve certificates** when long-lived, shared with external systems, or where regeneration causes issues. **Allow regeneration** for short-lived, auto-renewed certificates.
 
 ## Code Style
 
-### Bash
-- Use `shellcheck` for linting
-- Use `shfmt` for consistent formatting
-- Follow Makefile conventions for targets
-- Include helpful comments and usage information
-- Source shared functions from `lib/common.sh` when appropriate
+- All scripts use `set -euo pipefail`
+- Scripts resolve their own location with `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`
+- `shfmt` formatting: 2-space indentation (tabs in Makefile), binary operators at line start, switch cases indented
+- `shellcheck` with severity=error; excluded codes: SC1091, SC2034, SC2086, SC2155, SC2046, SC2181, SC2126, SC2329
+- Cleanup operations use `--ignore-not-found=true` for idempotency
+- New scripts should source `lib/common.sh` and use its logging/dependency/retry functions
+- New Makefile targets need a `## Description` comment suffix for `make help` integration
+
+## CI Pipeline
+
+CI runs on PRs to main (`.github/workflows/pre-main.yml`):
+1. **shell-format-check** — `shfmt -d .`
+2. **shellcheck** — severity=error on `scripts/`
+3. **workload-partitioning-check** — validates script existence, executability, syntax
+4. **verify-structure** — directory layout and key files
+5. **integration-test** — deploys OCP 4.20 CRC cluster, runs `make quick-http-test`, API server cert creation/verification, workload partitioning check, network stack detection
+
+## Requirements
+
+- OpenShift cluster (4.20+) with `oc` CLI and cluster-admin privileges
+- `envsubst` (`brew install gettext` on macOS)
+- `shellcheck` and `shfmt` for linting (`brew install shellcheck shfmt` on macOS)
