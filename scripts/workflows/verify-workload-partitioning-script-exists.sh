@@ -1,4 +1,8 @@
 #!/bin/bash
+################################################################################
+# Script: verify-workload-partitioning-script-exists.sh
+# Description: Verify that workload partitioning check script exists
+################################################################################
 
 set -euo pipefail
 

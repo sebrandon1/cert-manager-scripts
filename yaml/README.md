@@ -6,8 +6,18 @@ This directory contains Kubernetes/OpenShift YAML manifests organized by purpose
 
 Each subdirectory represents a specific component or feature:
 
-- `cert-manager-operator/` - Manifests for installing the cert-manager Operator
-- `pebble/` - Manifests for deploying the Pebble ACME test server
+| Directory | Description | Files |
+|-----------|-------------|-------|
+| [`acme-dns/`](acme-dns/) | ACME-DNS server for DNS-01 challenge automation | 4 |
+| [`cert-manager-operator/`](cert-manager-operator/) | OpenShift cert-manager operator installation | 2 |
+| [`certificates/`](certificates/) | Test certificate templates | 1 |
+| [`fake-dns-api/`](fake-dns-api/) | Air-gapped DNS testing server | 5 |
+| [`issuers/`](issuers/) | ClusterIssuer configurations (HTTP-01, DNS-01) | 3 |
+| [`pebble/`](pebble/) | Let's Encrypt Pebble ACME test server | 5 |
+| [`pebble-challtestsrv/`](pebble-challtestsrv/) | Pebble challenge test server | 2 |
+| [`ibu/`](ibu/) | IBU testing resources (MinIO, OADP, backups) | 3 subdirs |
+
+See individual subdirectory READMEs for detailed documentation.
 
 ## Variable Substitution
 

@@ -1,4 +1,8 @@
 #!/bin/bash
+################################################################################
+# Script: verify-script-executable.sh
+# Description: Verify that workload partitioning check script is executable
+################################################################################
 
 set -euo pipefail
 

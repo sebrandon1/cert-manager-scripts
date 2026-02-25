@@ -1,4 +1,8 @@
 #!/bin/bash
+################################################################################
+# Script: verify-makefile-target.sh
+# Description: Verify that check-workload-partitioning target exists in Makefile
+################################################################################
 
 set -euo pipefail
 
