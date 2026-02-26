@@ -63,23 +63,23 @@ readonly LOG_LEVEL=$_LOG_LEVEL
 # LOGGING FUNCTIONS
 # ============================================================================
 log_error() {
-	[[ $LOG_LEVEL -ge 1 ]] && echo -e "${RED}[ERROR]${NC} $*" >&2
+	[[ $LOG_LEVEL -ge 1 ]] && echo -e "${RED}[ERROR]${NC} $*" >&2 || true
 }
 
 log_warn() {
-	[[ $LOG_LEVEL -ge 2 ]] && echo -e "${YELLOW}[WARN]${NC} $*"
+	[[ $LOG_LEVEL -ge 2 ]] && echo -e "${YELLOW}[WARN]${NC} $*" || true
 }
 
 log_info() {
-	[[ $LOG_LEVEL -ge 3 ]] && echo -e "${BLUE}[INFO]${NC} $*"
+	[[ $LOG_LEVEL -ge 3 ]] && echo -e "${BLUE}[INFO]${NC} $*" || true
 }
 
 log_success() {
-	[[ $LOG_LEVEL -ge 3 ]] && echo -e "${GREEN}[SUCCESS]${NC} $*"
+	[[ $LOG_LEVEL -ge 3 ]] && echo -e "${GREEN}[SUCCESS]${NC} $*" || true
 }
 
 log_debug() {
-	[[ $LOG_LEVEL -ge 4 ]] && echo -e "${BOLD}[DEBUG]${NC} $*"
+	[[ $LOG_LEVEL -ge 4 ]] && echo -e "${BOLD}[DEBUG]${NC} $*" || true
 }
 
 # ============================================================================
