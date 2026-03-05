@@ -110,7 +110,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Deploy the OCP Cluster
-        uses: palmsoftware/quick-ocp@v0.0.26
+        uses: palmsoftware/quick-ocp@v0.0.27
         with:
           ocpPullSecret: $OCP_PULL_SECRET
           bundleCache: true
