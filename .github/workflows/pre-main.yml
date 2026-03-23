@@ -120,7 +120,7 @@ jobs:
           OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
 
       - name: Basic cluster connectivity check
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 2
           max_attempts: 10
@@ -156,7 +156,7 @@ jobs:
           oc get clusteroperators || true
 
       - name: Full cluster health check
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -165,7 +165,7 @@ jobs:
           command: ./scripts/workflows/verify-cluster-access.sh
 
       - name: Run quick HTTP-01 test
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 30
           max_attempts: 3
@@ -173,7 +173,7 @@ jobs:
           command: make quick-http-test
 
       - name: Verify workload partitioning configuration
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -184,7 +184,7 @@ jobs:
         run: make check-network-stack
 
       - name: Verify cluster connection before API server cert test
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -192,7 +192,7 @@ jobs:
           command: ./scripts/workflows/verify-cluster-access.sh
 
       - name: Create API server certificate
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -207,7 +207,7 @@ jobs:
         # This step may fail if CRC cluster becomes unstable during long CI runs
         # The certificate creation (above) is the critical test - verification is best-effort
         continue-on-error: true
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 2
