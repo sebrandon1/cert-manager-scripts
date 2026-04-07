@@ -85,9 +85,13 @@ jobs:
         run: ./scripts/workflows/verify-key-files.sh
 
   integration-test:
-    name: Integration Test (OCP 4.20)
+    name: Integration Test (OCP ${{ matrix.ocp-version }})
     runs-on: ubuntu-latest
     needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure]
+    strategy:
+      fail-fast: false
+      matrix:
+        ocp-version: ['4.20', '4.21']
     # Skip integration tests for Dependabot PRs (no access to secrets)
     if: |
       github.actor != 'dependabot[bot]' &&
@@ -96,6 +100,13 @@ jobs:
       needs.workload-partitioning-check.result == 'success' &&
       needs.verify-structure.result == 'success'
     steps:
+      - name: Check Red Hat Status
+        uses: palmsoftware/redhat-status@v0
+        with:
+          components: |
+            api.openshift.com
+            developers.redhat.com
+
       - name: Check if CRC_PULL_SECRET exists
         env:
           super_secret: ${{ secrets.CRC_PULL_SECRET }}
@@ -114,7 +125,7 @@ jobs:
         with:
           ocpPullSecret: $OCP_PULL_SECRET
           bundleCache: true
-          desiredOCPVersion: 4.20
+          desiredOCPVersion: ${{ matrix.ocp-version }}
           waitForOperatorsReady: true
         env:
           OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
