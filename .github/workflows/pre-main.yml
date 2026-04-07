@@ -96,6 +96,13 @@ jobs:
       needs.workload-partitioning-check.result == 'success' &&
       needs.verify-structure.result == 'success'
     steps:
+      - name: Check Red Hat Status
+        uses: palmsoftware/redhat-status@v0
+        with:
+          components: |
+            api.openshift.com
+            developers.redhat.com
+
       - name: Check if CRC_PULL_SECRET exists
         env:
           super_secret: ${{ secrets.CRC_PULL_SECRET }}
