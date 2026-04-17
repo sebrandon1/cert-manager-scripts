@@ -7,27 +7,14 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_detail() { echo -e "${BLUE}[DETAIL]${NC} $1"; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 
 # Function to check a single ClusterIssuer
 check_single_issuer() {
 	local ISSUER_NAME=$1
 
-	echo
-	echo "========================================"
-	echo "  ClusterIssuer Diagnostics"
-	echo "========================================"
-	echo
+	print_header "ClusterIssuer Diagnostics"
 	log_info "ClusterIssuer: $ISSUER_NAME"
 	echo
 
@@ -51,24 +38,24 @@ check_single_issuer() {
 
 	# Get ACME server URL
 	ACME_SERVER=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.server}' 2>/dev/null || echo "N/A")
-	log_detail "ACME Server: $ACME_SERVER"
+	log_debug "ACME Server: $ACME_SERVER"
 
 	# Get email
 	EMAIL=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.email}' 2>/dev/null || echo "N/A")
-	log_detail "Email: $EMAIL"
+	log_debug "Email: $EMAIL"
 
 	# Check solver type
 	SOLVER_TYPE=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].http01}' 2>/dev/null)
 	if [ -n "$SOLVER_TYPE" ]; then
-		log_detail "Solver Type: HTTP-01"
+		log_debug "Solver Type: HTTP-01"
 		INGRESS_CLASS=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].http01.ingress.class}' 2>/dev/null || echo "N/A")
-		log_detail "Ingress Class: $INGRESS_CLASS"
+		log_debug "Ingress Class: $INGRESS_CLASS"
 	else
 		SOLVER_TYPE=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].dns01}' 2>/dev/null)
 		if [ -n "$SOLVER_TYPE" ]; then
-			log_detail "Solver Type: DNS-01"
+			log_debug "Solver Type: DNS-01"
 		else
-			log_detail "Solver Type: Unknown"
+			log_debug "Solver Type: Unknown"
 		fi
 	fi
 
@@ -128,11 +115,7 @@ check_single_issuer() {
 # Main logic
 if [ $# -eq 0 ]; then
 	# No arguments - check all ClusterIssuers
-	echo
-	echo "========================================"
-	echo "  Checking All ClusterIssuers"
-	echo "========================================"
-	echo
+	print_header "Checking All ClusterIssuers"
 
 	# Get all ClusterIssuers
 	ISSUERS=$(oc get clusterissuer -o json 2>/dev/null | jq -r '.items[].metadata.name' 2>/dev/null || echo "")

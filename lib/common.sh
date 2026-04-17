@@ -258,3 +258,213 @@ wait_for_resource() {
 		return 1
 	fi
 }
+
+# Print a formatted section header
+# Usage: print_header "Title"
+print_header() {
+	local title="${1:-Script Execution}"
+	echo
+	echo "========================================"
+	echo "  $title"
+	echo "========================================"
+	echo
+}
+
+# Apply a YAML template with envsubst variable substitution
+# Usage: apply_yaml_template <yaml_file> <resource_type>
+apply_yaml_template() {
+	local yaml_file="$1"
+	local resource_type="${2:-Resource}"
+
+	if [[ ! -f "$yaml_file" ]]; then
+		log_error "YAML file not found: $yaml_file"
+		return 1
+	fi
+
+	log_info "Applying $resource_type from $(basename "$yaml_file")..."
+	envsubst <"$yaml_file" | oc apply -f -
+}
+
+# Create a namespace if it doesn't exist
+# Usage: ensure_namespace <namespace>
+ensure_namespace() {
+	local namespace="$1"
+
+	if oc get namespace "$namespace" &>/dev/null; then
+		log_info "Namespace '$namespace' already exists."
+	else
+		log_info "Creating namespace '$namespace'..."
+		oc create namespace "$namespace"
+		log_info "Namespace '$namespace' created successfully."
+	fi
+}
+
+# Check if a deployment exists and is healthy
+# Usage: check_deployment_exists <deployment> <namespace>
+# Returns 0 if deployment exists and has ready replicas
+check_deployment_exists() {
+	local deployment="$1"
+	local namespace="$2"
+
+	if ! oc get namespace "$namespace" &>/dev/null; then
+		return 1
+	fi
+
+	if ! oc get deployment "$deployment" -n "$namespace" &>/dev/null; then
+		return 1
+	fi
+
+	local ready_replicas
+	ready_replicas=$(oc get deployment "$deployment" -n "$namespace" \
+		-o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+	local desired_replicas
+	desired_replicas=$(oc get deployment "$deployment" -n "$namespace" \
+		-o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+
+	if [[ "$ready_replicas" = "$desired_replicas" ]] && [[ "$ready_replicas" != "0" ]]; then
+		return 0
+	fi
+
+	return 1
+}
+
+# Wait for a CSV (ClusterServiceVersion) to reach Succeeded phase
+# Usage: wait_for_csv <namespace> <label_or_grep_pattern> <timeout_attempts>
+wait_for_csv() {
+	local namespace="$1"
+	local pattern="$2"
+	local max_attempts="${3:-60}"
+
+	log_info "Waiting for CSV to reach Succeeded phase..."
+	local attempt=0
+
+	while [[ $attempt -lt $max_attempts ]]; do
+		if oc get csv -n "$namespace" 2>/dev/null | grep -q "${pattern}.*Succeeded"; then
+			log_success "CSV is in Succeeded phase."
+			return 0
+		fi
+
+		attempt=$((attempt + 1))
+		if [[ $((attempt % 6)) -eq 0 ]]; then
+			echo -n " [${attempt}/${max_attempts}]"
+		else
+			echo -n "."
+		fi
+		sleep 5
+	done
+	echo
+
+	log_error "Timeout waiting for CSV to reach Succeeded phase."
+	return 1
+}
+
+# Wait for OADP Backup or Restore to complete
+# Usage: wait_for_backup_restore <type> <name> <namespace> <max_attempts>
+# type: "backup" or "restore"
+wait_for_backup_restore() {
+	local resource_type="$1"
+	local name="$2"
+	local namespace="$3"
+	local max_attempts="${4:-60}"
+
+	log_info "Waiting for $resource_type to complete..."
+	local attempt=0
+
+	while [[ $attempt -lt $max_attempts ]]; do
+		local phase
+		phase=$(oc get "$resource_type" "$name" -n "$namespace" \
+			-o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+
+		case "$phase" in
+		Completed)
+			log_success "${resource_type^} completed successfully!"
+			return 0
+			;;
+		Failed | PartiallyFailed)
+			log_error "${resource_type^} failed with phase: $phase"
+			oc describe "$resource_type" "$name" -n "$namespace"
+			return 1
+			;;
+		esac
+
+		attempt=$((attempt + 1))
+		if [[ $((attempt % 6)) -eq 0 ]]; then
+			log_info "${resource_type^} phase: $phase ($attempt/$max_attempts)"
+		fi
+		sleep 5
+	done
+
+	log_error "Timeout waiting for $resource_type to complete"
+	return 1
+}
+
+# Build lca.openshift.io/apply-label annotation value for cert resources
+# Usage: build_lca_annotations <namespace>
+build_lca_annotations() {
+	local namespace="$1"
+	local annotation_parts=()
+
+	local cert_names
+	cert_names=$(oc get certificates -n "$namespace" \
+		-o jsonpath='{.items[*].metadata.name}')
+
+	for cert_name in $cert_names; do
+		annotation_parts+=("cert-manager.io/v1/certificates/$namespace/$cert_name")
+
+		local secret_name
+		secret_name=$(oc get certificate "$cert_name" -n "$namespace" \
+			-o jsonpath='{.spec.secretName}' 2>/dev/null || echo "")
+
+		if [[ -n "$secret_name" ]]; then
+			if oc get secret "$secret_name" -n "$namespace" &>/dev/null; then
+				annotation_parts+=("v1/secrets/$namespace/$secret_name")
+			fi
+		fi
+	done
+
+	local annotation_value
+	annotation_value=$(
+		IFS=','
+		echo "${annotation_parts[*]}"
+	)
+
+	echo "$annotation_value"
+}
+
+# Capture TLS secret checksums for a namespace in a single API call
+# Usage: capture_secret_checksums <namespace> <output_file>
+capture_secret_checksums() {
+	local namespace="$1"
+	local checksums_file="$2"
+
+	local secrets_json
+	secrets_json=$(oc get secrets -n "$namespace" -o json 2>/dev/null || echo '{"items":[]}')
+
+	echo "[]" >"$checksums_file"
+
+	local secret_entries
+	secret_entries=$(echo "$secrets_json" | jq -r '
+		[.items[] | select(.type == "kubernetes.io/tls" or .data["tls.crt"] != null)]
+		| .[] | [.metadata.name, (.data["tls.crt"] // ""), (.data["tls.key"] // "")] | @tsv
+	')
+
+	while IFS=$'\t' read -r name cert_data key_data; do
+		[[ -z "$name" ]] && continue
+
+		local cert_checksum=""
+		if [[ -n "$cert_data" ]]; then
+			cert_checksum=$(echo "$cert_data" | shasum -a 256 | cut -d' ' -f1)
+		fi
+
+		local key_checksum=""
+		if [[ -n "$key_data" ]]; then
+			key_checksum=$(echo "$key_data" | shasum -a 256 | cut -d' ' -f1)
+		fi
+
+		jq --arg name "$name" \
+			--arg cert_checksum "$cert_checksum" \
+			--arg key_checksum "$key_checksum" \
+			'. += [{name: $name, cert_checksum: $cert_checksum, key_checksum: $key_checksum}]' \
+			"$checksums_file" >"$checksums_file.tmp" && mv "$checksums_file.tmp" "$checksums_file"
+	done <<<"$secret_entries"
+}

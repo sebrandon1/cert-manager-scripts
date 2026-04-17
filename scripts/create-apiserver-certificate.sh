@@ -10,17 +10,9 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_detail() { echo -e "${BLUE}[DETAIL]${NC} $1"; }
+# Source common library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # Configuration
 ISSUER_NAME="${ISSUER_NAME:-pebble-issuer}"
@@ -28,26 +20,11 @@ CERT_NAMESPACE="${CERT_NAMESPACE:-openshift-config}"
 CERT_NAME="apiserver-cert"
 SECRET_NAME="apiserver-cert-tls"
 
-print_header() {
-	echo
-	echo "========================================"
-	echo "  Create API Server Certificate"
-	echo "========================================"
-	echo
-}
-
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found. Please install OpenShift CLI."
-		exit 1
-	fi
-
-	if ! oc whoami &>/dev/null; then
-		log_error "Not logged in to OpenShift cluster. Please run 'oc login' first."
-		exit 1
-	fi
+	require_cmd oc
+	require_cluster
 
 	# Check if cert-manager is installed
 	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
@@ -70,34 +47,25 @@ get_api_server_info() {
 
 	# Get the API server URL
 	API_URL=$(oc whoami --show-server)
-	log_detail "API Server URL: $API_URL"
+	log_debug "API Server URL: $API_URL"
 
 	# Extract hostname from URL
 	API_HOST=$(echo "$API_URL" | sed -E 's|https?://([^:/]+).*|\1|')
-	log_detail "API Server Hostname: $API_HOST"
+	log_debug "API Server Hostname: $API_HOST"
 
 	# Get cluster base domain
 	CLUSTER_DOMAIN=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "")
 	if [ -n "$CLUSTER_DOMAIN" ]; then
-		log_detail "Cluster Domain: $CLUSTER_DOMAIN"
+		log_debug "Cluster Domain: $CLUSTER_DOMAIN"
 		# Extract base domain (remove apps. prefix if present)
-		BASE_DOMAIN=$(echo "$CLUSTER_DOMAIN" | sed 's/^apps\.//')
-		log_detail "Base Domain: $BASE_DOMAIN"
+		BASE_DOMAIN="${CLUSTER_DOMAIN#apps.}"
+		log_debug "Base Domain: $BASE_DOMAIN"
 	else
 		log_warn "Could not determine cluster domain"
 		BASE_DOMAIN=""
 	fi
 
 	echo
-}
-
-create_namespace_if_needed() {
-	if ! oc get namespace "$CERT_NAMESPACE" &>/dev/null; then
-		log_info "Creating namespace: $CERT_NAMESPACE"
-		oc create namespace "$CERT_NAMESPACE"
-	else
-		log_info "Namespace '$CERT_NAMESPACE' already exists"
-	fi
 }
 
 create_certificate() {
@@ -248,10 +216,10 @@ EOF
 }
 
 main() {
-	print_header
+	print_header "Create API Server Certificate"
 	check_prerequisites
 	get_api_server_info
-	create_namespace_if_needed
+	ensure_namespace "$CERT_NAMESPACE"
 	create_certificate
 	wait_for_certificate || true
 	display_certificate_info

@@ -14,14 +14,6 @@ source "$SCRIPT_DIR/../lib/common.sh"
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/minio"
 MINIO_NAMESPACE="${MINIO_NAMESPACE:-minio}"
 
-print_header() {
-	echo
-	echo "========================================"
-	echo "  MinIO Object Storage Installation"
-	echo "========================================"
-	echo
-}
-
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 	require_cmd oc
@@ -32,15 +24,9 @@ check_prerequisites() {
 check_existing_installation() {
 	log_info "Checking for existing MinIO installation..."
 
-	if oc get namespace "$MINIO_NAMESPACE" &>/dev/null; then
-		if oc get deployment minio -n "$MINIO_NAMESPACE" &>/dev/null; then
-			local ready_replicas
-			ready_replicas=$(oc get deployment minio -n "$MINIO_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-			if [ "$ready_replicas" != "0" ]; then
-				log_info "MinIO is already installed and running."
-				return 0
-			fi
-		fi
+	if check_deployment_exists minio "$MINIO_NAMESPACE"; then
+		log_info "MinIO is already installed and running."
+		return 0
 	fi
 
 	log_info "No existing MinIO installation found."
@@ -68,33 +54,6 @@ install_minio() {
 
 	log_info "Creating console route..."
 	oc apply -f "$YAML_DIR/route.yaml"
-}
-
-wait_for_minio() {
-	log_info "Waiting for MinIO to be ready..."
-
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		if oc get deployment minio -n "$MINIO_NAMESPACE" &>/dev/null; then
-			local ready_replicas
-			ready_replicas=$(oc get deployment minio -n "$MINIO_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-			if [ "$ready_replicas" = "1" ]; then
-				log_success "MinIO is ready!"
-				return 0
-			fi
-		fi
-
-		attempt=$((attempt + 1))
-		echo -n "."
-		sleep 5
-	done
-	echo
-
-	log_error "Timeout waiting for MinIO to be ready."
-	log_info "Check status with: oc get pods -n $MINIO_NAMESPACE"
-	return 1
 }
 
 create_velero_bucket() {
@@ -138,14 +97,14 @@ verify_installation() {
 }
 
 main() {
-	print_header
+	print_header "MinIO Object Storage Installation"
 	check_prerequisites
 
 	if check_existing_installation; then
 		log_info "Verifying existing installation..."
 	else
 		install_minio
-		wait_for_minio
+		wait_for_resource "deployment/minio" "$MINIO_NAMESPACE" "300s"
 		create_velero_bucket
 	fi
 

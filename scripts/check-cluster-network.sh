@@ -7,51 +7,16 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+# Source common library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
+
+# CYAN color not defined in common.sh, add locally
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
 
-# Function to print colored messages
-log_info() {
-	echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-	echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-	echo -e "${RED}[ERROR]${NC} $1"
-}
-
+# Function to print detail messages with cyan color
 log_detail() {
 	echo -e "${CYAN}[DETAIL]${NC} $1"
-}
-
-# Function to print header
-print_header() {
-	echo
-	echo "========================================"
-	echo "  OpenShift Network Configuration Check"
-	echo "========================================"
-	echo
-}
-
-# Function to check prerequisites
-check_prerequisites() {
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found. Please install OpenShift CLI."
-		exit 1
-	fi
-
-	if ! oc whoami &>/dev/null; then
-		log_error "Not logged in to OpenShift cluster. Please run 'oc login' first."
-		exit 1
-	fi
 }
 
 # Function to get cluster version
@@ -85,10 +50,8 @@ check_network_type() {
 
 # Function to check IP families
 check_ip_families() {
+	local cluster_networks="$1"
 	log_info "Checking cluster IP address families..."
-
-	# Get cluster networks from network config
-	local cluster_networks=$(oc get network.config.openshift.io cluster -o json 2>/dev/null)
 
 	if [ -z "$cluster_networks" ]; then
 		log_error "Unable to retrieve network configuration"
@@ -253,16 +216,17 @@ check_cert_manager_compatibility() {
 
 # Function to provide recommendations
 provide_recommendations() {
+	local cluster_networks="$1"
 	log_info "========================================"
 	log_info "  Recommendations"
 	log_info "========================================"
 	echo
 
-	local cluster_networks=$(oc get network.config.openshift.io cluster -o json 2>/dev/null)
 	local has_ipv4=false
 	local has_ipv6=false
 
-	local cluster_cidrs=$(echo "$cluster_networks" | jq -r '.spec.clusterNetwork[]?.cidr' 2>/dev/null)
+	local cluster_cidrs
+	cluster_cidrs=$(echo "$cluster_networks" | jq -r '.spec.clusterNetwork[]?.cidr' 2>/dev/null)
 	for cidr in $cluster_cidrs; do
 		if [[ "$cidr" =~ : ]]; then
 			has_ipv6=true
@@ -313,15 +277,21 @@ export_network_info() {
 
 # Main execution
 main() {
-	print_header
-	check_prerequisites
+	print_header "OpenShift Network Configuration Check"
+	require_cmd oc
+	require_cluster
+
+	# Fetch network config once and cache it
+	local cluster_networks
+	cluster_networks=$(oc get network.config.openshift.io cluster -o json 2>/dev/null)
+
 	get_cluster_version
 	check_network_type
-	check_ip_families
+	check_ip_families "$cluster_networks"
 	check_api_server
 	check_node_addresses
 	check_cert_manager_compatibility
-	provide_recommendations
+	provide_recommendations "$cluster_networks"
 
 	# Export if requested
 	if [ "${EXPORT_FORMAT:-}" = "json" ]; then

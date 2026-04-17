@@ -8,15 +8,9 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+# Get script directory and source common library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 
 echo
 echo "========================================"
@@ -68,8 +62,8 @@ echo
 
 # Test 4: Check authentication
 log_info "Checking cluster authentication..."
-if oc whoami &>/dev/null; then
-	USERNAME=$(oc whoami 2>/dev/null)
+USERNAME=$(oc whoami 2>/dev/null || echo "")
+if [ -n "$USERNAME" ]; then
 	log_info "✅ Authenticated as: $USERNAME"
 else
 	log_error "❌ Cannot authenticate with cluster"

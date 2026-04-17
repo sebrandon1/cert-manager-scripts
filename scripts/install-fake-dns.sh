@@ -7,120 +7,27 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-# Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
+
 YAML_DIR="${SCRIPT_DIR}/../yaml/fake-dns-api"
 
-# Configuration
 export FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_note() { echo -e "${BLUE}[NOTE]${NC} $1"; }
-
-print_header() {
-	echo
-	echo "========================================"
-	echo "  Install Fake DNS API (Air-gapped)"
-	echo "========================================"
-	echo
-}
-
-check_prerequisites() {
-	log_info "Checking prerequisites..."
-
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found"
-		exit 1
-	fi
-
-	if ! command -v envsubst &>/dev/null; then
-		log_error "envsubst command not found"
-		exit 1
-	fi
-
-	if ! oc whoami &>/dev/null; then
-		log_error "Not logged into OpenShift"
-		exit 1
-	fi
-
-	log_info "Prerequisites check passed"
-}
-
-apply_yaml() {
-	local yaml_file=$1
-	local resource_type=$2
-
-	if [ ! -f "$yaml_file" ]; then
-		log_error "YAML file not found: $yaml_file"
-		exit 1
-	fi
-
-	log_info "Applying $resource_type from $(basename "$yaml_file")..."
-	envsubst <"$yaml_file" | oc apply -f -
-}
 
 install_fake_dns() {
 	log_info "Installing fake DNS API server..."
 
-	apply_yaml "$YAML_DIR/namespace.yaml" "Namespace"
-	apply_yaml "$YAML_DIR/serviceaccount.yaml" "ServiceAccount"
+	apply_yaml_template "$YAML_DIR/namespace.yaml" "Namespace"
+	apply_yaml_template "$YAML_DIR/serviceaccount.yaml" "ServiceAccount"
 
-	# Grant anyuid SCC to allow binding to port 53
 	log_info "Granting anyuid SCC to fake-dns-api ServiceAccount..."
 	oc adm policy add-scc-to-user anyuid -z fake-dns-api -n "$FAKEDNS_NAMESPACE"
 
-	apply_yaml "$YAML_DIR/configmap.yaml" "ConfigMap"
-	apply_yaml "$YAML_DIR/deployment.yaml" "Deployment"
-	apply_yaml "$YAML_DIR/service.yaml" "Service"
+	apply_yaml_template "$YAML_DIR/configmap.yaml" "ConfigMap"
+	apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
+	apply_yaml_template "$YAML_DIR/service.yaml" "Service"
 
 	log_info "Resources applied. Waiting for fake-dns-api to be ready..."
-}
-
-wait_for_fake_dns() {
-	log_info "Waiting for fake-dns-api deployment..."
-
-	local max_attempts=120 # 10 minutes total
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		if oc get deployment fake-dns-api -n "$FAKEDNS_NAMESPACE" &>/dev/null; then
-			local ready=$(oc get deployment fake-dns-api -n "$FAKEDNS_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-			if [ "$ready" != "0" ]; then
-				log_info "fake-dns-api is ready!"
-				break
-			fi
-
-			# Show pod status periodically for better feedback
-			if [ $((attempt % 12)) -eq 0 ] && [ $attempt -gt 0 ]; then
-				echo
-				log_info "Still waiting... Current pod status:"
-				oc get pods -n "$FAKEDNS_NAMESPACE" --no-headers 2>/dev/null || true
-			fi
-		fi
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			echo -n " [${attempt}/${max_attempts}]"
-		else
-			echo -n "."
-		fi
-		sleep 5
-	done
-	echo
-
-	if [ $attempt -eq $max_attempts ]; then
-		log_error "Timeout waiting for fake-dns-api"
-		exit 1
-	fi
 }
 
 verify_installation() {
@@ -135,7 +42,6 @@ verify_installation() {
 configure_coredns() {
 	log_info "Configuring CoreDNS to delegate example.com to fake DNS server..."
 
-	# Get the fake-dns ClusterIP
 	local fake_dns_ip=$(oc get service fake-dns-api -n "$FAKEDNS_NAMESPACE" -o jsonpath='{.spec.clusterIP}')
 
 	if [ -z "$fake_dns_ip" ]; then
@@ -145,14 +51,12 @@ configure_coredns() {
 
 	log_info "Fake DNS server IP: $fake_dns_ip"
 
-	# Check if CoreDNS configmap exists
 	if ! oc get configmap dns-default -n openshift-dns &>/dev/null; then
 		log_warn "CoreDNS configmap not found, skipping CoreDNS configuration"
 		log_warn "You may need to manually configure DNS forwarding for example.com"
 		return
 	fi
 
-	# Update CoreDNS to forward example.com to our fake DNS
 	local corefile=$(oc get configmap dns-default -n openshift-dns -o jsonpath='{.data.Corefile}')
 
 	if echo "$corefile" | grep -q "example.com:53"; then
@@ -160,7 +64,6 @@ configure_coredns() {
 	else
 		log_info "Adding example.com zone to CoreDNS..."
 
-		# Add example.com zone configuration
 		cat <<EOF | oc apply -f -
 apiVersion: v1
 kind: ConfigMap
@@ -202,10 +105,10 @@ display_next_steps() {
 	log_info "  Fake DNS API Installation Complete!"
 	log_info "========================================"
 	echo
-	log_note "This fake DNS server accepts RFC2136 update requests and returns success"
-	log_note "without actually updating DNS. Perfect for air-gapped DNS-01 testing!"
+	log_info "This fake DNS server accepts RFC2136 update requests and returns success"
+	log_info "without actually updating DNS. Perfect for air-gapped DNS-01 testing!"
 	echo
-	log_note "CoreDNS has been configured to forward example.com queries to fake DNS."
+	log_info "CoreDNS has been configured to forward example.com queries to fake DNS."
 	echo
 	echo "Next steps:"
 	echo
@@ -241,10 +144,13 @@ display_next_steps() {
 }
 
 main() {
-	print_header
-	check_prerequisites
+	print_header "Install Fake DNS API (Air-gapped)"
+
+	require_cmd oc envsubst
+	require_cluster
+
 	install_fake_dns
-	wait_for_fake_dns
+	wait_for_resource "deployment/fake-dns-api" "$FAKEDNS_NAMESPACE" "600s"
 	verify_installation
 	configure_coredns
 	display_next_steps

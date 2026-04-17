@@ -23,17 +23,6 @@ export TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
 export BACKUP_NAME="${BACKUP_NAME:-ibu-cert-test-$(date +%s)}"
 export RESTORE_NAME="${RESTORE_NAME:-${BACKUP_NAME}-restore}"
 
-print_header() {
-	echo
-	echo "========================================"
-	echo "  IBU Simulation via OADP"
-	echo "========================================"
-	echo
-	echo "  Target Namespace: $TARGET_NAMESPACE"
-	echo "  Backup Name:      $BACKUP_NAME"
-	echo
-}
-
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 	require_cmd oc envsubst
@@ -73,35 +62,7 @@ create_backup() {
 	envsubst <"$YAML_DIR/backup.yaml" | oc apply -f -
 
 	# Wait for backup to complete
-	log_info "Waiting for backup to complete..."
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local phase
-		phase=$(oc get backup "$BACKUP_NAME" -n "$OADP_NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-
-		case "$phase" in
-		Completed)
-			log_success "Backup completed successfully!"
-			return 0
-			;;
-		Failed | PartiallyFailed)
-			log_error "Backup failed with phase: $phase"
-			oc describe backup "$BACKUP_NAME" -n "$OADP_NAMESPACE"
-			return 1
-			;;
-		esac
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			log_info "Backup phase: $phase ($attempt/$max_attempts)"
-		fi
-		sleep 5
-	done
-
-	log_error "Timeout waiting for backup to complete"
-	return 1
+	wait_for_backup_restore "backup" "$BACKUP_NAME" "$OADP_NAMESPACE"
 }
 
 delete_namespace_resources() {
@@ -135,35 +96,7 @@ restore_from_backup() {
 	envsubst <"$YAML_DIR/restore.yaml" | oc apply -f -
 
 	# Wait for restore to complete
-	log_info "Waiting for restore to complete..."
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local phase
-		phase=$(oc get restore "$RESTORE_NAME" -n "$OADP_NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-
-		case "$phase" in
-		Completed)
-			log_success "Restore completed successfully!"
-			return 0
-			;;
-		Failed | PartiallyFailed)
-			log_error "Restore failed with phase: $phase"
-			oc describe restore "$RESTORE_NAME" -n "$OADP_NAMESPACE"
-			return 1
-			;;
-		esac
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			log_info "Restore phase: $phase ($attempt/$max_attempts)"
-		fi
-		sleep 5
-	done
-
-	log_error "Timeout waiting for restore to complete"
-	return 1
+	wait_for_backup_restore "restore" "$RESTORE_NAME" "$OADP_NAMESPACE"
 }
 
 wait_for_cert_manager_reconcile() {
@@ -202,7 +135,11 @@ print_summary() {
 }
 
 main() {
-	print_header
+	print_header "IBU Simulation via OADP"
+	log_info "Target Namespace: $TARGET_NAMESPACE"
+	log_info "Backup Name: $BACKUP_NAME"
+	echo
+
 	check_prerequisites
 
 	create_backup

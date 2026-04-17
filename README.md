@@ -4,15 +4,15 @@ Scripts for testing and managing cert-manager-operator on OpenShift clusters wit
 
 ## Quick Start
 
-Test DNS-01 certificate issuance in 3 commands:
+Test certificate issuance in 3 commands:
 
 ```bash
 make install-cert-manager-operator  # Install cert-manager-operator
-make quick-test                     # Setup Pebble, fake DNS, and test wildcard cert
+make quick-http-test                # Setup Pebble (ALWAYS_VALID=1) + HTTP-01 cert
 make clean                          # Clean up when done
 ```
 
-The `quick-test` target installs Pebble ACME server (air-gapped), fake DNS server, configures DNS forwarding, creates a DNS-01 ClusterIssuer, and requests a wildcard certificate (`*.example.com`).
+The `quick-http-test` target installs Pebble ACME server with auto-validation, creates an HTTP-01 ClusterIssuer, and requests a test certificate. For DNS-01 with air-gapped fake DNS, use `make quick-dns-test` instead.
 
 **Note:** Check certificate progress with `make verify-cert` if needed.
 
@@ -68,6 +68,17 @@ Run `make help` to see all available targets. Key targets include:
 - `make test-cert` / `make verify-cert` - Test and verify certificates
 - `make clean` - Clean up all resources (keeps operator)
 
+### IBU Testing
+
+Test certificate behavior during Image-Based Upgrade (IBU) simulation:
+
+```bash
+make quick-ibu-test    # End-to-end IBU certificate loss validation
+make clean-ibu         # Clean up IBU test resources
+```
+
+See [IBU-TESTING.md](./IBU-TESTING.md) for details on validating cert-manager behavior during IBU.
+
 ## Documentation
 
 - [INSTALLATION.md](./INSTALLATION.md) - Detailed installation instructions
@@ -75,6 +86,7 @@ Run `make help` to see all available targets. Key targets include:
 - [PEBBLE-USAGE.md](./PEBBLE-USAGE.md) - Pebble usage guide
 - [NETWORK-SUPPORT.md](./NETWORK-SUPPORT.md) - IPv4/IPv6/dual-stack testing
 - [DNS01-SETUP.md](./DNS01-SETUP.md) - DNS-01 challenge setup
+- [IBU-TESTING.md](./IBU-TESTING.md) - Image-Based Upgrade certificate loss validation
 - [CONTRIBUTING.md](./CONTRIBUTING.md) - CI/CD and contributing guidelines
 
 ## Troubleshooting

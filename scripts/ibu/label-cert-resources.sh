@@ -17,17 +17,6 @@ source "$SCRIPT_DIR/../lib/common.sh"
 TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
 BACKUP_NAME="${BACKUP_NAME:-ibu-preserved-backup}"
 
-print_header() {
-	echo
-	echo "========================================"
-	echo "  LCA Resource Labeling"
-	echo "========================================"
-	echo
-	echo "  Target Namespace: $TARGET_NAMESPACE"
-	echo "  Backup Name:      $BACKUP_NAME"
-	echo
-}
-
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 	require_cmd oc jq
@@ -82,42 +71,6 @@ label_secrets() {
 	log_success "Labeled $labeled TLS secrets"
 }
 
-build_annotation_list() {
-	log_info "Building lca.openshift.io/apply-label annotation value..."
-
-	local annotation_parts=()
-
-	# Get all certificates
-	local cert_names
-	cert_names=$(oc get certificates -n "$TARGET_NAMESPACE" -o jsonpath='{.items[*].metadata.name}')
-
-	for cert_name in $cert_names; do
-		# Add certificate
-		annotation_parts+=("cert-manager.io/v1/certificates/$TARGET_NAMESPACE/$cert_name")
-
-		# Get the associated secret name
-		local secret_name
-		secret_name=$(oc get certificate "$cert_name" -n "$TARGET_NAMESPACE" \
-			-o jsonpath='{.spec.secretName}' 2>/dev/null || echo "")
-
-		if [ -n "$secret_name" ]; then
-			# Check if secret exists
-			if oc get secret "$secret_name" -n "$TARGET_NAMESPACE" &>/dev/null; then
-				annotation_parts+=("v1/secrets/$TARGET_NAMESPACE/$secret_name")
-			fi
-		fi
-	done
-
-	# Join with commas
-	local annotation_value
-	annotation_value=$(
-		IFS=','
-		echo "${annotation_parts[*]}"
-	)
-
-	echo "$annotation_value"
-}
-
 print_summary() {
 	echo
 	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -137,7 +90,11 @@ print_summary() {
 }
 
 main() {
-	print_header
+	print_header "LCA Resource Labeling"
+	log_info "Target Namespace: $TARGET_NAMESPACE"
+	log_info "Backup Name: $BACKUP_NAME"
+	echo
+
 	check_prerequisites
 
 	label_certificates
@@ -145,7 +102,7 @@ main() {
 
 	# Output the annotation value for use in backup CRs
 	local annotation_value
-	annotation_value=$(build_annotation_list)
+	annotation_value=$(build_lca_annotations "$TARGET_NAMESPACE")
 
 	echo
 	log_info "Annotation value for Backup CR:"
