@@ -97,10 +97,20 @@ Organized by component: `cert-manager-operator/`, `pebble/`, `fake-dns-api/`, `i
 
 ### lib/common.sh API
 
-Scripts source this library for shared functionality:
+All scripts source this library. The sourcing pattern depends on directory depth:
+
 ```bash
+# scripts/*.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
+
+# scripts/ibu/*.sh
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$SCRIPT_DIR/lib/common.sh"
+source "$SCRIPT_DIR/../lib/common.sh"
+
+# scripts/troubleshooting/*.sh and scripts/workflows/*.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 ```
 
 Key functions:
@@ -109,9 +119,17 @@ Key functions:
 - **Cluster**: `require_cluster` / `require_cluster_admin` — validates connectivity and privileges
 - **Environment**: `load_env` — loads `.env` from script or parent directory
 - **Retry**: `retry <max_attempts> <delay> <command...>` — exponential backoff
-- **Wait**: `wait_for_resource <type/name> <namespace> <timeout>` — polls resource readiness
+- **Wait**: `wait_for_resource <type/name> <namespace> <timeout>` — uses `oc wait --for=condition=available`
 - **Cleanup**: `setup_cleanup` + `register_temp_file` — trap-based cleanup with duration tracking
 - **Output**: `print_summary "Key1" "Val1" "Key2" "Val2"` — formatted summary table
+- **Headers**: `print_header "Title"` — formatted section header box
+- **YAML**: `apply_yaml_template <yaml_file> <resource_type>` — envsubst + oc apply with file validation
+- **Namespace**: `ensure_namespace <namespace>` — idempotent namespace creation
+- **Deployment**: `check_deployment_exists <deployment> <namespace>` — returns 0 if deployment is healthy
+- **OLM**: `wait_for_csv <namespace> <grep_pattern> <max_attempts>` — waits for CSV to reach Succeeded phase
+- **OADP**: `wait_for_backup_restore <type> <name> <namespace> <max_attempts>` — waits for backup/restore completion
+- **IBU**: `build_lca_annotations <namespace>` — builds lca.openshift.io/apply-label annotation value
+- **IBU**: `capture_secret_checksums <namespace> <output_file>` — captures TLS secret checksums in a single API call
 
 ## IBU Certificate Validation
 
@@ -129,11 +147,12 @@ The LCA (Lifecycle Agent) apply-label format is `<apiGroup>/<version>/<resourceT
 ## Code Style
 
 - All scripts use `set -euo pipefail`
-- Scripts resolve their own location with `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`
+- All scripts source `lib/common.sh` — do not redefine color constants, logging functions, or utility helpers inline
+- Scripts resolve their own location with `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` (varies by depth — see sourcing patterns above)
+- Use shared functions: `require_cmd`/`require_cluster` instead of inline prerequisite checks, `apply_yaml_template` instead of inline envsubst, `print_header` instead of inline echo headers, `wait_for_resource` instead of custom polling loops
 - `shfmt` formatting: 2-space indentation (tabs in Makefile), binary operators at line start, switch cases indented
 - `shellcheck` with severity=error; excluded codes: SC1091, SC2034, SC2086, SC2155, SC2046, SC2181, SC2126, SC2329
 - Cleanup operations use `--ignore-not-found=true` for idempotency
-- New scripts should source `lib/common.sh` and use its logging/dependency/retry functions
 - New Makefile targets need a `## Description` comment suffix for `make help` integration
 
 ## CI Pipeline
@@ -143,7 +162,7 @@ CI runs on PRs to main (`.github/workflows/pre-main.yml`):
 2. **shellcheck** — severity=error on `scripts/`
 3. **workload-partitioning-check** — validates script existence, executability, syntax
 4. **verify-structure** — directory layout and key files
-5. **integration-test** — deploys OCP 4.20 CRC cluster, runs `make quick-http-test`, API server cert creation/verification, workload partitioning check, network stack detection
+5. **integration-test** — deploys OCP 4.20/4.21 CRC cluster (matrix), runs `make quick-http-test`, API server cert creation/verification, workload partitioning check, network stack detection
 
 ## Requirements
 

@@ -136,8 +136,8 @@ The CI pipeline runs on every push and pull request with two jobs:
 - Ensures consistent formatting across the codebase
 - **Must pass** before integration tests run
 
-#### 2. Integration Test (OCP 4.19 + cert-manager)
-- Deploys a real OpenShift 4.19 cluster using [quick-ocp](https://github.com/palmsoftware/quick-ocp)
+#### 2. Integration Test (OCP 4.20/4.21 + cert-manager)
+- Deploys a real OpenShift cluster using [quick-ocp](https://github.com/palmsoftware/quick-ocp)
 - Installs cert-manager-operator
 - Runs the complete `make quick-test` workflow:
   - Installs fake DNS for air-gapped testing
@@ -195,6 +195,7 @@ Update documentation when you:
 - **PEBBLE-USAGE.md** - Pebble-specific usage and examples
 - **NETWORK-SUPPORT.md** - IPv4/IPv6/dual-stack testing
 - **DNS01-SETUP.md** - DNS-01 challenge configuration
+- **IBU-TESTING.md** - Image-Based Upgrade certificate loss validation
 - **CONTRIBUTING.md** - This file
 
 ### Documentation Style
@@ -209,33 +210,38 @@ Update documentation when you:
 
 When adding a new script:
 
-1. **Place the script in the `scripts/` directory:**
+1. **Place the script in the appropriate directory and make it executable:**
    ```bash
-   # Create your new script
    touch scripts/new-script.sh
    chmod +x scripts/new-script.sh
    ```
 
-2. **Follow the existing pattern:**
-   - Check prerequisites at the start
-   - Use colored output functions (log_info, log_warn, log_error)
-   - Make scripts idempotent
-   - Display helpful next steps
+2. **Source `lib/common.sh` — do not redefine colors or logging inline:**
+   ```bash
+   #!/bin/bash
+   set -euo pipefail
 
-3. **Add configuration via environment variables:**
+   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+   source "$SCRIPT_DIR/../lib/common.sh"
+   ```
+
+3. **Use shared functions from common.sh:**
+   - `require_cmd oc envsubst` and `require_cluster` instead of inline prerequisite checks
+   - `print_header "Title"` instead of inline echo header blocks
+   - `apply_yaml_template "$YAML_DIR/file.yaml" "ResourceType"` instead of inline envsubst
+   - `wait_for_resource "deployment/name" "namespace" "300s"` instead of custom polling loops
+   - `ensure_namespace "name"` instead of inline namespace creation
+   - `check_deployment_exists "name" "namespace"` for idempotency checks
+
+4. **Add configuration via environment variables:**
    ```bash
    export VARIABLE_NAME="${VARIABLE_NAME:-default-value}"
    ```
 
-4. **Add error handling:**
-   ```bash
-   set -euo pipefail
-   ```
-
-5. **Add a Makefile target:**
+5. **Add a Makefile target with a help comment:**
    ```makefile
-   new-target:
-       @./scripts/new-script.sh
+   new-target: ## Description for make help
+   	@./scripts/new-script.sh
    ```
 
 6. **Document the script:**
@@ -245,8 +251,7 @@ When adding a new script:
 
 7. **Add YAML manifests:**
    - Place in appropriate `yaml/` subdirectory
-   - Use `envsubst` for variable substitution
-   - Document variables in script comments
+   - Use `envsubst` for variable substitution via `apply_yaml_template`
 
 ## Getting Help
 
