@@ -8,42 +8,8 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored messages
-log_info() {
-	echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-	echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-	echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_detail() {
-	echo -e "${BLUE}[DETAIL]${NC} $1"
-}
-
-# Function to check prerequisites
-check_prerequisites() {
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found. Please install OpenShift CLI."
-		exit 1
-	fi
-
-	if ! oc whoami &>/dev/null; then
-		log_error "Not logged in to OpenShift cluster. Please run 'oc login' first."
-		exit 1
-	fi
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 
 # Function to detect cluster network configuration
 detect_cluster_network() {
@@ -54,8 +20,8 @@ detect_cluster_network() {
 	local cluster_network=$(oc get network.config.openshift.io cluster -o jsonpath='{.spec.clusterNetwork[*].cidr}' 2>/dev/null || echo "")
 	local service_network=$(oc get network.config.openshift.io cluster -o jsonpath='{.spec.serviceNetwork[*]}' 2>/dev/null || echo "")
 
-	log_detail "Cluster Networks: ${cluster_network:-Not found}"
-	log_detail "Service Networks: ${service_network:-Not found}"
+	log_debug "Cluster Networks: ${cluster_network:-Not found}"
+	log_debug "Service Networks: ${service_network:-Not found}"
 
 	# Detect stack type
 	local has_ipv4=false
@@ -100,8 +66,8 @@ check_node_addresses() {
 	local has_ipv6_nodes=false
 
 	while IFS=$'\t' read -r node_name node_ip; do
-		log_detail "Node: $node_name"
-		log_detail "  IP: $node_ip"
+		log_debug "Node: $node_name"
+		log_debug "  IP: $node_ip"
 
 		if echo "$node_ip" | grep -q "\."; then
 			has_ipv4_nodes=true
@@ -144,8 +110,8 @@ check_certmanager_pods() {
 
 	while IFS=$'\t' read -r pod_name pod_ip; do
 		if [ -n "$pod_ip" ]; then
-			log_detail "Pod: $pod_name"
-			log_detail "  IP: $pod_ip"
+			log_debug "Pod: $pod_name"
+			log_debug "  IP: $pod_ip"
 
 			if echo "$pod_ip" | grep -q "\."; then
 				has_ipv4_pods=true
@@ -181,11 +147,11 @@ check_webhook_connectivity() {
 	local webhook_cluster_ips=$(oc get service cert-manager-webhook -n cert-manager -o jsonpath='{.spec.clusterIPs[*]}' 2>/dev/null || echo "")
 
 	if [ -n "$webhook_cluster_ip" ]; then
-		log_detail "Webhook ClusterIP: $webhook_cluster_ip"
+		log_debug "Webhook ClusterIP: $webhook_cluster_ip"
 	fi
 
 	if [ -n "$webhook_cluster_ips" ]; then
-		log_detail "Webhook ClusterIPs: $webhook_cluster_ips"
+		log_debug "Webhook ClusterIPs: $webhook_cluster_ips"
 
 		if echo "$webhook_cluster_ips" | grep -q " "; then
 			log_info "✅ Webhook service has multiple ClusterIPs (dual-stack capable)"
@@ -200,13 +166,10 @@ check_webhook_connectivity() {
 
 # Main execution
 main() {
-	echo
-	echo "========================================"
-	echo "  Network Stack Detection"
-	echo "========================================"
-	echo
+	print_header "Network Stack Detection"
 
-	check_prerequisites
+	require_cmd oc
+	require_cluster
 
 	# Detect stack type
 	local stack_type=$(detect_cluster_network)

@@ -7,40 +7,18 @@
 
 set -euo pipefail
 
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
+
 YAML_DIR="${SCRIPT_DIR}/../yaml/pebble-challtestsrv"
 
 export PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
 
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_note() { echo -e "${BLUE}[NOTE]${NC} $1"; }
+print_header "Install Pebble Challenge Test Server"
 
-echo
-echo "========================================"
-echo "  Install Pebble Challenge Test Server"
-echo "========================================"
-echo
+require_cmd oc
+require_cluster
 
-# Check prerequisites
-if ! command -v oc &>/dev/null; then
-	log_error "oc command not found"
-	exit 1
-fi
-
-if ! oc whoami &>/dev/null; then
-	log_error "Not logged into OpenShift"
-	exit 1
-fi
-
-# Check if Pebble namespace exists
 if ! oc get namespace "$PEBBLE_NAMESPACE" &>/dev/null; then
 	log_error "Pebble namespace '$PEBBLE_NAMESPACE' not found. Install Pebble first."
 	exit 1
@@ -48,7 +26,6 @@ fi
 
 log_info "Installing Challenge Test Server..."
 
-# Apply manifests
 log_info "Applying deployment..."
 envsubst <"$YAML_DIR/deployment.yaml" | oc apply -f -
 
@@ -76,4 +53,4 @@ echo "2. Use management API to set DNS records:"
 echo "   curl -X POST http://pebble-challtestsrv.pebble.svc:8055/set-txt \\"
 echo "     -d '{\"host\":\"_acme-challenge.example.com.\",\"value\":\"test\"}'"
 echo
-log_note "This DNS server works with Pebble's ALWAYS_VALID mode!"
+log_info "This DNS server works with Pebble's ALWAYS_VALID mode!"

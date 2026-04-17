@@ -7,23 +7,10 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_detail() { echo -e "${BLUE}[DETAIL]${NC} $1"; }
-
-echo
-echo "========================================"
-echo "  DNS-01 Challenge Diagnostics"
-echo "========================================"
-echo
+print_header "DNS-01 Challenge Diagnostics"
 
 # Check cert-manager
 log_info "Checking cert-manager..."
@@ -50,9 +37,9 @@ if oc get deployment pebble -n pebble &>/dev/null; then
 		# Check if using ALWAYS_VALID
 		ALWAYS_VALID=$(oc get deployment pebble -n pebble -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="PEBBLE_VA_ALWAYS_VALID")].value}' 2>/dev/null || echo "0")
 		if [ "$ALWAYS_VALID" = "1" ]; then
-			log_detail "Pebble ALWAYS_VALID: enabled (all challenges auto-succeed)"
+			log_debug "Pebble ALWAYS_VALID: enabled (all challenges auto-succeed)"
 		else
-			log_detail "Pebble ALWAYS_VALID: disabled (real DNS validation required)"
+			log_debug "Pebble ALWAYS_VALID: disabled (real DNS validation required)"
 		fi
 	else
 		log_error "Pebble has no ready replicas"
@@ -124,21 +111,21 @@ if [ -n "$CHALLENGES" ]; then
 		NAMESPACE=$(echo "$challenge" | cut -d'/' -f1)
 		NAME=$(echo "$challenge" | cut -d'/' -f2)
 
-		log_detail "Challenge: $NAME (namespace: $NAMESPACE)"
+		log_debug "Challenge: $NAME (namespace: $NAMESPACE)"
 
 		STATE=$(oc get challenge "$NAME" -n "$NAMESPACE" -o jsonpath='{.status.state}' 2>/dev/null || echo "unknown")
-		log_detail "  State: $STATE"
+		log_debug "  State: $STATE"
 
 		# Get challenge details
 		DOMAIN=$(oc get challenge "$NAME" -n "$NAMESPACE" -o jsonpath='{.spec.dnsName}' 2>/dev/null || echo "unknown")
 		KEY=$(oc get challenge "$NAME" -n "$NAMESPACE" -o jsonpath='{.spec.key}' 2>/dev/null || echo "unknown")
 
-		log_detail "  Domain: $DOMAIN"
-		log_detail "  DNS Record: _acme-challenge.$DOMAIN"
+		log_debug "  Domain: $DOMAIN"
+		log_debug "  DNS Record: _acme-challenge.$DOMAIN"
 
 		# Check if TXT record should exist
 		if [ "$STATE" = "pending" ] || [ "$STATE" = "processing" ]; then
-			log_detail "  Expected TXT record key: ${KEY:0:20}..."
+			log_debug "  Expected TXT record key: ${KEY:0:20}..."
 		fi
 
 		echo

@@ -11,44 +11,8 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_detail() { echo -e "${BLUE}[DETAIL]${NC} $1"; }
-
-# Print header
-print_header() {
-	echo
-	echo "========================================"
-	echo "  Workload Partitioning Check"
-	echo "========================================"
-	echo
-}
-
-# Check prerequisites
-check_prerequisites() {
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found. Please install OpenShift CLI."
-		exit 1
-	fi
-
-	if ! oc whoami &>/dev/null; then
-		log_error "Not logged in to OpenShift cluster. Please run 'oc login' first."
-		exit 1
-	fi
-
-	# Check if jq is available (optional but helpful)
-	if ! command -v jq &>/dev/null; then
-		log_warn "jq not found - output will be less detailed"
-	fi
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 
 # Check if cert-manager is installed
 check_cert_manager_exists() {
@@ -84,7 +48,7 @@ check_workload_partitioning() {
 		local pod_name=$(echo "$pods" | jq -r ".items[$i].metadata.name")
 		local annotations=$(echo "$pods" | jq -r ".items[$i].metadata.annotations // {}")
 
-		log_detail "Checking pod: $pod_name"
+		log_debug "Checking pod: $pod_name"
 
 		# Check for the workload partitioning annotation
 		local wp_annotation=$(echo "$annotations" | jq -r '."target.workload.openshift.io/management" // empty')
@@ -133,7 +97,7 @@ check_deployment_configs() {
 			local deploy_name=$(echo "$deployments" | jq -r ".items[$i].metadata.name")
 			local pod_annotations=$(echo "$deployments" | jq -r ".items[$i].spec.template.metadata.annotations // {}")
 
-			log_detail "Checking deployment: $deploy_name"
+			log_debug "Checking deployment: $deploy_name"
 
 			local wp_annotation=$(echo "$pod_annotations" | jq -r '."target.workload.openshift.io/management" // empty')
 
@@ -193,8 +157,9 @@ provide_recommendations() {
 
 # Main execution
 main() {
-	print_header
-	check_prerequisites
+	print_header "Workload Partitioning Check"
+	require_cmd oc jq
+	require_cluster
 	check_cert_manager_exists
 
 	local namespace="cert-manager"

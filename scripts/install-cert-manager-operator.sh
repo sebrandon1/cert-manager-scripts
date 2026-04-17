@@ -10,23 +10,10 @@ set -euo pipefail
 
 # Get script directory and source common library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
-	# shellcheck source=../lib/common.sh
-	source "$SCRIPT_DIR/lib/common.sh"
-	load_env
-	setup_cleanup
-else
-	# Fallback if common.sh doesn't exist
-	RED='\033[0;31m'
-	GREEN='\033[0;32m'
-	YELLOW='\033[1;33m'
-	BLUE='\033[0;34m'
-	NC='\033[0m'
-	log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
-	log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
-	log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
-	log_success() { echo -e "${GREEN}[SUCCESS]${NC} $*"; }
-fi
+# shellcheck source=../lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+load_env
+setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/yaml/cert-manager-operator"
 
@@ -36,32 +23,12 @@ export CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
 export OPERATOR_NAME="${OPERATOR_NAME:-openshift-cert-manager-operator}"
 export CHANNEL="${CHANNEL:-stable-v1}"
 
-# Function to check if oc is installed and user is logged in
+# Function to check prerequisites
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found. Please install OpenShift CLI."
-		exit 1
-	fi
-
-	if ! command -v envsubst &>/dev/null; then
-		log_error "envsubst command not found. Please install gettext package."
-		log_info "  macOS: brew install gettext"
-		log_info "  RHEL/Fedora: dnf install gettext"
-		exit 1
-	fi
-
-	if ! oc whoami &>/dev/null; then
-		log_error "Not logged in to OpenShift cluster. Please run 'oc login' first."
-		exit 1
-	fi
-
-	# Check if user has cluster-admin privileges
-	if ! oc auth can-i '*' '*' --all-namespaces &>/dev/null; then
-		log_error "Cluster-admin privileges required. Please ensure you have the necessary permissions."
-		exit 1
-	fi
+	require_cmd oc envsubst
+	require_cluster_admin
 
 	# Check if YAML directory exists
 	if [ ! -d "$YAML_DIR" ]; then
@@ -70,19 +37,6 @@ check_prerequisites() {
 	fi
 
 	log_info "Prerequisites check passed."
-}
-
-# Function to create namespace if it doesn't exist
-create_namespace() {
-	local namespace=$1
-
-	if oc get namespace "$namespace" &>/dev/null; then
-		log_info "Namespace '$namespace' already exists."
-	else
-		log_info "Creating namespace '$namespace'..."
-		oc create namespace "$namespace"
-		log_info "Namespace '$namespace' created successfully."
-	fi
 }
 
 # Function to check if operator is already installed
@@ -110,78 +64,33 @@ check_existing_installation() {
 	log_info "No existing installation found. Will proceed with fresh installation."
 }
 
-# Function to apply YAML with variable substitution
-apply_yaml() {
-	local yaml_file=$1
-	local resource_type=$2
-
-	if [ ! -f "$yaml_file" ]; then
-		log_error "YAML file not found: $yaml_file"
-		exit 1
-	fi
-
-	log_info "Applying $resource_type from $(basename "$yaml_file")..."
-	envsubst <"$yaml_file" | oc apply -f -
-}
-
 # Function to install the operator
 install_operator() {
 	log_info "Installing cert-manager Operator for Red Hat OpenShift..."
 
 	# Create OperatorGroup
-	apply_yaml "$YAML_DIR/operatorgroup.yaml" "OperatorGroup"
+	apply_yaml_template "$YAML_DIR/operatorgroup.yaml" "OperatorGroup"
 
 	# Create Subscription
-	apply_yaml "$YAML_DIR/subscription.yaml" "Subscription"
+	apply_yaml_template "$YAML_DIR/subscription.yaml" "Subscription"
 
 	log_info "Resources applied. Waiting for operator installation to complete..."
 }
 
 # Function to wait for operator to be ready
 wait_for_operator() {
-	log_info "Waiting for cert-manager-operator to be ready..."
-
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		# Check if CSV is present and successful
-		if oc get csv -n "$OPERATOR_NAMESPACE" 2>/dev/null | grep -q "cert-manager.*Succeeded"; then
-			log_info "Operator CSV is in Succeeded phase."
-			break
-		fi
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			echo -n " [${attempt}/${max_attempts}]"
-		else
-			echo -n "."
-		fi
-		sleep 5
-	done
-	echo
-
-	if [ $attempt -eq $max_attempts ]; then
-		log_error "Timeout waiting for operator CSV to be ready."
-		log_info "Check the status with: oc get csv -n $OPERATOR_NAMESPACE"
-		log_info "Check operator logs with: oc logs -n $OPERATOR_NAMESPACE deployment/cert-manager-operator-controller-manager"
-		exit 1
-	fi
+	# Wait for CSV to reach Succeeded phase
+	wait_for_csv "$OPERATOR_NAMESPACE" "cert-manager" 60
 
 	# Wait for operator deployment to be ready
 	log_info "Waiting for operator deployment to be ready..."
 	if oc get deployment cert-manager-operator-controller-manager -n "$OPERATOR_NAMESPACE" &>/dev/null; then
-		oc wait --for=condition=available --timeout=300s \
-			deployment/cert-manager-operator-controller-manager \
-			-n "$OPERATOR_NAMESPACE" || {
-			log_error "Operator deployment failed to become ready."
-			exit 1
-		}
+		wait_for_resource "deployment/cert-manager-operator-controller-manager" "$OPERATOR_NAMESPACE" 300s
 	else
 		log_warn "Operator deployment not found yet, but CSV is ready."
 	fi
 
-	log_info "Operator is ready!"
+	log_success "Operator is ready!"
 }
 
 # Function to verify installation
@@ -239,7 +148,7 @@ main() {
 
 	check_prerequisites
 	check_existing_installation
-	create_namespace "$OPERATOR_NAMESPACE"
+	ensure_namespace "$OPERATOR_NAMESPACE"
 	install_operator
 	wait_for_operator
 	verify_installation

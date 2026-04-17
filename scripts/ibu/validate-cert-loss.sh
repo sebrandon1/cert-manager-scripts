@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-print_header() {
+print_validation_header() {
 	echo
 	echo "========================================"
 	if [ "$EXPECT_PRESERVED" = true ]; then
@@ -263,7 +263,7 @@ compare_metadata() {
 }
 
 main() {
-	print_header
+	print_validation_header
 	check_prerequisites
 
 	compare_metadata

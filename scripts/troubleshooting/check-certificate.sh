@@ -7,28 +7,15 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_detail() { echo -e "${BLUE}[DETAIL]${NC} $1"; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 
 # Function to check a single certificate
 check_single_certificate() {
 	local CERT_NAME=$1
 	local NAMESPACE=$2
 
-	echo
-	echo "========================================"
-	echo "  Certificate Diagnostics"
-	echo "========================================"
-	echo
+	print_header "Certificate Diagnostics"
 	log_info "Certificate: $CERT_NAME"
 	log_info "Namespace: $NAMESPACE"
 	echo
@@ -57,7 +44,7 @@ check_single_certificate() {
 		oc get secret "$SECRET_NAME" -n "$NAMESPACE" 2>/dev/null || log_warn "Secret not found"
 
 		echo
-		log_info "Certificate Details:"
+		log_debug "Certificate Details:"
 		echo "To view certificate:"
 		echo "  oc get secret $SECRET_NAME -n $NAMESPACE -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout"
 
@@ -152,11 +139,7 @@ check_single_certificate() {
 # Main logic
 if [ $# -eq 0 ]; then
 	# No arguments - check all certificates
-	echo
-	echo "========================================"
-	echo "  Checking All Certificates"
-	echo "========================================"
-	echo
+	print_header "Checking All Certificates"
 
 	# Get all certificates across all namespaces
 	CERTS=$(oc get certificate -A -o json 2>/dev/null | jq -r '.items[] | "\(.metadata.namespace) \(.metadata.name)"' 2>/dev/null || echo "")

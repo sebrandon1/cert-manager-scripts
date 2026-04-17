@@ -7,65 +7,22 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Get script directory
+# Get script directory and source common library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
+
 YAML_DIR="${SCRIPT_DIR}/../yaml/certificates"
 
 # Configuration (exported for envsubst)
 export ISSUER_NAME="${ISSUER_NAME:-pebble-issuer}"
 export CERT_NAMESPACE="${CERT_NAMESPACE:-default}"
 
-# Function to print colored messages
-log_info() {
-	echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-	echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-	echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_detail() {
-	echo -e "${BLUE}[DETAIL]${NC} $1"
-}
-
-# Function to print header
-print_header() {
-	echo
-	echo "========================================"
-	echo "  Create Test Certificates"
-	echo "========================================"
-	echo
-}
-
 # Function to check prerequisites
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found. Please install OpenShift CLI."
-		exit 1
-	fi
-
-	if ! command -v envsubst &>/dev/null; then
-		log_error "envsubst command not found. Please install gettext package."
-		exit 1
-	fi
-
-	if ! oc whoami &>/dev/null; then
-		log_error "Not logged in to OpenShift cluster. Please run 'oc login' first."
-		exit 1
-	fi
+	require_cmd oc envsubst
+	require_cluster
 
 	# Check if cert-manager is installed
 	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
@@ -183,7 +140,8 @@ wait_for_certificates() {
 		# Check each certificate
 		for cert in test-cert-simple test-cert-app test-cert-api; do
 			if oc get certificate "$cert" -n "$CERT_NAMESPACE" &>/dev/null; then
-				local ready=$(oc get certificate "$cert" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+				local ready
+				ready=$(oc get certificate "$cert" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
 
 				if [ "$ready" != "True" ]; then
 					all_ready=false
@@ -200,7 +158,7 @@ wait_for_certificates() {
 		done
 
 		if [ "$all_ready" = true ]; then
-			log_info "All certificates are ready!"
+			log_success "All certificates are ready!"
 			break
 		fi
 
@@ -289,7 +247,7 @@ display_next_steps() {
 
 # Main execution
 main() {
-	print_header
+	print_header "Create Test Certificates"
 	check_prerequisites
 	create_test_certificates
 	wait_for_certificates

@@ -14,36 +14,16 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_detail() { echo -e "${BLUE}[DETAIL]${NC} $1"; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
 
 # Configuration
 CERT_NAMESPACE="${CERT_NAMESPACE:-openshift-config}"
 CERT_NAME="apiserver-cert"
 SECRET_NAME="apiserver-cert-tls"
 
-print_header() {
-	echo
-	echo "========================================"
-	echo "  API Server Certificate Verification"
-	echo "========================================"
-	echo
-}
-
 check_prerequisites() {
-	if ! command -v oc &>/dev/null; then
-		log_error "oc command not found. Please install OpenShift CLI."
-		exit 1
-	fi
+	require_cmd oc
 
 	# Try multiple times to connect - cluster may be temporarily unstable
 	local max_attempts=3
@@ -80,7 +60,7 @@ verify_api_server_access() {
 	if oc whoami &>/dev/null; then
 		log_info "  ✅ API server is accessible (authenticated)"
 		local username=$(oc whoami 2>/dev/null || echo "unknown")
-		log_detail "     Logged in as: $username"
+		log_debug "     Logged in as: $username"
 	else
 		log_error "  ❌ Cannot authenticate with API server"
 		has_issues=1
@@ -195,19 +175,19 @@ verify_certificate_details() {
 		# Check subject
 		local subject=$(echo "$cert_pem" | openssl x509 -noout -subject 2>/dev/null)
 		if [ -n "$subject" ]; then
-			log_detail "  Subject: $subject"
+			log_debug "  Subject: $subject"
 		fi
 
 		# Check SANs
 		local sans=$(echo "$cert_pem" | openssl x509 -noout -text 2>/dev/null | grep -A1 "Subject Alternative Name" | tail -1 | sed 's/^[[:space:]]*//')
 		if [ -n "$sans" ]; then
-			log_detail "  SANs: $sans"
+			log_debug "  SANs: $sans"
 		fi
 
 		# Check issuer
 		local issuer=$(echo "$cert_pem" | openssl x509 -noout -issuer 2>/dev/null)
 		if [ -n "$issuer" ]; then
-			log_detail "  Issuer: $issuer"
+			log_debug "  Issuer: $issuer"
 		fi
 	else
 		log_error "  ❌ Could not extract certificate from secret"
@@ -231,11 +211,11 @@ check_apiserver_configuration() {
 			log_info "  Named certificates configured:"
 			echo "$serving_certs" | while read -r cert_name; do
 				if [ -n "$cert_name" ]; then
-					log_detail "    - $cert_name"
+					log_debug "    - $cert_name"
 				fi
 			done
 		else
-			log_detail "  No named certificates configured (using default)"
+			log_debug "  No named certificates configured (using default)"
 		fi
 	else
 		log_warn "  ⚠️  Could not retrieve API server configuration"
@@ -283,7 +263,7 @@ provide_recommendations() {
 }
 
 main() {
-	print_header
+	print_header "API Server Certificate Verification"
 	check_prerequisites
 
 	local total_issues=0

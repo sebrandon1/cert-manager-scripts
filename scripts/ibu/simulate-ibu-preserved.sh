@@ -21,18 +21,6 @@ export TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
 export BACKUP_NAME="${BACKUP_NAME:-ibu-preserved-$(date +%s)}"
 export RESTORE_NAME="${RESTORE_NAME:-${BACKUP_NAME}-restore}"
 
-print_header() {
-	echo
-	echo "========================================"
-	echo "  IBU Simulation (Preserved Mode)"
-	echo "========================================"
-	echo
-	echo "  Target Namespace: $TARGET_NAMESPACE"
-	echo "  Backup Name:      $BACKUP_NAME"
-	echo "  Mode:             Certificate Preservation"
-	echo
-}
-
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 	require_cmd oc jq envsubst
@@ -64,47 +52,12 @@ check_prerequisites() {
 	log_info "Prerequisites check passed."
 }
 
-build_apply_label_annotation() {
-	# Build the lca.openshift.io/apply-label annotation value
-	local annotation_parts=()
-
-	# Get all certificates
-	local cert_names
-	cert_names=$(oc get certificates -n "$TARGET_NAMESPACE" -o jsonpath='{.items[*].metadata.name}')
-
-	for cert_name in $cert_names; do
-		# Add certificate
-		annotation_parts+=("cert-manager.io/v1/certificates/$TARGET_NAMESPACE/$cert_name")
-
-		# Get the associated secret name
-		local secret_name
-		secret_name=$(oc get certificate "$cert_name" -n "$TARGET_NAMESPACE" \
-			-o jsonpath='{.spec.secretName}' 2>/dev/null || echo "")
-
-		if [ -n "$secret_name" ]; then
-			# Check if secret exists
-			if oc get secret "$secret_name" -n "$TARGET_NAMESPACE" &>/dev/null; then
-				annotation_parts+=("v1/secrets/$TARGET_NAMESPACE/$secret_name")
-			fi
-		fi
-	done
-
-	# Join with commas
-	local annotation_value
-	annotation_value=$(
-		IFS=','
-		echo "${annotation_parts[*]}"
-	)
-
-	echo "$annotation_value"
-}
-
 create_preserved_backup() {
 	log_info "Creating preserved backup: $BACKUP_NAME"
 
 	# Build the apply-label annotation
 	local apply_label_annotation
-	apply_label_annotation=$(build_apply_label_annotation)
+	apply_label_annotation=$(build_lca_annotations "$TARGET_NAMESPACE")
 
 	log_info "Using apply-label annotation: $apply_label_annotation"
 
@@ -112,35 +65,7 @@ create_preserved_backup() {
 	envsubst <"$YAML_DIR/backup-preserved.yaml" | oc apply -f -
 
 	# Wait for backup to complete
-	log_info "Waiting for backup to complete..."
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local phase
-		phase=$(oc get backup "$BACKUP_NAME" -n "$OADP_NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-
-		case "$phase" in
-		Completed)
-			log_success "Backup completed successfully!"
-			return 0
-			;;
-		Failed | PartiallyFailed)
-			log_error "Backup failed with phase: $phase"
-			oc describe backup "$BACKUP_NAME" -n "$OADP_NAMESPACE"
-			return 1
-			;;
-		esac
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			log_info "Backup phase: $phase ($attempt/$max_attempts)"
-		fi
-		sleep 5
-	done
-
-	log_error "Timeout waiting for backup to complete"
-	return 1
+	wait_for_backup_restore "backup" "$BACKUP_NAME" "$OADP_NAMESPACE"
 }
 
 delete_namespace_resources() {
@@ -174,35 +99,7 @@ restore_from_backup() {
 	envsubst <"$YAML_DIR/restore-preserved.yaml" | oc apply -f -
 
 	# Wait for restore to complete
-	log_info "Waiting for restore to complete..."
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local phase
-		phase=$(oc get restore "$RESTORE_NAME" -n "$OADP_NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-
-		case "$phase" in
-		Completed)
-			log_success "Restore completed successfully!"
-			return 0
-			;;
-		Failed | PartiallyFailed)
-			log_error "Restore failed with phase: $phase"
-			oc describe restore "$RESTORE_NAME" -n "$OADP_NAMESPACE"
-			return 1
-			;;
-		esac
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			log_info "Restore phase: $phase ($attempt/$max_attempts)"
-		fi
-		sleep 5
-	done
-
-	log_error "Timeout waiting for restore to complete"
-	return 1
+	wait_for_backup_restore "restore" "$RESTORE_NAME" "$OADP_NAMESPACE"
 }
 
 verify_restored_resources() {
@@ -245,7 +142,12 @@ print_summary() {
 }
 
 main() {
-	print_header
+	print_header "IBU Simulation (Preserved Mode)"
+	log_info "Target Namespace: $TARGET_NAMESPACE"
+	log_info "Backup Name: $BACKUP_NAME"
+	log_info "Mode: Certificate Preservation"
+	echo
+
 	check_prerequisites
 
 	create_preserved_backup

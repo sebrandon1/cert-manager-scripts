@@ -14,14 +14,6 @@ source "$SCRIPT_DIR/../lib/common.sh"
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/oadp"
 OADP_NAMESPACE="${OADP_NAMESPACE:-openshift-adp}"
 
-print_header() {
-	echo
-	echo "========================================"
-	echo "  OADP Operator Installation"
-	echo "========================================"
-	echo
-}
-
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 	require_cmd oc
@@ -72,35 +64,7 @@ install_oadp() {
 	oc apply -f "$YAML_DIR/subscription.yaml"
 
 	# Wait for operator to be ready
-	wait_for_operator
-}
-
-wait_for_operator() {
-	log_info "Waiting for OADP operator to be ready..."
-
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		# Check if CSV is succeeded
-		local csv_phase
-		csv_phase=$(oc get csv -n "$OADP_NAMESPACE" -l operators.coreos.com/redhat-oadp-operator.openshift-adp -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "")
-
-		if [ "$csv_phase" = "Succeeded" ]; then
-			log_success "OADP operator is ready!"
-			return 0
-		fi
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			log_info "Waiting for operator... ($attempt/$max_attempts)"
-		fi
-		sleep 5
-	done
-
-	log_error "Timeout waiting for OADP operator."
-	log_info "Check status with: oc get csv -n $OADP_NAMESPACE"
-	return 1
+	wait_for_csv "$OADP_NAMESPACE" "redhat-oadp-operator"
 }
 
 configure_dpa() {
@@ -167,7 +131,7 @@ verify_installation() {
 }
 
 main() {
-	print_header
+	print_header "OADP Operator Installation"
 	check_prerequisites
 
 	if check_existing_installation; then
