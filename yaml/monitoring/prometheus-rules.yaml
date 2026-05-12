@@ -26,8 +26,8 @@ spec:
         ) < (21 * 24 * 3600)
       for: 1h
       annotations:
-        summary: "Certificate {{ $labels.name }} expires in {{ $value | humanizeDuration }}"
-        description: "Certificate {{ $labels.name }} in namespace {{ $labels.exported_namespace }} expires in {{ $value | humanizeDuration }}. It should have been renewed automatically."
+        summary: "Certificate {{ $labels.name }} expiring soon"
+        description: "Certificate {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is expiring within 21 days. It should have been renewed automatically."
       labels:
         severity: warning
     - alert: CertManagerCertNotReady
