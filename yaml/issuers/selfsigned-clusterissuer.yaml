@@ -1,0 +1,7 @@
+# Bootstrap issuer for generating the root CA certificate.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ${SELFSIGNED_ISSUER_NAME}
+spec:
+  selfSigned: {}

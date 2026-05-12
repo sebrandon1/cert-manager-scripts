@@ -1,0 +1,9 @@
+# CA issuer backed by the self-signed root CA.
+# Use for disconnected/air-gapped environments where ACME is unavailable.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ${CA_ISSUER_NAME}
+spec:
+  ca:
+    secretName: ${ROOT_CA_SECRET_NAME}
