@@ -24,12 +24,12 @@ BG_BLUE := \033[44m
 # Target Definitions
 # ────────────────────────────────────────────────────────────────────────────────
 .PHONY: all help banner preflight lint install-cert-manager-operator install-pebble \
-        install-fake-dns install-all create-issuer create-dns01-issuer create-certs \
-        create-apiserver-cert verify-apiserver-cert \
+        install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
+        create-certs create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert \
         troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
-        clean-dns-config clean-issuers clean-temp uninstall-cert-manager-operator \
+        clean-dns-config clean-issuers clean-monitoring clean-temp uninstall-cert-manager-operator \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu
 
@@ -132,6 +132,9 @@ install-fake-dns: ## Install fake DNS API for air-gapped DNS-01 testing
 	@echo "$(BOLD)$(BLUE)Installing fake DNS API for air-gapped testing...$(RESET)"
 	@./scripts/install-fake-dns.sh
 	@echo ""
+
+install-monitoring: ## Install cert-manager Prometheus monitoring and alerts
+	@./scripts/install-monitoring.sh
 
 install-all: install-cert-manager-operator install-pebble ## Install cert-manager-operator and Pebble
 	@echo ""
@@ -393,13 +396,18 @@ clean-issuers: ## Clean up ClusterIssuers
 	@oc delete secret rfc2136-credentials -n default --ignore-not-found=true
 	@echo "$(GREEN)ClusterIssuers cleaned.$(RESET)"
 
+clean-monitoring: ## Clean up cert-manager monitoring resources
+	@echo "$(BOLD)$(YELLOW)Cleaning up monitoring resources...$(RESET)"
+	@oc delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts -n cert-manager --ignore-not-found=true
+	@echo "$(GREEN)Monitoring resources cleaned.$(RESET)"
+
 clean-temp: ## Clean up temporary files
 	@echo "Cleaning temporary files..."
 	@find . -name "*.tmp" -delete
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
 
-clean: clean-certs clean-issuers clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
+clean: clean-certs clean-issuers clean-monitoring clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
