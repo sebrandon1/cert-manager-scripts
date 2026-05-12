@@ -41,7 +41,7 @@ spec:
         description: "Certificate {{ $labels.name }} in namespace {{ $labels.exported_namespace }} is not ready to serve traffic."
       labels:
         severity: warning
-    - alert: CertManagerHittingRateLimits
+    - alert: CertManagerACMEClientErrors
       expr: |
         sum by (host) (
           rate(certmanager_http_acme_client_request_count{status=~"4.."}[5m])

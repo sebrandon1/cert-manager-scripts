@@ -398,8 +398,7 @@ clean-issuers: ## Clean up ClusterIssuers
 
 clean-monitoring: ## Clean up cert-manager monitoring resources
 	@echo "$(BOLD)$(YELLOW)Cleaning up monitoring resources...$(RESET)"
-	@oc delete servicemonitor cert-manager -n cert-manager --ignore-not-found=true
-	@oc delete prometheusrule cert-manager-alerts -n cert-manager --ignore-not-found=true
+	@oc delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Monitoring resources cleaned.$(RESET)"
 
 clean-temp: ## Clean up temporary files
@@ -408,7 +407,7 @@ clean-temp: ## Clean up temporary files
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
 
-clean: clean-certs clean-issuers clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
+clean: clean-certs clean-issuers clean-monitoring clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"

@@ -93,11 +93,11 @@ verify_monitoring() {
 	log_info "Verifying monitoring resources..."
 	echo
 
-	echo "ServiceMonitor:"
+	log_info "ServiceMonitor:"
 	oc get servicemonitor -n "$CERT_MANAGER_NAMESPACE" 2>/dev/null || echo "  No ServiceMonitors found"
 	echo
 
-	echo "PrometheusRule:"
+	log_info "PrometheusRule:"
 	oc get prometheusrule -n "$CERT_MANAGER_NAMESPACE" 2>/dev/null || echo "  No PrometheusRules found"
 	echo
 }
@@ -110,7 +110,7 @@ display_next_steps() {
 	echo "  - CertManagerAbsent         (critical) cert-manager not scraped for 15m"
 	echo "  - CertManagerCertExpirySoon  (warning)  certificate expiring within 21 days"
 	echo "  - CertManagerCertNotReady    (warning)  certificate not ready for 10m"
-	echo "  - CertManagerHittingRateLimits (warning) ACME 4xx errors detected"
+	echo "  - CertManagerACMEClientErrors  (warning) ACME 4xx errors detected"
 	echo
 	echo "Next steps:"
 	echo
