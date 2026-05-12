@@ -25,11 +25,13 @@ BG_BLUE := \033[44m
 # ────────────────────────────────────────────────────────────────────────────────
 .PHONY: all help banner preflight lint install-cert-manager-operator install-pebble \
         install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
-        create-certs create-apiserver-cert verify-apiserver-cert \
-        test-all test-dns01 quick-http-test quick-dns-test test-cert verify-cert \
+        create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
+        test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
+        test-cert verify-cert \
         troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
-        clean-dns-config clean-issuers clean-monitoring clean-temp uninstall-cert-manager-operator \
+        clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
+        uninstall-cert-manager-operator \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu
 
@@ -154,6 +156,9 @@ create-issuer: ## Create ClusterIssuer pointing to Pebble (HTTP-01)
 create-dns01-issuer: ## Create ClusterIssuer pointing to Pebble (DNS-01)
 	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 
+create-selfsigned-issuer: ## Create self-signed CA chain (disconnected/air-gapped)
+	@./scripts/create-selfsigned-issuer.sh
+
 create-certs: ## Create test certificates (HTTP-01)
 	@./scripts/create-test-certificates.sh
 
@@ -241,6 +246,27 @@ quick-http-test: install-cert-manager-operator ## Quick end-to-end HTTP-01 test
 	done
 	@echo ""
 	@echo "Quick HTTP-01 test complete! Run 'make clean' to clean up."
+
+quick-selfsigned-test: install-cert-manager-operator create-selfsigned-issuer ## Quick end-to-end self-signed CA test
+	@echo ""
+	@echo "$(BOLD)$(BLUE)Quick Self-Signed CA Test Running...$(RESET)"
+	@echo ""
+	@CLUSTER_DOMAIN=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "apps-crc.testing"); \
+	ISSUER_NAME=$$(echo "$${CA_ISSUER_NAME:-selfsigned-ca-issuer}"); \
+	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-selfsigned\n  namespace: default\nspec:\n  secretName: test-cert-selfsigned-tls\n  issuerRef:\n    name: '"$$ISSUER_NAME"'\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n  - "*.'"$$CLUSTER_DOMAIN"'"\n' | oc apply -f -
+	@echo ""
+	@echo "Waiting for certificate (timeout: 2 minutes)..."
+	@timeout=120; elapsed=0; \
+	while [ $$elapsed -lt $$timeout ]; do \
+		if oc get certificate test-cert-selfsigned -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
+			break; \
+		fi; \
+		if [ $$((elapsed % 10)) -eq 0 ]; then echo "  Still waiting... ($$elapsed seconds)"; fi; \
+		sleep 2; elapsed=$$((elapsed + 2)); \
+	done
+	@echo ""
+	@echo "Quick self-signed CA test complete! Run 'make clean-selfsigned' to clean up."
 
 quick-dns-test: test-dns01 test-cert ## Quick end-to-end DNS-01 test
 	@echo ""
@@ -390,11 +416,20 @@ clean-dns-config: ## Restore DNS configuration
 	@oc patch dns.operator.openshift.io/default --type=json -p='[{"op": "remove", "path": "/spec/servers"}]' 2>/dev/null || true
 	@echo "DNS configuration restored."
 
-clean-issuers: ## Clean up ClusterIssuers
+clean-issuers: ## Clean up ClusterIssuers (ACME/Pebble)
 	@echo "$(BOLD)$(YELLOW)Cleaning up ClusterIssuers...$(RESET)"
 	@oc delete clusterissuer pebble-issuer pebble-dns01-issuer --ignore-not-found=true
 	@oc delete secret rfc2136-credentials -n default --ignore-not-found=true
 	@echo "$(GREEN)ClusterIssuers cleaned.$(RESET)"
+
+clean-selfsigned: ## Clean up self-signed CA chain
+	@echo "$(BOLD)$(YELLOW)Cleaning up self-signed CA resources...$(RESET)"
+	@oc delete certificate test-cert-selfsigned -n default --ignore-not-found=true
+	@oc delete secret test-cert-selfsigned-tls -n default --ignore-not-found=true
+	@oc delete clusterissuer selfsigned-ca-issuer selfsigned-issuer --ignore-not-found=true
+	@oc delete certificate root-ca -n cert-manager --ignore-not-found=true
+	@oc delete secret root-ca-secret -n cert-manager --ignore-not-found=true
+	@echo "$(GREEN)Self-signed CA resources cleaned.$(RESET)"
 
 clean-monitoring: ## Clean up cert-manager monitoring resources
 	@echo "$(BOLD)$(YELLOW)Cleaning up monitoring resources...$(RESET)"
@@ -407,7 +442,7 @@ clean-temp: ## Clean up temporary files
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
 
-clean: clean-certs clean-issuers clean-monitoring clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
+clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"

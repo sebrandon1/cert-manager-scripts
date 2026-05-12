@@ -174,20 +174,7 @@ main() {
 
 	require_cmd oc envsubst
 	require_cluster
-
-	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
-		log_error "cert-manager not found. Please install cert-manager-operator first."
-		log_info "  Run: make install-cert-manager-operator"
-		exit 1
-	fi
-
-	log_info "Waiting for cert-manager webhook to be ready..."
-	if ! oc wait --for=condition=available --timeout=120s deployment/cert-manager-webhook -n cert-manager; then
-		log_error "Timeout waiting for cert-manager webhook to be ready."
-		log_info "  Check webhook status: oc get deployment cert-manager-webhook -n cert-manager"
-		exit 1
-	fi
-	log_info "cert-manager webhook is ready."
+	require_cert_manager
 
 	if [ ! -d "$YAML_DIR" ]; then
 		log_error "YAML directory not found: $YAML_DIR"

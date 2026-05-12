@@ -1,0 +1,23 @@
+# Root CA issued by the bootstrap SelfSigned issuer.
+# The CA ClusterIssuer references this secret to sign leaf certificates.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${ROOT_CA_NAME}
+  namespace: ${ROOT_CA_NAMESPACE}
+spec:
+  isCA: true
+  commonName: ${ROOT_CA_COMMON_NAME}
+  subject:
+    organizations:
+    - "${ROOT_CA_ORG}"
+  secretName: ${ROOT_CA_SECRET_NAME}
+  duration: ${ROOT_CA_DURATION}
+  renewBefore: ${ROOT_CA_RENEW_BEFORE}
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  issuerRef:
+    name: ${SELFSIGNED_ISSUER_NAME}
+    kind: ClusterIssuer
+    group: cert-manager.io
