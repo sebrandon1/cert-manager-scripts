@@ -1,0 +1,65 @@
+name: Nightly Integration Tests
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      cert-manager-version:
+        description: 'Cert-manager operator version (leave empty for full matrix)'
+        required: false
+        type: string
+      ocp-version:
+        description: 'OCP version (leave empty for full matrix)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    name: Build test matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Determine matrix
+        id: set-matrix
+        run: |
+          cm_input="${{ github.event.inputs.cert-manager-version }}"
+          ocp_input="${{ github.event.inputs.ocp-version }}"
+          cm_versions=${cm_input:+"[\"${cm_input}\"]"}
+          cm_versions=${cm_versions:-'["v1.18.1", "v1.19.0"]'}
+          ocp_versions=${ocp_input:+"[\"${ocp_input}\"]"}
+          ocp_versions=${ocp_versions:-'["4.20", "4.21"]'}
+          echo "matrix={\"cert-manager-version\":${cm_versions},\"ocp-version\":${ocp_versions}}" >> "$GITHUB_OUTPUT"
+
+  lint:
+    name: Quick lint gate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Shfmt
+        uses: mfinelli/setup-shfmt@a25fda4c1fe115aec0f85e04126610841bc3141d # v4.0.1
+
+      - name: Shfmt
+        run: shfmt -d .
+
+      - name: Run ShellCheck
+        run: find scripts/ -type f -name "*.sh" -print0 | xargs -0 shellcheck --severity=error --shell=bash
+
+  integration-test:
+    name: Test cert-manager ${{ matrix.cert-manager-version }} on OCP ${{ matrix.ocp-version }}
+    needs: [setup, lint]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    uses: ./.github/workflows/reusable-integration-test.yml
+    with:
+      ocp-version: ${{ matrix.ocp-version }}
+      cert-manager-version: ${{ matrix.cert-manager-version }}
+    secrets:
+      CRC_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
