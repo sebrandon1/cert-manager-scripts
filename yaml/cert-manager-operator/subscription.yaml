@@ -1,7 +1,7 @@
 # Cert-Manager Operator: Subscription
 #
 # Subscribes to the openshift-cert-manager-operator from Red Hat's operator
-# catalog. Uses automatic install approval to keep the operator updated.
+# catalog. Pins to a specific version via startingCSV for reproducibility.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -13,4 +13,5 @@ spec:
   name: openshift-cert-manager-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
+  startingCSV: cert-manager-operator.${CERT_MANAGER_VERSION}
 

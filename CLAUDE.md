@@ -88,6 +88,7 @@ Organized by component: `cert-manager-operator/`, `pebble/`, `fake-dns-api/`, `i
 
 | Variable | Default | Effect |
 |----------|---------|--------|
+| `CERT_MANAGER_VERSION` | `v1.19.0` | Operator version pin (startingCSV in subscription) |
 | `PEBBLE_ALWAYS_VALID` | `0` | Set to `1` to skip real ACME challenge validation (quick testing) |
 | `DNS_SERVER` | `8.8.8.8:53` | Override for fake DNS: `fake-dns-api.fake-dns.svc.cluster.local:53` |
 | `OPERATOR_NAMESPACE` | `cert-manager-operator` | Operator install namespace |

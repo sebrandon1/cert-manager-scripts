@@ -1,0 +1,134 @@
+name: Reusable Integration Test
+
+on:
+  workflow_call:
+    inputs:
+      ocp-version:
+        required: true
+        type: string
+      cert-manager-version:
+        required: false
+        type: string
+        default: ''
+      checkout-ref:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      CRC_PULL_SECRET:
+        required: true
+
+env:
+  SHELL: /bin/bash
+  KUBECONFIG: '/home/runner/.crc/machines/crc/kubeconfig'
+
+jobs:
+  test:
+    name: OCP ${{ inputs.ocp-version }} / cert-manager ${{ inputs.cert-manager-version || 'default' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check Red Hat Status
+        uses: palmsoftware/redhat-status@v0
+        with:
+          components: |
+            api.openshift.com
+            developers.redhat.com
+
+      - name: Check if CRC_PULL_SECRET exists
+        env:
+          super_secret: ${{ secrets.CRC_PULL_SECRET }}
+        if: ${{ env.super_secret == '' }}
+        run: |
+          echo "CRC_PULL_SECRET is not set"
+          exit 1
+
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.checkout-ref || github.sha }}
+
+      - name: Deploy the OCP Cluster
+        uses: palmsoftware/quick-ocp@v0.0.32
+        with:
+          ocpPullSecret: $OCP_PULL_SECRET
+          bundleCache: true
+          desiredOCPVersion: ${{ inputs.ocp-version }}
+          waitForOperatorsReady: true
+        env:
+          OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
+
+      - name: Wait for cluster operators to stabilize
+        run: ./scripts/workflows/wait-for-cluster-operators.sh
+
+      - name: Full cluster health check
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 15
+          command: ./scripts/workflows/verify-cluster-access.sh
+
+      - name: Run quick HTTP-01 test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_on: error
+          command: make quick-http-test
+        env:
+          CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
+
+      - name: Verify workload partitioning configuration
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: make check-workload-partitioning
+
+      - name: Check network stack configuration
+        run: make check-network-stack
+
+      - name: Verify cluster connection before API server cert test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: ./scripts/workflows/verify-cluster-access.sh
+
+      - name: Create API server certificate
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          on_retry_command: |
+            echo "Certificate creation failed, attempting cluster recovery..."
+            ./scripts/workflows/recover-cluster.sh || echo "Recovery attempt failed"
+            sleep 5
+          command: make create-apiserver-cert
+
+      - name: Verify API server certificate
+        continue-on-error: true
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 2
+          retry_on: error
+          on_retry_command: |
+            echo "Verification failed, attempting cluster recovery..."
+            ./scripts/workflows/recover-cluster.sh || echo "Recovery attempt failed"
+            sleep 10
+          command: ./scripts/workflows/verify-apiserver-cert-with-retry.sh
+
+      - name: Final cluster health check
+        if: always()
+        run: |
+          echo "Running final cluster health check..."
+          ./scripts/workflows/verify-cluster-access.sh || echo "Cluster may be unstable"
+
+      - name: Display component status
+        if: always()
+        run: ./scripts/workflows/display-component-status.sh

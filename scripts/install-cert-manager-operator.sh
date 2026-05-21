@@ -22,6 +22,7 @@ export OPERATOR_NAMESPACE="${OPERATOR_NAMESPACE:-cert-manager-operator}"
 export CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
 export OPERATOR_NAME="${OPERATOR_NAME:-openshift-cert-manager-operator}"
 export CHANNEL="${CHANNEL:-stable-v1}"
+export CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.19.0}"
 
 # Function to check prerequisites
 check_prerequisites() {
@@ -144,6 +145,7 @@ display_next_steps() {
 # Main execution
 main() {
 	log_info "Starting cert-manager Operator installation..."
+	log_info "Version: $CERT_MANAGER_VERSION (channel: $CHANNEL)"
 	echo
 
 	check_prerequisites
