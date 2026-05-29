@@ -1,0 +1,57 @@
+name: Check acme-dns Version
+
+on:
+  schedule:
+    - cron: '41 8 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-version:
+    name: Check for new acme-dns version
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Get current pinned version
+        id: current
+        run: |
+          current=$(grep 'joohoi/acme-dns:' yaml/acme-dns/deployment.yaml | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          echo "Current pinned version: $current"
+
+      - name: Query GitHub for latest acme-dns version
+        id: latest
+        run: ./scripts/workflows/query-acme-dns-version.sh
+
+      - name: Compare versions
+        id: compare
+        run: ./scripts/workflows/compare-versions.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+
+      - name: Update deployment file
+        if: steps.compare.outputs.needs_update == 'true'
+        run: ./scripts/workflows/update-acme-dns-version.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+
+      - name: Create pull request
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Bump acme-dns to ${{ steps.latest.outputs.version }}"
+          title: "Bump acme-dns to ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated version bump detected by the weekly acme-dns version check.
+
+            **Current version:** `${{ steps.current.outputs.version }}`
+            **New version:** `${{ steps.latest.outputs.version }}`
+
+            Changes:
+            - Updated acme-dns deployment image tag
+
+            Source: [GitHub Releases](https://github.com/joohoi/acme-dns/releases)
+          branch: bump-acme-dns-${{ steps.latest.outputs.version }}
+          delete-branch: true
+          labels: dependencies
