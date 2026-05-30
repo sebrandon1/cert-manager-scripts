@@ -1,0 +1,58 @@
+name: Check Pebble Version
+
+on:
+  schedule:
+    - cron: '37 8 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-version:
+    name: Check for new Pebble version
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Get current pinned version
+        id: current
+        run: |
+          current=$(grep 'ghcr.io/letsencrypt/pebble:' yaml/pebble/deployment.yaml | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          echo "Current pinned version: $current"
+
+      - name: Query GitHub for latest Pebble version
+        id: latest
+        run: ./scripts/workflows/query-pebble-version.sh
+
+      - name: Compare versions
+        id: compare
+        run: ./scripts/workflows/compare-versions.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+
+      - name: Update deployment files
+        if: steps.compare.outputs.needs_update == 'true'
+        run: ./scripts/workflows/update-pebble-version.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+
+      - name: Create pull request
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Bump Pebble to ${{ steps.latest.outputs.version }}"
+          title: "Bump Pebble to ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated version bump detected by the weekly Pebble version check.
+
+            **Current version:** `${{ steps.current.outputs.version }}`
+            **New version:** `${{ steps.latest.outputs.version }}`
+
+            Changes:
+            - Updated `pebble` deployment image tag
+            - Updated `pebble-challtestsrv` deployment image tag
+
+            Source: [GitHub Releases](https://github.com/letsencrypt/pebble/releases)
+          branch: bump-pebble-${{ steps.latest.outputs.version }}
+          delete-branch: true
+          labels: dependencies

@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: pebble
-        image: ghcr.io/letsencrypt/pebble:latest
+        image: ghcr.io/letsencrypt/pebble:v2.10.1
         imagePullPolicy: IfNotPresent
         args:
         - -config

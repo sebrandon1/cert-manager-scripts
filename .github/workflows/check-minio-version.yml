@@ -1,0 +1,57 @@
+name: Check MinIO Version
+
+on:
+  schedule:
+    - cron: '47 8 * * 4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-version:
+    name: Check for new MinIO version
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Get current pinned version
+        id: current
+        run: |
+          current=$(grep 'quay.io/minio/minio:' yaml/ibu/minio/deployment.yaml | grep -oE 'RELEASE\.[0-9T-]+Z')
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          echo "Current pinned version: $current"
+
+      - name: Query quay.io for latest MinIO version
+        id: latest
+        run: ./scripts/workflows/query-minio-version.sh
+
+      - name: Compare versions
+        id: compare
+        run: ./scripts/workflows/compare-versions.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+
+      - name: Update deployment file
+        if: steps.compare.outputs.needs_update == 'true'
+        run: ./scripts/workflows/update-minio-version.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+
+      - name: Create pull request
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Bump MinIO to ${{ steps.latest.outputs.version }}"
+          title: "Bump MinIO to ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated version bump detected by the weekly MinIO version check.
+
+            **Current version:** `${{ steps.current.outputs.version }}`
+            **New version:** `${{ steps.latest.outputs.version }}`
+
+            Changes:
+            - Updated MinIO deployment image tag
+
+            Source: [Quay.io](https://quay.io/repository/minio/minio?tab=tags)
+          branch: bump-minio-${{ steps.latest.outputs.version }}
+          delete-branch: true
+          labels: dependencies

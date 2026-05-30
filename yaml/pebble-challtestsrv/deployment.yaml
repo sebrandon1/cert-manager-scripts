@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: challtestsrv
-        image: letsencrypt/pebble-challtestsrv:latest
+        image: ghcr.io/letsencrypt/pebble-challtestsrv:v2.10.1
         imagePullPolicy: IfNotPresent
         args:
         - -defaultIPv4
