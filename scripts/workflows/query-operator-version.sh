@@ -8,8 +8,8 @@
 
 set -euo pipefail
 
-tags=$(curl -s "https://catalog.redhat.io/api/containers/v1/repositories/registry/registry.redhat.io/repository/cert-manager/cert-manager-operator-rhel9/tags?page_size=100&page=0" |
-	jq -r '.data[].name // empty')
+tags=$(curl -s "https://catalog.redhat.com/api/containers/v1/images?filter=repositories.repository==cert-manager/cert-manager-operator-rhel9&page_size=50&sort_by=creation_date%5Bdesc%5D" |
+	jq -r '[.data[].repositories[0].tags[].name] | unique[]')
 
 if [ -z "$tags" ]; then
 	echo "Failed to fetch tags from Red Hat catalog API"
