@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-tags=$(curl -s "https://catalog.redhat.com/api/containers/v1/images?filter=repositories.repository==cert-manager/cert-manager-operator-rhel9&page_size=50&sort_by=creation_date%5Bdesc%5D" |
+tags=$(curl -sL "https://catalog.redhat.com/api/containers/v1/images?filter=repositories.repository==cert-manager/cert-manager-operator-rhel9" |
 	jq -r '[.data[].repositories[0].tags[].name] | unique[]')
 
 if [ -z "$tags" ]; then
