@@ -73,7 +73,7 @@ Before submitting a pull request:
    
    # Or test the complete workflow
    make install-cert-manager-operator
-   make quick-test
+   make quick-http-test
    ```
 
 3. **Verify cleanup works:**
@@ -139,7 +139,7 @@ The CI pipeline runs on every push and pull request with two jobs:
 #### 2. Integration Test (OCP 4.20/4.21 + cert-manager)
 - Deploys a real OpenShift cluster using [quick-ocp](https://github.com/palmsoftware/quick-ocp)
 - Installs cert-manager-operator
-- Runs the complete `make quick-test` workflow:
+- Runs the complete `make quick-http-test` workflow:
   - Installs fake DNS for air-gapped testing
   - Installs Pebble ACME server
   - Creates DNS-01 ClusterIssuer
@@ -159,7 +159,7 @@ make lint
 
 # Integration test (requires OpenShift cluster access)
 make install-cert-manager-operator
-make quick-test
+make quick-http-test
 ```
 
 ### CI Failure Troubleshooting
@@ -173,7 +173,7 @@ If CI fails:
 
 2. **Integration test failure:**
    - Check the CI logs for specific errors
-   - See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues
+   - See [Troubleshooting](docs/troubleshooting.md) for common issues
    - Test locally on your cluster to reproduce
    - Ask for help in the PR comments
 
@@ -190,12 +190,12 @@ Update documentation when you:
 ### Documentation Files
 
 - **README.md** - Overview, quick start, and key links
-- **INSTALLATION.md** - Detailed installation instructions
-- **TROUBLESHOOTING.md** - Common issues and solutions
-- **PEBBLE-USAGE.md** - Pebble-specific usage and examples
-- **NETWORK-SUPPORT.md** - IPv4/IPv6/dual-stack testing
-- **DNS01-SETUP.md** - DNS-01 challenge configuration
-- **IBU-TESTING.md** - Image-Based Upgrade certificate loss validation
+- **[docs/installation.md](docs/installation.md)** - Detailed installation instructions
+- **[docs/troubleshooting.md](docs/troubleshooting.md)** - Common issues and solutions
+- **[docs/pebble-usage.md](docs/pebble-usage.md)** - Pebble-specific usage and examples
+- **[docs/network-support.md](docs/network-support.md)** - IPv4/IPv6/dual-stack testing
+- **[docs/dns01-setup.md](docs/dns01-setup.md)** - DNS-01 challenge configuration
+- **[docs/ibu-testing.md](docs/ibu-testing.md)** - Image-Based Upgrade certificate loss validation
 - **CONTRIBUTING.md** - This file
 
 ### Documentation Style
@@ -245,7 +245,7 @@ When adding a new script:
    ```
 
 6. **Document the script:**
-   - Add to INSTALLATION.md or appropriate doc
+   - Add to docs/installation.md or appropriate doc
    - Update README.md if it's a major feature
    - Add usage examples
 

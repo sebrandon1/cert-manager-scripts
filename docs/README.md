@@ -27,16 +27,14 @@ Documents CI workflow improvements for CRC cluster testing:
 - Health check integration in GitHub Actions
 - Troubleshooting transient failures
 
-## Related Documentation
-
-Main documentation files are in the repository root:
+## Guides
 
 | File | Description |
 |------|-------------|
-| `INSTALLATION.md` | Cert-manager installation guide |
-| `DNS01-SETUP.md` | DNS-01 challenge configuration |
-| `PEBBLE-USAGE.md` | Using Pebble for local ACME testing |
-| `NETWORK-SUPPORT.md` | Network configuration details |
-| `IBU-TESTING.md` | IBU certificate loss validation |
-| `TROUBLESHOOTING.md` | Common issues and solutions |
-| `CONTRIBUTING.md` | Contribution guidelines |
+| [installation.md](installation.md) | Cert-manager installation guide |
+| [dns01-setup.md](dns01-setup.md) | DNS-01 challenge configuration |
+| [pebble-usage.md](pebble-usage.md) | Using Pebble for local ACME testing |
+| [network-support.md](network-support.md) | Network configuration details |
+| [ibu-testing.md](ibu-testing.md) | IBU certificate loss validation |
+| [troubleshooting.md](troubleshooting.md) | Common issues and solutions |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution guidelines |

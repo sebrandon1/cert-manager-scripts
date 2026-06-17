@@ -54,4 +54,4 @@ oc get certificate -n $CERT_NAMESPACE $CERT_NAME -o yaml
 
 ## Related Documentation
 
-- [PEBBLE-USAGE.md](../../PEBBLE-USAGE.md) - Using Pebble for testing
+- [Pebble Usage](../../docs/pebble-usage.md) - Using Pebble for testing

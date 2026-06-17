@@ -57,6 +57,6 @@ The key difference between scenarios is whether the `lca.openshift.io/backup` la
 
 ## Related Documentation
 
-- [IBU-TESTING.md](../../IBU-TESTING.md) - Full IBU testing guide
+- [IBU Testing](../../docs/ibu-testing.md) - Full IBU testing guide
 - [docs/IBU-FAQ.md](../../docs/IBU-FAQ.md) - Frequently asked questions
 - [Validation Report](https://gist.github.com/sebrandon1/71f33b35aea2aa4cf9edda855201c8fc)

@@ -57,13 +57,13 @@ display_next_steps() {
 	echo "   DNS_SERVER=${acmedns_dns}:53 PEBBLE_ALWAYS_VALID=1 make install-pebble"
 	echo
 	echo "2. Install cert-manager webhook for acme-dns:"
-	echo "   make install-acmedns-webhook"
+	echo "   See docs/dns01-setup.md for Helm-based webhook installation"
 	echo
 	echo "3. Create a DNS-01 ClusterIssuer:"
 	echo "   make create-dns01-issuer"
 	echo
 	echo "4. Test with a wildcard certificate:"
-	echo "   make create-wildcard-cert"
+	echo "   make test-cert"
 	echo
 	echo "acme-dns URLs:"
 	echo "  - API: ${acmedns_api}"

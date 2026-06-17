@@ -191,7 +191,7 @@ If the quick test fails, you can clean up and retry:
 make clean
 
 # Retry the quick test
-make quick-test
+make quick-http-test
 ```
 
 Or run components individually to isolate the issue:
@@ -297,7 +297,7 @@ oc rollout restart deployment/cert-manager-cainjector -n cert-manager
 
 ## Network Issues
 
-For IPv4, IPv6, and dual-stack configuration issues, see [NETWORK-SUPPORT.md](./NETWORK-SUPPORT.md).
+For IPv4, IPv6, and dual-stack configuration issues, see [Network Support](./network-support.md).
 
 ### Cannot reach Pebble ACME endpoint
 
@@ -370,7 +370,7 @@ oc get secret <secret-name> -n <namespace> -o jsonpath='{.data.tls\.crt}' | base
 
 - [cert-manager Documentation](https://cert-manager.io/docs/)
 - [Pebble GitHub](https://github.com/letsencrypt/pebble)
-- [PEBBLE-USAGE.md](./PEBBLE-USAGE.md) - Detailed Pebble usage guide
-- [NETWORK-SUPPORT.md](./NETWORK-SUPPORT.md) - IPv4/IPv6/dual-stack guide
-- [DNS01-SETUP.md](./DNS01-SETUP.md) - DNS-01 challenge setup guide
+- [Pebble Usage](./pebble-usage.md) - Detailed Pebble usage guide
+- [Network Support](./network-support.md) - IPv4/IPv6/dual-stack guide
+- [DNS-01 Setup](./dns01-setup.md) - DNS-01 challenge setup guide
 

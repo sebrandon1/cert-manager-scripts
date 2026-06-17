@@ -61,5 +61,5 @@ envsubst < yaml/issuers/pebble-clusterissuer.yaml | oc apply -f -
 
 ## Related Documentation
 
-- [DNS01-SETUP.md](../../DNS01-SETUP.md) - DNS-01 configuration
-- [PEBBLE-USAGE.md](../../PEBBLE-USAGE.md) - Pebble usage guide
+- [DNS-01 Setup](../../docs/dns01-setup.md) - DNS-01 configuration
+- [Pebble Usage](../../docs/pebble-usage.md) - Pebble usage guide

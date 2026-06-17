@@ -34,4 +34,4 @@ ACME-DNS stores TXT records in sqlite3 and exposes both DNS (port 53) and HTTP A
 
 ## Related Documentation
 
-- [DNS01-SETUP.md](../../DNS01-SETUP.md) - DNS-01 challenge configuration
+- [DNS-01 Setup](../../docs/dns01-setup.md) - DNS-01 challenge configuration

@@ -134,8 +134,8 @@ display_next_steps() {
 	echo "2. Check cert-manager components (may take a moment to appear):"
 	echo "   oc get pods -n $CERT_MANAGER_NAMESPACE"
 	echo
-	echo "3. Quick test DNS-01 challenges (air-gapped):"
-	echo "   make quick-test"
+	echo "3. Quick test HTTP-01 challenges:"
+	echo "   make quick-http-test"
 	echo
 	echo "4. Clean up test resources:"
 	echo "   make clean"
