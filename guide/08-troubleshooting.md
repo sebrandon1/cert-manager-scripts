@@ -315,10 +315,10 @@ Edit the cert-manager deployment to add `--v=4` flag for more detailed logs.
 ## Need More Help?
 
 For detailed documentation, refer to:
-- [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) - Extended troubleshooting guide
-- [DNS01-SETUP.md](../DNS01-SETUP.md) - Detailed DNS-01 configuration
-- [PEBBLE-USAGE.md](../PEBBLE-USAGE.md) - Pebble-specific information
-- [NETWORK-SUPPORT.md](../NETWORK-SUPPORT.md) - Network configuration details
+- [Troubleshooting](../docs/troubleshooting.md) - Extended troubleshooting guide
+- [DNS-01 Setup](../docs/dns01-setup.md) - Detailed DNS-01 configuration
+- [Pebble Usage](../docs/pebble-usage.md) - Pebble-specific information
+- [Network Support](../docs/network-support.md) - Network configuration details
 
 ## Clean Up
 

@@ -64,4 +64,4 @@ Key `configmap.yaml` settings:
 
 ## Related Documentation
 
-- [PEBBLE-USAGE.md](../../PEBBLE-USAGE.md) - Detailed Pebble usage guide
+- [Pebble Usage](../../docs/pebble-usage.md) - Detailed Pebble usage guide

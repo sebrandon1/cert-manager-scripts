@@ -11,7 +11,7 @@ KEY_FILES=(
 	"README.md"
 	"Makefile"
 	"CONTRIBUTING.md"
-	"TROUBLESHOOTING.md"
+	"docs/troubleshooting.md"
 )
 
 EXIT_CODE=0

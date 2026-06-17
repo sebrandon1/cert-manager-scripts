@@ -126,7 +126,7 @@ PEBBLE_NAMESPACE=acme-test PEBBLE_ALWAYS_VALID=1 ./scripts/install-pebble.sh
 
 **Reference:** [Pebble GitHub Repository](https://github.com/letsencrypt/pebble)
 
-**See also:** [PEBBLE-USAGE.md](./PEBBLE-USAGE.md) for detailed usage guide, troubleshooting, and examples
+**See also:** [Pebble Usage](./pebble-usage.md) for detailed usage guide, troubleshooting, and examples
 
 ---
 
@@ -209,7 +209,7 @@ ISSUER_NAME=my-issuer CERT_NAMESPACE=test ./scripts/create-test-certificates.sh
 
 ### DNS-01 Challenges
 
-For DNS-01 challenge testing with wildcard certificates, see [DNS01-SETUP.md](./DNS01-SETUP.md) for detailed instructions on:
+For DNS-01 challenge testing with wildcard certificates, see [DNS-01 Setup](./dns01-setup.md) for detailed instructions on:
 - Installing fake DNS API for air-gapped testing
 - Configuring DNS forwarding
 - Creating DNS-01 ClusterIssuers
@@ -259,6 +259,6 @@ After installing cert-manager-operator and Pebble, you can:
 
 3. **Advanced testing:**
    - Configure DNS-01 challenges with custom DNS servers
-   - Test IPv4, IPv6, and dual-stack configurations (see [NETWORK-SUPPORT.md](./NETWORK-SUPPORT.md))
+   - Test IPv4, IPv6, and dual-stack configurations (see [Network Support](./network-support.md))
    - Set up monitoring and alerting for certificate expiry
 

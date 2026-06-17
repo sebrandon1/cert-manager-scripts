@@ -46,4 +46,4 @@ Use pebble-challtestsrv when you need fine-grained control over challenge respon
 
 ## Related Documentation
 
-- [PEBBLE-USAGE.md](../../PEBBLE-USAGE.md) - Pebble usage guide
+- [Pebble Usage](../../docs/pebble-usage.md) - Pebble usage guide

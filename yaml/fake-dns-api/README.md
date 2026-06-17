@@ -49,5 +49,5 @@ Combined with Pebble's `ALWAYS_VALID=1` mode, the fake DNS server allows complet
 
 ## Related Documentation
 
-- [DNS01-SETUP.md](../../DNS01-SETUP.md) - DNS-01 challenge configuration
-- [NETWORK-SUPPORT.md](../../NETWORK-SUPPORT.md) - Air-gapped setup
+- [DNS-01 Setup](../../docs/dns01-setup.md) - DNS-01 challenge configuration
+- [Network Support](../../docs/network-support.md) - Air-gapped setup

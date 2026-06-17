@@ -34,4 +34,4 @@ envsubst < yaml/cert-manager-operator/subscription.yaml | oc apply -f -
 
 ## Related Documentation
 
-- [INSTALLATION.md](../../INSTALLATION.md) - Full installation guide
+- [Installation](../../docs/installation.md) - Full installation guide

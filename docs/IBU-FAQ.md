@@ -137,5 +137,5 @@ Same end result - the scripts simulate LCA's behavior since the test environment
 ## References
 
 - [IBU Certificate Loss Validation Report](https://gist.github.com/sebrandon1/71f33b35aea2aa4cf9edda855201c8fc)
-- [IBU Testing Documentation](../IBU-TESTING.md)
+- [IBU Testing Documentation](./ibu-testing.md)
 - [Test Scripts](../scripts/ibu/)

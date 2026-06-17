@@ -65,10 +65,10 @@ make verify-cert
 ## 📚 Additional Resources
 
 - [Main README](../README.md) - Project overview
-- [Installation Guide](../INSTALLATION.md) - Detailed installation instructions
-- [DNS-01 Setup](../DNS01-SETUP.md) - In-depth DNS-01 configuration
-- [Pebble Usage](../PEBBLE-USAGE.md) - Working with Pebble
-- [Network Support](../NETWORK-SUPPORT.md) - Network configuration
+- [Installation Guide](../docs/installation.md) - Detailed installation instructions
+- [DNS-01 Setup](../docs/dns01-setup.md) - In-depth DNS-01 configuration
+- [Pebble Usage](../docs/pebble-usage.md) - Working with Pebble
+- [Network Support](../docs/network-support.md) - Network configuration
 - [Contributing](../CONTRIBUTING.md) - How to contribute
 
 ---
