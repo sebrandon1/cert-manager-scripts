@@ -12,11 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
-echo
-echo "========================================"
-echo "  CRC Cluster Health Check"
-echo "========================================"
-echo
+print_header "CRC Cluster Health Check"
 
 # Test 1: Check oc command is available
 log_info "Checking oc CLI availability..."
@@ -135,9 +131,6 @@ else
 fi
 echo
 
-echo "========================================"
-echo "  ✅ Cluster Health Check Passed"
-echo "========================================"
-echo
+print_header "Cluster Health Check Passed"
 log_info "Cluster is ready for testing"
 echo

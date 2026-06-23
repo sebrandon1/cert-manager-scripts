@@ -112,11 +112,7 @@ create_test_certificates() {
 
 # Function to show HTTP-01 validation flow
 show_http01_flow() {
-	echo
-	log_info "========================================"
-	log_info "  HTTP-01 Validation Flow"
-	log_info "========================================"
-	echo
+	print_header "HTTP-01 Validation Flow"
 	echo "✅ cert-manager requests a certificate from Pebble"
 	echo "✅ Pebble responds with a challenge token"
 	echo "✅ cert-manager creates a temporary HTTP endpoint with the token"
@@ -182,11 +178,7 @@ wait_for_certificates() {
 
 # Function to display certificate status
 display_certificate_status() {
-	echo
-	log_info "========================================"
-	log_info "  Certificate Status"
-	log_info "========================================"
-	echo
+	print_header "Certificate Status"
 
 	log_info "Certificates:"
 	oc get certificate -n "$CERT_NAMESPACE" 2>/dev/null || echo "No certificates found"
@@ -206,11 +198,7 @@ display_certificate_status() {
 
 # Function to display next steps
 display_next_steps() {
-	echo
-	log_info "========================================"
-	log_info "  Next Steps"
-	log_info "========================================"
-	echo
+	print_header "Next Steps"
 	echo "1. Check certificate details:"
 	echo "   oc describe certificate test-cert-simple -n $CERT_NAMESPACE"
 	echo

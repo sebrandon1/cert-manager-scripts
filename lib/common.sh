@@ -448,6 +448,25 @@ build_lca_annotations() {
 	echo "$annotation_value"
 }
 
+# Check IBU test prerequisites (cert-manager, OADP, MinIO)
+# Usage: require_ibu_prereqs
+require_ibu_prereqs() {
+	require_cmd oc jq envsubst
+	require_cert_manager
+
+	if ! oc get dataprotectionapplication velero -n openshift-adp &>/dev/null; then
+		log_error "OADP is not installed."
+		log_info "Run 'make install-ibu-prereqs' first."
+		exit 1
+	fi
+
+	if ! oc get deployment minio -n minio &>/dev/null; then
+		log_error "MinIO is not installed."
+		log_info "Run 'make install-minio' first."
+		exit 1
+	fi
+}
+
 # Capture TLS secret checksums for a namespace in a single API call
 # Usage: capture_secret_checksums <namespace> <output_file>
 capture_secret_checksums() {

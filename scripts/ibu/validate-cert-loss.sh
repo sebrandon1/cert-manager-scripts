@@ -35,15 +35,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 print_validation_header() {
-	echo
-	echo "========================================"
 	if [ "$EXPECT_PRESERVED" = true ]; then
-		echo "  IBU Certificate Preservation Validation"
+		print_header "IBU Certificate Preservation Validation"
 	else
-		echo "  IBU Certificate Loss Validation"
+		print_header "IBU Certificate Loss Validation"
 	fi
-	echo "========================================"
-	echo
 	if [ "$EXPECT_PRESERVED" = true ]; then
 		echo "  Mode: Expecting certificates to be PRESERVED"
 	else
@@ -83,10 +79,8 @@ compare_checksums() {
 	local results="[]"
 
 	# Compare each secret from before
-	local secret_names
-	secret_names=$(jq -r '.[].name' "$before_file")
-
-	for secret_name in $secret_names; do
+	while IFS= read -r secret_name; do
+		[[ -z "$secret_name" ]] && continue
 		total=$((total + 1))
 
 		# Get before checksum
@@ -122,7 +116,7 @@ compare_checksums() {
 		echo "    After:  ${after_cert_checksum:0:16}..." >&2
 		echo "    Status: $status" >&2
 		echo >&2
-	done
+	done < <(jq -r '.[].name' "$before_file")
 
 	# Save results
 	cat >"$results_file" <<EOF

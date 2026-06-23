@@ -115,25 +115,13 @@ else
 	log_warn "Network check failed or script not found"
 fi
 
-echo
-echo "========================================"
-echo "  Recent cert-manager Logs"
-echo "========================================"
-echo
+print_header "Recent cert-manager Logs"
 oc logs -n cert-manager deployment/cert-manager --tail=20 2>/dev/null || log_warn "Could not fetch logs"
 
-echo
-echo "========================================"
-echo "  Recent Pebble Logs"
-echo "========================================"
-echo
+print_header "Recent Pebble Logs"
 oc logs -n pebble -l app=pebble --tail=20 2>/dev/null || log_warn "Could not fetch Pebble logs"
 
-echo
-echo "========================================"
-echo "  Recommendations"
-echo "========================================"
-echo
+print_header "Recommendations"
 echo "1. Ensure Pebble is configured with PEBBLE_ALWAYS_VALID=1 for testing:"
 echo "   PEBBLE_ALWAYS_VALID=1 make install-pebble"
 echo

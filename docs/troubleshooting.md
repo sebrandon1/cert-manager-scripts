@@ -4,7 +4,7 @@ Common issues and solutions for cert-manager-scripts.
 
 ## Quick Test Issues
 
-The `quick-test` runs a complete end-to-end workflow and may fail for several reasons.
+The `quick-http-test` (or `quick-dns-test`) runs a complete end-to-end workflow and may fail for several reasons.
 
 ### Common Issues
 

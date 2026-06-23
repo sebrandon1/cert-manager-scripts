@@ -144,32 +144,16 @@ else
 	log_warn "RFC2136 credentials secret not found in cert-manager namespace"
 fi
 
-echo
-echo "========================================"
-echo "  Recent cert-manager Logs"
-echo "========================================"
-echo
+print_header "Recent cert-manager Logs"
 oc logs -n cert-manager deployment/cert-manager --tail=20 2>/dev/null || log_warn "Could not fetch logs"
 
-echo
-echo "========================================"
-echo "  Recent Pebble Logs"
-echo "========================================"
-echo
+print_header "Recent Pebble Logs"
 oc logs -n pebble -l app=pebble --tail=20 2>/dev/null || log_warn "Could not fetch Pebble logs"
 
-echo
-echo "========================================"
-echo "  Recent Fake DNS API Logs"
-echo "========================================"
-echo
+print_header "Recent Fake DNS API Logs"
 oc logs -n fake-dns -l app=fake-dns-api --tail=20 2>/dev/null || log_warn "Could not fetch fake DNS API logs"
 
-echo
-echo "========================================"
-echo "  Recommendations"
-echo "========================================"
-echo
+print_header "Recommendations"
 echo "1. For air-gapped DNS-01 testing, ensure Pebble has ALWAYS_VALID=1:"
 echo "   PEBBLE_ALWAYS_VALID=1 make test-dns01"
 echo

@@ -20,10 +20,7 @@ log_info "User: $(oc whoami)"
 echo
 
 # Section 1: cert-manager
-echo "========================================"
-echo "  cert-manager Components"
-echo "========================================"
-echo
+print_header "cert-manager Components"
 
 log_info "Checking cert-manager operator..."
 if oc get csv -n cert-manager-operator 2>/dev/null | grep -q "Succeeded"; then
@@ -42,10 +39,7 @@ fi
 echo
 
 # Section 2: Pebble
-echo "========================================"
-echo "  Pebble ACME Server"
-echo "========================================"
-echo
+print_header "Pebble ACME Server"
 
 if oc get namespace pebble &>/dev/null; then
 	log_info "Checking Pebble pods..."
@@ -66,10 +60,7 @@ fi
 echo
 
 # Section 3: DNS Components
-echo "========================================"
-echo "  DNS-01 Components"
-echo "========================================"
-echo
+print_header "DNS-01 Components"
 
 if oc get namespace fake-dns &>/dev/null; then
 	log_info "Checking fake DNS API..."
@@ -81,10 +72,7 @@ fi
 echo
 
 # Section 4: ClusterIssuers
-echo "========================================"
-echo "  ClusterIssuers"
-echo "========================================"
-echo
+print_header "ClusterIssuers"
 
 if oc get clusterissuer &>/dev/null; then
 	oc get clusterissuer
@@ -106,10 +94,7 @@ fi
 echo
 
 # Section 5: Certificates
-echo "========================================"
-echo "  Certificates"
-echo "========================================"
-echo
+print_header "Certificates"
 
 CERTS=$(oc get certificate -A -o json 2>/dev/null | jq -r '.items | length' || echo "0")
 
@@ -139,10 +124,7 @@ fi
 echo
 
 # Section 6: Active Challenges
-echo "========================================"
-echo "  Active Challenges"
-echo "========================================"
-echo
+print_header "Active Challenges"
 
 CHALLENGES=$(oc get challenge -A 2>/dev/null | grep -v "^NAMESPACE" | wc -l | xargs || echo "0")
 
@@ -157,10 +139,7 @@ fi
 echo
 
 # Section 7: Quick Health Summary
-echo "========================================"
-echo "  Health Summary"
-echo "========================================"
-echo
+print_header "Health Summary"
 
 ISSUES=0
 
@@ -190,10 +169,8 @@ else
 fi
 
 echo
-echo "========================================"
-echo "  Troubleshooting Tools"
-echo "========================================"
-echo
+print_header "Troubleshooting Tools"
+
 echo "Check specific certificate:"
 echo "  ./scripts/troubleshooting/check-certificate.sh <name> <namespace>"
 echo

@@ -12,11 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
-echo
-echo "========================================"
-echo "  CRC Cluster Recovery Attempt"
-echo "========================================"
-echo
+print_header "CRC Cluster Recovery Attempt"
 
 # Test 1: Check if DNS resolution is working
 log_info "Checking DNS resolution..."
@@ -85,10 +81,6 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
 	exit 1
 fi
 
-echo
-echo "========================================"
-echo "  ✅ Cluster Recovery Successful"
-echo "========================================"
-echo
+print_header "Cluster Recovery Successful"
 log_info "Cluster appears to be functional again"
 echo

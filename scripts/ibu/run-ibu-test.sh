@@ -37,34 +37,8 @@ print_banner() {
 
 check_prerequisites() {
 	log_info "Checking prerequisites..."
+	require_ibu_prereqs
 
-	require_cmd oc jq envsubst
-
-	# Check cluster connectivity
-	require_cluster
-
-	# Check cert-manager is installed
-	if ! oc get deployment cert-manager -n cert-manager &>/dev/null; then
-		log_error "cert-manager is not installed."
-		log_info "Run 'make install-cert-manager-operator' first."
-		exit 1
-	fi
-
-	# Check OADP is installed
-	if ! oc get dataprotectionapplication velero -n openshift-adp &>/dev/null; then
-		log_error "OADP is not installed."
-		log_info "Run 'make install-ibu-prereqs' first."
-		exit 1
-	fi
-
-	# Check MinIO is running
-	if ! oc get deployment minio -n minio &>/dev/null; then
-		log_error "MinIO is not installed."
-		log_info "Run 'make install-minio' first."
-		exit 1
-	fi
-
-	# Check for test certificates
 	local cert_count
 	cert_count=$(oc get certificates -n "$TARGET_NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
 	if [ "$cert_count" -eq 0 ]; then

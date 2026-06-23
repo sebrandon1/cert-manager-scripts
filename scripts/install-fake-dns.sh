@@ -93,18 +93,14 @@ data:
 EOF
 
 		log_info "CoreDNS configured. Waiting for DNS pods to restart..."
-		sleep 10
+		oc rollout status daemonset/dns-default -n openshift-dns --timeout=60s 2>/dev/null || log_warn "DNS rollout may still be in progress"
 	fi
 }
 
 display_next_steps() {
 	local dns_server="fake-dns-api.${FAKEDNS_NAMESPACE}.svc.cluster.local:53"
 
-	echo
-	log_info "========================================"
-	log_info "  Fake DNS API Installation Complete!"
-	log_info "========================================"
-	echo
+	print_header "Fake DNS API Installation Complete!"
 	log_info "This fake DNS server accepts RFC2136 update requests and returns success"
 	log_info "without actually updating DNS. Perfect for air-gapped DNS-01 testing!"
 	echo

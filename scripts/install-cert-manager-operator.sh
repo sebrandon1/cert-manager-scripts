@@ -122,11 +122,7 @@ verify_installation() {
 
 # Function to display next steps
 display_next_steps() {
-	echo
-	log_info "========================================"
-	log_info "Installation completed successfully!"
-	log_info "========================================"
-	echo
+	print_header "Installation completed successfully!"
 	echo "Next steps:"
 	echo "1. Verify the operator is running:"
 	echo "   oc get pods -n $OPERATOR_NAMESPACE"

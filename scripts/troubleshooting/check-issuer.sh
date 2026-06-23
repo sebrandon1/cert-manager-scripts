@@ -63,11 +63,7 @@ check_single_issuer() {
 	log_info "Detailed Configuration:"
 	oc describe clusterissuer "$ISSUER_NAME"
 
-	echo
-	echo "========================================"
-	echo "  Testing ACME Server Connectivity"
-	echo "========================================"
-	echo
+	print_header "Testing ACME Server Connectivity"
 
 	# Test Pebble connectivity if using Pebble
 	if [[ "$ACME_SERVER" == *"pebble"* ]]; then
@@ -96,11 +92,7 @@ check_single_issuer() {
 		log_info "Not using Pebble, skipping connectivity test"
 	fi
 
-	echo
-	echo "========================================"
-	echo "  Troubleshooting Commands"
-	echo "========================================"
-	echo
+	print_header "Troubleshooting Commands"
 	echo "View full YAML configuration:"
 	echo "  oc get clusterissuer $ISSUER_NAME -o yaml"
 	echo

@@ -36,17 +36,15 @@ check_prerequisites() {
 label_certificates() {
 	log_info "Labeling Certificate CRs with lca.openshift.io/backup=$BACKUP_NAME..."
 
-	local cert_names
-	cert_names=$(oc get certificates -n "$TARGET_NAMESPACE" -o jsonpath='{.items[*].metadata.name}')
-
 	local labeled=0
-	for cert_name in $cert_names; do
+	while IFS= read -r cert_name; do
+		[[ -z "$cert_name" ]] && continue
 		log_info "  Labeling certificate: $cert_name"
 		oc label certificate "$cert_name" -n "$TARGET_NAMESPACE" \
 			"lca.openshift.io/backup=$BACKUP_NAME" \
 			--overwrite 2>/dev/null || true
 		labeled=$((labeled + 1))
-	done
+	done < <(oc get certificates -n "$TARGET_NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
 
 	log_success "Labeled $labeled certificates"
 }
@@ -54,19 +52,16 @@ label_certificates() {
 label_secrets() {
 	log_info "Labeling TLS secrets with lca.openshift.io/backup=$BACKUP_NAME..."
 
-	# Get TLS secrets (type kubernetes.io/tls)
-	local secret_names
-	secret_names=$(oc get secrets -n "$TARGET_NAMESPACE" -o json 2>/dev/null |
-		jq -r '.items | map(select(.type == "kubernetes.io/tls")) | .[].metadata.name')
-
 	local labeled=0
-	for secret_name in $secret_names; do
+	while IFS= read -r secret_name; do
+		[[ -z "$secret_name" ]] && continue
 		log_info "  Labeling secret: $secret_name"
 		oc label secret "$secret_name" -n "$TARGET_NAMESPACE" \
 			"lca.openshift.io/backup=$BACKUP_NAME" \
 			--overwrite 2>/dev/null || true
 		labeled=$((labeled + 1))
-	done
+	done < <(oc get secrets -n "$TARGET_NAMESPACE" -o json 2>/dev/null |
+		jq -r '.items | map(select(.type == "kubernetes.io/tls")) | .[].metadata.name')
 
 	log_success "Labeled $labeled TLS secrets"
 }
