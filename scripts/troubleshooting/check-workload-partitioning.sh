@@ -119,11 +119,7 @@ check_deployment_configs() {
 provide_recommendations() {
 	local has_issues=$1
 
-	echo
-	echo "========================================"
-	echo "  Summary"
-	echo "========================================"
-	echo
+	print_header "Summary"
 
 	if [ $has_issues -eq 0 ]; then
 		log_info "✅ All checks passed!"

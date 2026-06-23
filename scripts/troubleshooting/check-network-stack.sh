@@ -174,11 +174,7 @@ main() {
 	# Detect stack type
 	local stack_type=$(detect_cluster_network)
 
-	echo
-	echo "========================================"
-	echo "  Network Stack Summary"
-	echo "========================================"
-	echo
+	print_header "Network Stack Summary"
 
 	case "$stack_type" in
 	"dual-stack")
@@ -206,11 +202,7 @@ main() {
 		;;
 	esac
 
-	echo
-	echo "========================================"
-	echo "  Detailed Network Information"
-	echo "========================================"
-	echo
+	print_header "Detailed Network Information"
 
 	check_node_addresses
 	echo
@@ -218,11 +210,7 @@ main() {
 	echo
 	check_webhook_connectivity
 
-	echo
-	echo "========================================"
-	echo "  Recommendations"
-	echo "========================================"
-	echo
+	print_header "Recommendations"
 
 	if [ "$stack_type" = "ipv6" ] || [ "$stack_type" = "dual-stack" ]; then
 		log_info "IPv6 Considerations for cert-manager:"

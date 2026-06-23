@@ -12,11 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
-echo
-echo "========================================"
-echo "  Component Status"
-echo "========================================"
-echo
+print_header "Component Status"
 
 # Check if cluster is accessible
 if ! oc whoami &>/dev/null; then
@@ -58,7 +54,4 @@ echo ""
 echo "Recent cert-manager logs:"
 oc logs -n cert-manager deployment/cert-manager --tail=30 || log_warn "Cannot retrieve cert-manager logs"
 echo
-echo "========================================"
-echo "  Status Display Complete"
-echo "========================================"
-echo
+print_header "Status Display Complete"

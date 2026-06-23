@@ -56,11 +56,7 @@ check_single_certificate() {
 		log_info "Certificate Details:"
 		oc describe certificate "$CERT_NAME" -n "$NAMESPACE"
 
-		echo
-		echo "========================================"
-		echo "  Checking Certificate Requests"
-		echo "========================================"
-		echo
+		print_header "Checking Certificate Requests"
 
 		# Find related CertificateRequests
 		CR_LIST=$(oc get certificaterequest -n "$NAMESPACE" -o json | jq -r ".items[] | select(.metadata.ownerReferences[]?.name==\"$CERT_NAME\") | .metadata.name" 2>/dev/null || echo "")
@@ -75,11 +71,7 @@ check_single_certificate() {
 			log_warn "No CertificateRequests found"
 		fi
 
-		echo
-		echo "========================================"
-		echo "  Checking ACME Orders"
-		echo "========================================"
-		echo
+		print_header "Checking ACME Orders"
 
 		# Check orders
 		if oc get order -n "$NAMESPACE" &>/dev/null; then
@@ -97,11 +89,7 @@ check_single_certificate() {
 			log_warn "No Orders found"
 		fi
 
-		echo
-		echo "========================================"
-		echo "  Checking ACME Challenges"
-		echo "========================================"
-		echo
+		print_header "Checking ACME Challenges"
 
 		# Check challenges
 		if oc get challenge -n "$NAMESPACE" &>/dev/null; then
@@ -120,11 +108,7 @@ check_single_certificate() {
 		fi
 	fi
 
-	echo
-	echo "========================================"
-	echo "  Troubleshooting Commands"
-	echo "========================================"
-	echo
+	print_header "Troubleshooting Commands"
 	echo "Check cert-manager logs:"
 	echo "  oc logs -n cert-manager deployment/cert-manager --tail=50"
 	echo

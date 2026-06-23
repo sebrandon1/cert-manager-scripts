@@ -217,10 +217,7 @@ check_cert_manager_compatibility() {
 # Function to provide recommendations
 provide_recommendations() {
 	local cluster_networks="$1"
-	log_info "========================================"
-	log_info "  Recommendations"
-	log_info "========================================"
-	echo
+	print_header "Recommendations"
 
 	local has_ipv4=false
 	local has_ipv6=false

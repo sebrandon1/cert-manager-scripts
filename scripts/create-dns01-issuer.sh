@@ -31,17 +31,14 @@ log_info "Creating DNS-01 ClusterIssuer..."
 envsubst <"$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" | oc apply -f -
 
 log_info "Waiting for ClusterIssuer to be ready..."
-sleep 5
+retry 3 5 oc wait --for=condition=Ready clusterissuer/"$ISSUER_NAME" --timeout=10s 2>/dev/null
 
 if oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 	oc get clusterissuer "$ISSUER_NAME"
 	echo
 	log_info "DNS-01 ClusterIssuer created!"
 	echo
-	log_info "========================================"
-	log_info "  DNS-01 Validation Flow"
-	log_info "========================================"
-	echo
+	print_header "DNS-01 Validation Flow"
 	echo "When you create a wildcard certificate:"
 	echo
 	echo "✅ cert-manager requests a certificate from Pebble"

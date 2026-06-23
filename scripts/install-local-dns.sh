@@ -43,11 +43,7 @@ display_next_steps() {
 	local acmedns_api="http://acme-dns.${ACMEDNS_NAMESPACE}.svc.cluster.local:8080"
 	local acmedns_dns="acme-dns.${ACMEDNS_NAMESPACE}.svc.cluster.local"
 
-	echo
-	log_info "========================================"
-	log_info "  acme-dns Installation Complete!"
-	log_info "========================================"
-	echo
+	print_header "acme-dns Installation Complete!"
 	echo "acme-dns is now running!"
 	echo
 	echo "Next steps:"

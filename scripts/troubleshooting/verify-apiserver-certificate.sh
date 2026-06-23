@@ -227,11 +227,7 @@ check_apiserver_configuration() {
 provide_recommendations() {
 	local total_issues=$1
 
-	echo
-	echo "========================================"
-	echo "  Summary"
-	echo "========================================"
-	echo
+	print_header "Summary"
 
 	if [ $total_issues -eq 0 ]; then
 		log_info "✅ All checks passed!"

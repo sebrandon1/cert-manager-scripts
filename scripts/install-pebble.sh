@@ -57,11 +57,7 @@ verify_installation() {
 }
 
 display_configuration() {
-	echo
-	log_info "========================================"
-	log_info "  Pebble Configuration"
-	log_info "========================================"
-	echo
+	print_header "Pebble Configuration"
 	echo "Namespace:           $PEBBLE_NAMESPACE"
 	echo "DNS Server:          $DNS_SERVER"
 	echo "Always Valid:        $PEBBLE_ALWAYS_VALID"
@@ -81,11 +77,7 @@ display_next_steps() {
 	local route_host=$(oc get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 	local service_url="https://pebble.${PEBBLE_NAMESPACE}.svc.cluster.local:14000/dir"
 
-	echo
-	log_info "========================================"
-	log_info "  Installation Complete!"
-	log_info "========================================"
-	echo
+	print_header "Installation Complete!"
 	echo "Pebble ACME server is now running!"
 	echo
 	echo "Next steps:"

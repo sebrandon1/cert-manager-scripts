@@ -154,11 +154,7 @@ wait_for_certificate() {
 }
 
 display_certificate_info() {
-	echo
-	log_info "========================================"
-	log_info "  Certificate Information"
-	log_info "========================================"
-	echo
+	print_header "Certificate Information"
 
 	# Check cluster connectivity first
 	if ! oc whoami &>/dev/null; then
@@ -183,10 +179,7 @@ display_certificate_info() {
 
 display_next_steps() {
 	echo
-	log_info "========================================"
-	log_info "  Next Steps"
-	log_info "========================================"
-	echo
+	print_header "Next Steps"
 
 	cat <<EOF
 The API server certificate has been created but NOT yet applied to the cluster.
@@ -202,8 +195,8 @@ To apply this certificate to the API server:
    3. Wait for the API server to roll out the changes
    4. Verify cluster access still works
 
-For detailed instructions, see the documentation or run:
-   ./scripts/apply-apiserver-certificate.sh
+To verify the certificate was created:
+   make verify-apiserver-cert
 
 To verify the certificate without applying:
    oc get certificate $CERT_NAME -n $CERT_NAMESPACE

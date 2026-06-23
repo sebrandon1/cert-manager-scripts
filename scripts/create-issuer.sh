@@ -63,10 +63,7 @@ check_existing_issuer() {
 }
 
 display_configuration() {
-	log_info "========================================"
-	log_info "  ClusterIssuer Configuration"
-	log_info "========================================"
-	echo
+	print_header "ClusterIssuer Configuration"
 	echo "Issuer Name:      $ISSUER_NAME"
 	echo "ACME Server:      $ACME_SERVER_URL"
 	echo "Email:            $ACME_EMAIL"
@@ -124,11 +121,7 @@ verify_issuer() {
 
 # Function to display next steps
 display_next_steps() {
-	echo
-	log_info "========================================"
-	log_info "  ClusterIssuer Created!"
-	log_info "========================================"
-	echo
+	print_header "ClusterIssuer Created!"
 	log_info "HTTP-01 Validation Flow:"
 	echo
 	echo "When you create a certificate:"
