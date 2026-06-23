@@ -80,6 +80,9 @@ jobs:
       - name: Verify key files exist
         run: ./scripts/workflows/verify-key-files.sh
 
+      - name: Verify script references
+        run: ./scripts/workflows/verify-script-references.sh
+
   version-query-check:
     name: Verify Version Query Scripts
     runs-on: ubuntu-24.04
