@@ -79,6 +79,14 @@ jobs:
         env:
           CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
 
+      - name: Run multi-algorithm certificate test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 2
+          retry_on: error
+          command: make quick-multi-algo-test
+
       - name: Verify workload partitioning configuration
         uses: nick-fields/retry@v4
         with:

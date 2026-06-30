@@ -278,6 +278,69 @@ main() {
 	IFS=',' read -r changed unchanged missing total <<<"$results"
 
 	print_report "$changed" "$unchanged" "$missing" "$total"
+	local report_result=$?
+
+	compare_key_formats
+
+	return $report_result
+}
+
+compare_key_formats() {
+	local before_file="$STATE_DIR/checksums-before.json"
+	local after_file="$STATE_DIR/checksums-after.json"
+
+	if [ ! -f "$before_file" ] || [ ! -f "$after_file" ]; then
+		return 0
+	fi
+
+	local has_pem_type
+	has_pem_type=$(jq -r '.[0].pem_type // empty' "$before_file" 2>/dev/null || echo "")
+	if [ -z "$has_pem_type" ]; then
+		return 0
+	fi
+
+	echo
+	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	echo "  Key PEM Format Comparison"
+	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	echo
+
+	local format_changed=0
+	local format_unchanged=0
+
+	printf "  %-35s %-20s %-20s %s\n" "SECRET" "BEFORE" "AFTER" "STATUS"
+	printf "  %-35s %-20s %-20s %s\n" "──────" "──────" "─────" "──────"
+
+	while IFS= read -r secret_name; do
+		[[ -z "$secret_name" ]] && continue
+
+		local before_type
+		before_type=$(jq -r --arg name "$secret_name" \
+			'.[] | select(.name == $name) | .pem_type // "MISSING"' "$before_file")
+
+		local after_type
+		after_type=$(jq -r --arg name "$secret_name" \
+			'.[] | select(.name == $name) | .pem_type // "MISSING"' "$after_file")
+
+		local status
+		if [ "$before_type" = "$after_type" ]; then
+			status="UNCHANGED"
+			format_unchanged=$((format_unchanged + 1))
+		else
+			status="CHANGED"
+			format_changed=$((format_changed + 1))
+		fi
+
+		printf "  %-35s %-20s %-20s %s\n" "$secret_name" "$before_type" "$after_type" "$status"
+	done < <(jq -r '.[].name' "$before_file")
+
+	echo
+	if [ "$format_changed" -gt 0 ]; then
+		log_info "Key format changes detected: $format_changed changed, $format_unchanged unchanged"
+		log_info "Format changes may indicate LCA PKCS#8 normalization occurred."
+	else
+		log_info "No key format changes detected ($format_unchanged secrets)."
+	fi
 }
 
 main
