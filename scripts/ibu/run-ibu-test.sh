@@ -20,6 +20,7 @@ source "$SCRIPT_DIR/../../lib/common.sh"
 # Configuration
 export STATE_DIR="${STATE_DIR:-/tmp/ibu-cert-state}"
 export TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
+MULTI_ALGO="${MULTI_ALGO:-false}"
 
 print_banner() {
 	echo
@@ -43,8 +44,13 @@ check_prerequisites() {
 	cert_count=$(oc get certificates -n "$TARGET_NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
 	if [ "$cert_count" -eq 0 ]; then
 		log_warn "No certificates found in namespace $TARGET_NAMESPACE"
-		log_info "Creating test certificate using existing setup..."
-		create_test_certificate
+		if [ "$MULTI_ALGO" = "true" ]; then
+			log_info "Creating multi-algorithm test certificates..."
+			"$SCRIPT_DIR/create-multi-algo-certs.sh"
+		else
+			log_info "Creating test certificate using existing setup..."
+			create_test_certificate
+		fi
 	fi
 
 	log_success "All prerequisites met!"

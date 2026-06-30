@@ -33,7 +33,9 @@ BG_BLUE := \033[44m
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
         uninstall-cert-manager-operator \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
-        test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu
+        test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu \
+        create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
+        quick-multi-algo-test
 
 # Default target
 all: help
@@ -286,6 +288,16 @@ quick-dns-test: test-dns01 test-cert ## Quick end-to-end DNS-01 test
 	@echo ""
 	@echo "Quick DNS-01 test complete! Run 'make clean' to clean up."
 
+quick-multi-algo-test: install-cert-manager-operator create-multi-algo-certs ## Quick multi-algorithm certificate test (ECDSA, RSA, Ed25519)
+	@echo ""
+	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
+	@echo "  ╔═════════════════════════════════════════════════════════════╗"
+	@echo "  ║    Multi-Algorithm Certificate Test Complete!               ║"
+	@echo "  ╚═════════════════════════════════════════════════════════════╝"
+	@echo "$(RESET)"
+	@echo ""
+	@echo "Run 'make clean-multi-algo-certs' to clean up."
+
 # ────────────────────────────────────────────────────────────────────────────────
 # Troubleshooting
 # ────────────────────────────────────────────────────────────────────────────────
@@ -371,6 +383,25 @@ quick-ibu-test: install-cert-manager-operator install-ibu-prereqs ## End-to-end 
 	@echo ""
 	@echo "$(BOLD)$(BLUE)Running IBU certificate loss test...$(RESET)"
 	@./scripts/ibu/run-ibu-test.sh
+
+create-multi-algo-certs: ## Create test certs with all key algorithms (ECDSA, RSA, Ed25519)
+	@echo "$(BOLD)$(BLUE)Creating multi-algorithm test certificates...$(RESET)"
+	@./scripts/ibu/create-multi-algo-certs.sh
+	@echo ""
+
+verify-key-formats: ## Verify PEM key formats of TLS secrets in namespace
+	@./scripts/ibu/verify-key-formats.sh
+
+test-ibu-multi-algo: ## Run IBU cert loss test with all key algorithms
+	@echo "$(BOLD)$(BLUE)Running multi-algorithm IBU certificate loss test...$(RESET)"
+	@MULTI_ALGO=true ./scripts/ibu/run-ibu-test.sh
+	@echo ""
+
+clean-multi-algo-certs: ## Clean up multi-algorithm test certificates
+	@echo "$(BOLD)$(YELLOW)Cleaning up multi-algorithm test certificates...$(RESET)"
+	@oc delete certificate -n default -l app=ibu-multi-algo-test --ignore-not-found=true 2>/dev/null || true
+	@oc delete secret -n default ibu-cert-ecdsa-p256-tls ibu-cert-ecdsa-p384-tls ibu-cert-rsa-2048-tls ibu-cert-rsa-4096-tls ibu-cert-ed25519-tls --ignore-not-found=true 2>/dev/null || true
+	@echo "$(GREEN)Multi-algorithm test certificates cleaned.$(RESET)"
 
 clean-ibu: ## Clean up IBU test resources (MinIO, OADP, backups)
 	@echo "$(BOLD)$(YELLOW)Cleaning up IBU test resources...$(RESET)"

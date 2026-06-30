@@ -16,8 +16,9 @@ make preflight     # Check all tool dependencies and cluster prerequisites
 
 ### Quick End-to-End Tests
 ```bash
-make quick-http-test   # Install operator + Pebble (ALWAYS_VALID=1) + HTTP-01 cert
-make quick-dns-test    # Install fake DNS + Pebble + DNS-01 wildcard cert
+make quick-http-test       # Install operator + Pebble (ALWAYS_VALID=1) + HTTP-01 cert
+make quick-dns-test        # Install fake DNS + Pebble + DNS-01 wildcard cert
+make quick-multi-algo-test # Install operator + create ECDSA/RSA/Ed25519 certs + verify PEM formats
 ```
 
 ### Step-by-Step Workflow
@@ -47,12 +48,16 @@ make test-ibu-certs        # Scenario 1: certificate loss (default IBU)
 make test-ibu-preserved    # Scenario 2: certificate preservation (LCA labels)
 make test-ibu-both         # Run both scenarios
 make quick-ibu-test        # End-to-end IBU test
+make create-multi-algo-certs  # Create certs with all key algorithms (ECDSA, RSA, Ed25519)
+make verify-key-formats       # Verify PEM key formats of TLS secrets
+make test-ibu-multi-algo      # IBU cert loss test with all key algorithms
 ```
 
 ### Cleanup
 ```bash
 make clean         # Remove certs, issuers, Pebble, fake DNS (keeps operator)
 make clean-ibu     # Remove IBU resources (MinIO, OADP, backups)
+make clean-multi-algo-certs            # Remove multi-algorithm test certs
 make uninstall-cert-manager-operator   # Remove operator (interactive confirm)
 ```
 
@@ -95,6 +100,7 @@ Organized by component: `cert-manager-operator/`, `pebble/`, `fake-dns-api/`, `i
 | `PEBBLE_NAMESPACE` | `pebble` | Pebble server namespace |
 | `LOG_LEVEL` | `info` | `quiet\|error\|warn\|info\|debug` — controls common.sh logging |
 | `DRY_RUN` | `false` | Enable dry-run mode |
+| `MULTI_ALGO` | `false` | Use multi-algorithm certs (ECDSA, RSA, Ed25519) in IBU tests |
 
 ### lib/common.sh API
 
@@ -130,7 +136,8 @@ Key functions:
 - **OLM**: `wait_for_csv <namespace> <grep_pattern> <max_attempts>` — waits for CSV to reach Succeeded phase
 - **OADP**: `wait_for_backup_restore <type> <name> <namespace> <max_attempts>` — waits for backup/restore completion
 - **IBU**: `build_lca_annotations <namespace>` — builds lca.openshift.io/apply-label annotation value
-- **IBU**: `capture_secret_checksums <namespace> <output_file>` — captures TLS secret checksums in a single API call
+- **IBU**: `capture_secret_checksums <namespace> <output_file>` — captures TLS secret checksums and PEM types in a single API call
+- **IBU**: `get_key_pem_type <base64_key_data>` — returns PEM header type (`EC PRIVATE KEY`, `RSA PRIVATE KEY`, `PRIVATE KEY`, or `UNKNOWN`)
 
 ## IBU Certificate Validation
 

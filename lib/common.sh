@@ -467,6 +467,24 @@ require_ibu_prereqs() {
 	fi
 }
 
+# Extract PEM type from base64-encoded key data
+# Usage: get_key_pem_type <base64_key_data>
+# Returns: "EC PRIVATE KEY", "RSA PRIVATE KEY", "PRIVATE KEY", or "UNKNOWN"
+get_key_pem_type() {
+	local b64_data="$1"
+	[[ -z "$b64_data" ]] && echo "UNKNOWN" && return
+
+	local header
+	header=$(echo "$b64_data" | base64 -d 2>/dev/null | head -1 || echo "")
+
+	case "$header" in
+	*"EC PRIVATE KEY"*) echo "EC PRIVATE KEY" ;;
+	*"RSA PRIVATE KEY"*) echo "RSA PRIVATE KEY" ;;
+	*"PRIVATE KEY"*) echo "PRIVATE KEY" ;;
+	*) echo "UNKNOWN" ;;
+	esac
+}
+
 # Capture TLS secret checksums for a namespace in a single API call
 # Usage: capture_secret_checksums <namespace> <output_file>
 capture_secret_checksums() {
@@ -493,14 +511,17 @@ capture_secret_checksums() {
 		fi
 
 		local key_checksum=""
+		local pem_type="UNKNOWN"
 		if [[ -n "$key_data" ]]; then
 			key_checksum=$(echo "$key_data" | shasum -a 256 | cut -d' ' -f1)
+			pem_type=$(get_key_pem_type "$key_data")
 		fi
 
 		jq --arg name "$name" \
 			--arg cert_checksum "$cert_checksum" \
 			--arg key_checksum "$key_checksum" \
-			'. += [{name: $name, cert_checksum: $cert_checksum, key_checksum: $key_checksum}]' \
+			--arg pem_type "$pem_type" \
+			'. += [{name: $name, cert_checksum: $cert_checksum, key_checksum: $key_checksum, pem_type: $pem_type}]' \
 			"$checksums_file" >"$checksums_file.tmp" && mv "$checksums_file.tmp" "$checksums_file"
 	done <<<"$secret_entries"
 }
