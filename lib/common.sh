@@ -230,6 +230,22 @@ print_summary() {
 }
 
 # ============================================================================
+# INTERACTIVE PROMPTS
+# ============================================================================
+# Prompt for confirmation, auto-accept when SKIP_CONFIRM=1 or non-interactive
+# Usage: confirm "Continue anyway?" || exit 0
+confirm() {
+	local prompt="${1:-Continue?}"
+	if [[ "${SKIP_CONFIRM:-0}" == "1" ]] || [[ ! -t 0 ]]; then
+		log_debug "Auto-confirmed: $prompt (SKIP_CONFIRM=$SKIP_CONFIRM)"
+		return 0
+	fi
+	read -p "$prompt (y/N): " -n 1 -r
+	echo
+	[[ $REPLY =~ ^[Yy]$ ]]
+}
+
+# ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 # Check if running with cluster-admin privileges

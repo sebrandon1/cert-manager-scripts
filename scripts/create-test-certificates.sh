@@ -41,9 +41,7 @@ check_prerequisites() {
 	# Check if namespace exists
 	if ! oc get namespace "$CERT_NAMESPACE" &>/dev/null; then
 		log_warn "Namespace '$CERT_NAMESPACE' does not exist."
-		read -p "Create namespace '$CERT_NAMESPACE'? (y/N): " -n 1 -r
-		echo
-		if [[ $REPLY =~ ^[Yy]$ ]]; then
+		if confirm "Create namespace '$CERT_NAMESPACE'?"; then
 			oc create namespace "$CERT_NAMESPACE"
 			log_info "Namespace '$CERT_NAMESPACE' created."
 		else

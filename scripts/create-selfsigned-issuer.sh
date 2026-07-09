@@ -49,9 +49,7 @@ check_existing_issuer() {
 
 	if [ "$exists" = true ]; then
 		echo
-		read -p "Overwrite existing resources? (y/N): " -n 1 -r
-		echo
-		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+		if ! confirm "Overwrite existing resources?"; then
 			log_info "Keeping existing resources."
 			exit 0
 		fi

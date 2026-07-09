@@ -42,9 +42,7 @@ check_user_workload_monitoring() {
 		echo "      enableUserWorkload: true"
 		echo "  EOF"
 		echo
-		read -p "Continue anyway? (y/N): " -n 1 -r
-		echo
-		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+		if ! confirm "Continue anyway?"; then
 			log_info "Cancelled."
 			exit 0
 		fi
@@ -68,9 +66,7 @@ check_existing_resources() {
 
 	if [ "$exists" = true ]; then
 		echo
-		read -p "Overwrite existing resources? (y/N): " -n 1 -r
-		echo
-		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+		if ! confirm "Overwrite existing resources?"; then
 			log_info "Keeping existing resources."
 			exit 0
 		fi
