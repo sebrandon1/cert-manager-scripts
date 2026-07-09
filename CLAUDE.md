@@ -100,6 +100,7 @@ Organized by component: `cert-manager-operator/`, `pebble/`, `fake-dns-api/`, `i
 | `PEBBLE_NAMESPACE` | `pebble` | Pebble server namespace |
 | `LOG_LEVEL` | `info` | `quiet\|error\|warn\|info\|debug` — controls common.sh logging |
 | `DRY_RUN` | `false` | Enable dry-run mode |
+| `SKIP_CONFIRM` | `0` | Set to `1` to skip interactive confirmation prompts (CI/automation) |
 | `MULTI_ALGO` | `false` | Use multi-algorithm certs (ECDSA, RSA, Ed25519) in IBU tests |
 
 ### lib/common.sh API

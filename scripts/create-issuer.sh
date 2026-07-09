@@ -25,9 +25,7 @@ check_pebble() {
 		log_info "This issuer will point to: $ACME_SERVER_URL"
 		log_warn "If using Pebble, install it first: make install-pebble"
 		echo
-		read -p "Continue anyway? (y/N): " -n 1 -r
-		echo
-		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+		if ! confirm "Continue anyway?"; then
 			log_info "Cancelled."
 			exit 0
 		fi
@@ -53,9 +51,7 @@ check_existing_issuer() {
 		log_debug "Current ACME server: $current_server"
 
 		echo
-		read -p "Overwrite existing issuer? (y/N): " -n 1 -r
-		echo
-		if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+		if ! confirm "Overwrite existing issuer?"; then
 			log_info "Keeping existing issuer."
 			exit 0
 		fi
