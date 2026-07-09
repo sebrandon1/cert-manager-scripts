@@ -85,14 +85,15 @@ log_info "Checking DNS-01 ClusterIssuers..."
 DNS01_ISSUERS=$(oc get clusterissuer -o json | jq -r '.items[] | select(.spec.acme.solvers[]?.dns01 != null) | .metadata.name' 2>/dev/null || echo "")
 
 if [ -n "$DNS01_ISSUERS" ]; then
-	for issuer in $DNS01_ISSUERS; do
+	while IFS= read -r issuer; do
+		[[ -z "$issuer" ]] && continue
 		READY=$(oc get clusterissuer "$issuer" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
 		if [ "$READY" = "True" ]; then
 			echo "✅ $issuer is ready"
 		else
 			log_warn "$issuer is not ready (Status: $READY)"
 		fi
-	done
+	done <<<"$DNS01_ISSUERS"
 else
 	log_warn "No DNS-01 ClusterIssuers found"
 fi
@@ -107,7 +108,8 @@ if [ -n "$CHALLENGES" ]; then
 	echo "Found DNS-01 challenges:"
 	echo
 
-	for challenge in $CHALLENGES; do
+	while IFS= read -r challenge; do
+		[[ -z "$challenge" ]] && continue
 		NAMESPACE=$(echo "$challenge" | cut -d'/' -f1)
 		NAME=$(echo "$challenge" | cut -d'/' -f2)
 
@@ -129,7 +131,7 @@ if [ -n "$CHALLENGES" ]; then
 		fi
 
 		echo
-	done
+	done <<<"$CHALLENGES"
 else
 	log_info "No active DNS-01 challenges found"
 fi

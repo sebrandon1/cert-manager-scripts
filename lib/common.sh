@@ -423,9 +423,10 @@ build_lca_annotations() {
 
 	local cert_names
 	cert_names=$(oc get certificates -n "$namespace" \
-		-o jsonpath='{.items[*].metadata.name}')
+		-o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
 
-	for cert_name in $cert_names; do
+	while IFS= read -r cert_name; do
+		[[ -z "$cert_name" ]] && continue
 		annotation_parts+=("cert-manager.io/v1/certificates/$namespace/$cert_name")
 
 		local secret_name
@@ -437,7 +438,7 @@ build_lca_annotations() {
 				annotation_parts+=("v1/secrets/$namespace/$secret_name")
 			fi
 		fi
-	done
+	done <<<"$cert_names"
 
 	local annotation_value
 	annotation_value=$(

@@ -110,9 +110,10 @@ if [ "$CERTS" -gt 0 ]; then
 	if [ -n "$FAILED" ]; then
 		echo
 		log_warn "Failed certificates:"
-		for cert in $FAILED; do
+		while IFS= read -r cert; do
+			[[ -z "$cert" ]] && continue
 			echo "  ❌ $cert"
-		done
+		done <<<"$FAILED"
 		echo
 		echo "Run detailed check with:"
 		echo "  ./scripts/troubleshooting/check-certificate.sh <name> <namespace>"
