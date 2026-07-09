@@ -24,7 +24,7 @@ jobs:
         uses: mfinelli/setup-shfmt@a25fda4c1fe115aec0f85e04126610841bc3141d # v4.0.1
 
       - name: Shfmt
-        run: shfmt -d .
+        run: shfmt -d scripts/ lib/
 
   shellcheck:
     name: ShellCheck Analysis
@@ -41,7 +41,7 @@ jobs:
       - name: Run ShellCheck
         run: |
           echo "Running ShellCheck on all shell scripts..."
-          find scripts/ -type f -name "*.sh" -print0 | xargs -0 shellcheck --severity=error --shell=bash
+          find scripts/ lib/ -type f -name "*.sh" -print0 | xargs -0 shellcheck --severity=error --shell=bash
 
   workload-partitioning-check:
     name: Validate Workload Partitioning Check Script
