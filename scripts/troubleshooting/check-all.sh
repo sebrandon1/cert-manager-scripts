@@ -183,3 +183,7 @@ echo
 echo "Diagnose DNS-01 issues:"
 echo "  ./scripts/troubleshooting/diagnose-dns01.sh"
 echo
+
+if [ "$ISSUES" -gt 0 ]; then
+	exit 1
+fi
