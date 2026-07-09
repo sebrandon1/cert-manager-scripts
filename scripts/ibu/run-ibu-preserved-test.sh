@@ -65,62 +65,7 @@ check_prerequisites() {
 
 create_test_certificate() {
 	log_info "Creating test certificate for IBU preservation validation..."
-
-	local issuer="selfsigned-issuer"
-
-	# Create selfsigned issuer if it doesn't exist
-	if ! oc get clusterissuer "$issuer" &>/dev/null; then
-		log_info "Creating selfsigned ClusterIssuer..."
-		cat <<EOF | oc apply -f -
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: selfsigned-issuer
-spec:
-  selfSigned: {}
-EOF
-	fi
-
-	# Create a test certificate with preservation label
-	cat <<EOF | oc apply -f -
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: ibu-test-cert
-  namespace: $TARGET_NAMESPACE
-  labels:
-    app: ibu-test
-spec:
-  secretName: ibu-test-cert-tls
-  issuerRef:
-    name: $issuer
-    kind: ClusterIssuer
-  dnsNames:
-    - ibu-test.example.com
-    - "*.ibu-test.example.com"
-  duration: 8760h
-EOF
-
-	# Wait for certificate to be ready
-	log_info "Waiting for certificate to be issued..."
-	local max_attempts=30
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local ready
-		ready=$(oc get certificate ibu-test-cert -n "$TARGET_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
-
-		if [ "$ready" = "True" ]; then
-			log_success "Test certificate is ready!"
-			return 0
-		fi
-
-		attempt=$((attempt + 1))
-		sleep 2
-	done
-
-	log_error "Timeout waiting for test certificate"
-	exit 1
+	create_ibu_test_certificate "$TARGET_NAMESPACE"
 }
 
 label_resources_for_preservation() {
