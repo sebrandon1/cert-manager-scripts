@@ -62,11 +62,12 @@ check_single_certificate() {
 		CR_LIST=$(oc get certificaterequest -n "$NAMESPACE" -o json | jq -r ".items[] | select(.metadata.ownerReferences[]?.name==\"$CERT_NAME\") | .metadata.name" 2>/dev/null || echo "")
 
 		if [ -n "$CR_LIST" ]; then
-			for cr in $CR_LIST; do
+			while IFS= read -r cr; do
+				[[ -z "$cr" ]] && continue
 				log_info "CertificateRequest: $cr"
 				oc describe certificaterequest "$cr" -n "$NAMESPACE"
 				echo
-			done
+			done <<<"$CR_LIST"
 		else
 			log_warn "No CertificateRequests found"
 		fi
@@ -77,11 +78,12 @@ check_single_certificate() {
 		if oc get order -n "$NAMESPACE" &>/dev/null; then
 			ORDERS=$(oc get order -n "$NAMESPACE" -o name 2>/dev/null || echo "")
 			if [ -n "$ORDERS" ]; then
-				for order in $ORDERS; do
-					log_info "Order: $(basename $order)"
+				while IFS= read -r order; do
+					[[ -z "$order" ]] && continue
+					log_info "Order: $(basename "$order")"
 					oc describe "$order" -n "$NAMESPACE"
 					echo
-				done
+				done <<<"$ORDERS"
 			else
 				log_warn "No Orders found"
 			fi
@@ -95,11 +97,12 @@ check_single_certificate() {
 		if oc get challenge -n "$NAMESPACE" &>/dev/null; then
 			CHALLENGES=$(oc get challenge -n "$NAMESPACE" -o name 2>/dev/null || echo "")
 			if [ -n "$CHALLENGES" ]; then
-				for challenge in $CHALLENGES; do
-					log_info "Challenge: $(basename $challenge)"
+				while IFS= read -r challenge; do
+					[[ -z "$challenge" ]] && continue
+					log_info "Challenge: $(basename "$challenge")"
 					oc describe "$challenge" -n "$NAMESPACE"
 					echo
-				done
+				done <<<"$CHALLENGES"
 			else
 				log_warn "No Challenges found"
 			fi

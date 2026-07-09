@@ -13,12 +13,13 @@ echo "Checking make target references in documentation..."
 MAKEFILE_TARGETS=$(grep -oE '^[a-z][a-z0-9_-]*:' Makefile | sed 's/://')
 DOC_REFS=$(grep -roh 'make [a-z][a-z0-9_-]*' docs/ guide/ README.md 2>/dev/null | sed 's/make //' | sort -u)
 
-for ref in $DOC_REFS; do
+while IFS= read -r ref; do
+	[[ -z "$ref" ]] && continue
 	if ! echo "$MAKEFILE_TARGETS" | grep -qx "$ref"; then
 		echo "❌ docs reference non-existent target: make $ref"
 		FAILURES=$((FAILURES + 1))
 	fi
-done
+done <<<"$DOC_REFS"
 if [ "$FAILURES" -eq 0 ]; then
 	echo "✅ All make target references in docs are valid"
 fi

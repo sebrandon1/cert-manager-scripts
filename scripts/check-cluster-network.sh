@@ -59,32 +59,36 @@ check_ip_families() {
 	fi
 
 	# Check cluster network CIDRs
-	local cluster_cidrs=$(echo "$cluster_networks" | jq -r '.spec.clusterNetwork[]?.cidr' 2>/dev/null | tr '\n' ' ')
-	local service_cidrs=$(echo "$cluster_networks" | jq -r '.spec.serviceNetwork[]?' 2>/dev/null | tr '\n' ' ')
+	local cluster_cidrs
+	cluster_cidrs=$(echo "$cluster_networks" | jq -r '.spec.clusterNetwork[]?.cidr' 2>/dev/null)
+	local service_cidrs
+	service_cidrs=$(echo "$cluster_networks" | jq -r '.spec.serviceNetwork[]?' 2>/dev/null)
 
 	echo "  Cluster Networks:"
 	local has_ipv4=false
 	local has_ipv6=false
 
-	for cidr in $cluster_cidrs; do
+	while IFS= read -r cidr; do
+		[[ -z "$cidr" ]] && continue
 		echo "    - $cidr"
 		if [[ "$cidr" =~ : ]]; then
 			has_ipv6=true
 		else
 			has_ipv4=true
 		fi
-	done
+	done <<<"$cluster_cidrs"
 
 	echo
 	echo "  Service Networks:"
-	for cidr in $service_cidrs; do
+	while IFS= read -r cidr; do
+		[[ -z "$cidr" ]] && continue
 		echo "    - $cidr"
 		if [[ "$cidr" =~ : ]]; then
 			has_ipv6=true
 		else
 			has_ipv4=true
 		fi
-	done
+	done <<<"$service_cidrs"
 	echo
 
 	# Determine network stack
@@ -171,16 +175,18 @@ check_node_addresses() {
 
 	for i in $(seq 0 $((display_count - 1))); do
 		local node_name=$(echo "$nodes" | jq -r ".items[$i].metadata.name")
-		local internal_ips=$(echo "$nodes" | jq -r ".items[$i].status.addresses[] | select(.type==\"InternalIP\") | .address" | tr '\n' ' ')
+		local internal_ips
+		internal_ips=$(echo "$nodes" | jq -r ".items[$i].status.addresses[] | select(.type==\"InternalIP\") | .address")
 
 		echo "  Node: $node_name"
-		for ip in $internal_ips; do
+		while IFS= read -r ip; do
+			[[ -z "$ip" ]] && continue
 			if [[ "$ip" =~ : ]]; then
 				echo "    - $ip (IPv6)"
 			else
 				echo "    - $ip (IPv4)"
 			fi
-		done
+		done <<<"$internal_ips"
 	done
 
 	if [ "$node_count" -gt 3 ]; then
@@ -224,13 +230,14 @@ provide_recommendations() {
 
 	local cluster_cidrs
 	cluster_cidrs=$(echo "$cluster_networks" | jq -r '.spec.clusterNetwork[]?.cidr' 2>/dev/null)
-	for cidr in $cluster_cidrs; do
+	while IFS= read -r cidr; do
+		[[ -z "$cidr" ]] && continue
 		if [[ "$cidr" =~ : ]]; then
 			has_ipv6=true
 		else
 			has_ipv4=true
 		fi
-	done
+	done <<<"$cluster_cidrs"
 
 	if [ "$has_ipv4" = true ] && [ "$has_ipv6" = true ]; then
 		echo "Your cluster supports DUAL-STACK networking:"
