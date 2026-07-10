@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
 # Configuration
-STATE_DIR="${STATE_DIR:-/tmp/ibu-cert-state}"
+STATE_DIR="${STATE_DIR:?STATE_DIR must be set by the calling script}"
 STATE_LABEL="${STATE_LABEL:-before}"
 TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
 
