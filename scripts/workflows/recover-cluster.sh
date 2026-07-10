@@ -30,10 +30,7 @@ if ! getent hosts "$API_HOST" &>/dev/null; then
 	# Try to ping the host to refresh DNS cache
 	ping -c 1 "$API_HOST" &>/dev/null || true
 
-	# Wait a bit for DNS to propagate
-	sleep 5
-
-	if getent hosts "$API_HOST" &>/dev/null; then
+	if retry 3 5 getent hosts "$API_HOST"; then
 		log_info "✅ DNS resolution recovered"
 	else
 		log_error "❌ DNS resolution still failing"
@@ -50,9 +47,8 @@ if ! oc whoami &>/dev/null; then
 
 	# Try to force a token refresh
 	oc version &>/dev/null || true
-	sleep 2
 
-	if oc whoami &>/dev/null; then
+	if retry 3 3 oc whoami; then
 		log_info "✅ Authentication recovered"
 	else
 		log_error "❌ Authentication still failing"
@@ -62,22 +58,10 @@ fi
 
 # Test 3: Check API server responsiveness
 log_info "Checking API server responsiveness..."
-MAX_RETRIES=5
-RETRY_COUNT=0
-
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-	if oc get namespace default &>/dev/null; then
-		log_info "✅ API server is responsive"
-		break
-	else
-		RETRY_COUNT=$((RETRY_COUNT + 1))
-		log_warn "API server not responding (attempt $RETRY_COUNT/$MAX_RETRIES)"
-		sleep 5
-	fi
-done
-
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-	log_error "❌ API server not responsive after $MAX_RETRIES attempts"
+if retry 5 5 oc get namespace default; then
+	log_info "✅ API server is responsive"
+else
+	log_error "❌ API server not responsive after 5 attempts"
 	exit 1
 fi
 
