@@ -79,9 +79,8 @@ capture_after_state() {
 	log_info "Step 3/4: Capturing post-IBU certificate state..."
 	echo
 
-	# Wait a bit for cert-manager to fully reconcile
 	log_info "Waiting for cert-manager to reconcile certificates..."
-	sleep 30
+	retry 12 5 oc wait --for=condition=Ready certificates --all -n "$TARGET_NAMESPACE" --timeout=5s
 
 	STATE_LABEL=after "$SCRIPT_DIR/capture-cert-state.sh"
 }

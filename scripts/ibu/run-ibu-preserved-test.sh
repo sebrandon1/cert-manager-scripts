@@ -93,9 +93,8 @@ capture_after_state() {
 	log_info "Step 4/5: Capturing post-IBU certificate state..."
 	echo
 
-	# Wait for resources to stabilize
 	log_info "Waiting for resources to stabilize..."
-	sleep 15
+	retry 6 5 oc wait --for=condition=Ready certificates --all -n "$TARGET_NAMESPACE" --timeout=5s
 
 	STATE_LABEL=after "$SCRIPT_DIR/capture-cert-state.sh"
 }

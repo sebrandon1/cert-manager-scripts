@@ -107,8 +107,7 @@ wait_for_cert_manager_reconcile() {
 	log_info "Cleaning up restored CertificateRequests..."
 	oc delete certificaterequests --all -n "$TARGET_NAMESPACE" --ignore-not-found=true 2>/dev/null || true
 
-	# Wait for cert-manager to process
-	sleep 30
+	retry 12 5 oc wait --for=condition=Ready certificates --all -n "$TARGET_NAMESPACE" --timeout=5s
 
 	# Check certificate status
 	log_info "Current certificate status:"
