@@ -27,8 +27,7 @@ oc create secret generic rfc2136-credentials \
 	--namespace cert-manager \
 	--dry-run=client -o yaml | oc apply -f -
 
-log_info "Creating DNS-01 ClusterIssuer..."
-envsubst <"$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" | oc apply -f -
+apply_yaml_template "$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" "DNS-01 ClusterIssuer"
 
 log_info "Waiting for ClusterIssuer to be ready..."
 retry 3 5 oc wait --for=condition=Ready clusterissuer/"$ISSUER_NAME" --timeout=10s 2>/dev/null

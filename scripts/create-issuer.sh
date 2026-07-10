@@ -69,16 +69,7 @@ display_configuration() {
 }
 
 create_issuer() {
-	log_info "Creating ClusterIssuer '$ISSUER_NAME'..."
-
-	envsubst <"$YAML_DIR/pebble-clusterissuer.yaml" | oc apply -f -
-
-	if [ $? -eq 0 ]; then
-		log_info "ClusterIssuer created successfully."
-	else
-		log_error "Failed to create ClusterIssuer."
-		exit 1
-	fi
+	apply_yaml_template "$YAML_DIR/pebble-clusterissuer.yaml" "ClusterIssuer"
 }
 
 verify_issuer() {

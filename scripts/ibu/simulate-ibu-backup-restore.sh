@@ -58,8 +58,7 @@ check_prerequisites() {
 create_backup() {
 	log_info "Creating backup: $BACKUP_NAME"
 
-	# Apply backup CR with variable substitution
-	envsubst <"$YAML_DIR/backup.yaml" | oc apply -f -
+	apply_yaml_template "$YAML_DIR/backup.yaml" "Backup"
 
 	# Wait for backup to complete
 	wait_for_backup_restore "backup" "$BACKUP_NAME" "$OADP_NAMESPACE"
@@ -92,8 +91,7 @@ delete_namespace_resources() {
 restore_from_backup() {
 	log_info "Restoring from backup: $BACKUP_NAME"
 
-	# Apply restore CR with variable substitution
-	envsubst <"$YAML_DIR/restore.yaml" | oc apply -f -
+	apply_yaml_template "$YAML_DIR/restore.yaml" "Restore"
 
 	# Wait for restore to complete
 	wait_for_backup_restore "restore" "$RESTORE_NAME" "$OADP_NAMESPACE"

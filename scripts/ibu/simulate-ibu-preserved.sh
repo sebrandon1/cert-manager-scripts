@@ -61,8 +61,7 @@ create_preserved_backup() {
 
 	log_info "Using apply-label annotation: $apply_label_annotation"
 
-	# Apply backup CR with LCA annotation
-	envsubst <"$YAML_DIR/backup-preserved.yaml" | oc apply -f -
+	apply_yaml_template "$YAML_DIR/backup-preserved.yaml" "Backup"
 
 	# Wait for backup to complete
 	wait_for_backup_restore "backup" "$BACKUP_NAME" "$OADP_NAMESPACE"
@@ -95,8 +94,7 @@ delete_namespace_resources() {
 restore_from_backup() {
 	log_info "Restoring from preserved backup: $BACKUP_NAME"
 
-	# Apply restore CR
-	envsubst <"$YAML_DIR/restore-preserved.yaml" | oc apply -f -
+	apply_yaml_template "$YAML_DIR/restore-preserved.yaml" "Restore"
 
 	# Wait for restore to complete
 	wait_for_backup_restore "restore" "$RESTORE_NAME" "$OADP_NAMESPACE"

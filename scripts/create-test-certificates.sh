@@ -72,13 +72,7 @@ create_certificate() {
 		return 0
 	fi
 
-	envsubst <"$YAML_DIR/test-certificate.yaml" | oc apply -f -
-
-	if [ $? -eq 0 ]; then
-		log_info "Certificate '$cert_name' created."
-	else
-		log_error "Failed to create certificate '$cert_name'."
-	fi
+	apply_yaml_template "$YAML_DIR/test-certificate.yaml" "Certificate"
 }
 
 # Function to create multiple test certificates
