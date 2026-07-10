@@ -41,6 +41,7 @@ For DNS-01 with air-gapped fake DNS, use `make quick-dns-test` instead.
 
 - OpenShift cluster (4.20+)
 - `oc` CLI with cluster-admin privileges
+- `jq`: `brew install jq` (macOS) or `dnf install jq` (RHEL/Fedora)
 - `envsubst`: `brew install gettext` (macOS) or `dnf install gettext` (RHEL/Fedora)
 
 ## Development

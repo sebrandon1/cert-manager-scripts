@@ -23,7 +23,7 @@ CERT_NAME="apiserver-cert"
 SECRET_NAME="apiserver-cert-tls"
 
 check_prerequisites() {
-	require_cmd oc
+	require_cmd oc jq
 
 	# Try multiple times to connect - cluster may be temporarily unstable
 	local max_attempts=3

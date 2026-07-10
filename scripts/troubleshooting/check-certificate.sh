@@ -123,6 +123,8 @@ check_single_certificate() {
 	echo
 }
 
+require_cmd oc jq
+
 # Main logic
 if [ $# -eq 0 ]; then
 	# No arguments - check all certificates
