@@ -26,11 +26,8 @@ fi
 
 log_info "Installing Challenge Test Server..."
 
-log_info "Applying deployment..."
-envsubst <"$YAML_DIR/deployment.yaml" | oc apply -f -
-
-log_info "Applying service..."
-envsubst <"$YAML_DIR/service.yaml" | oc apply -f -
+apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
+apply_yaml_template "$YAML_DIR/service.yaml" "Service"
 
 log_info "Waiting for Challenge Test Server to be ready..."
 oc wait --for=condition=available --timeout=120s \
