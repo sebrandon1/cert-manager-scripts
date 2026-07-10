@@ -21,3 +21,6 @@ Thumbs.db
 test-output/
 *.log
 
+# Screenshots and binary artifacts
+*.png
+
