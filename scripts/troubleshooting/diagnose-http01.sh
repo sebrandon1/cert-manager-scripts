@@ -10,6 +10,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
+require_cmd oc jq
+
 print_header "HTTP-01 Challenge Diagnostics"
 
 # Check cert-manager

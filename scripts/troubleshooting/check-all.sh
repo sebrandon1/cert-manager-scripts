@@ -12,7 +12,7 @@ source "$SCRIPT_DIR/../../lib/common.sh"
 
 print_header "Complete System Diagnostics"
 
-require_cmd oc
+require_cmd oc jq
 require_cluster
 
 log_info "Cluster: $(oc whoami --show-server)"
