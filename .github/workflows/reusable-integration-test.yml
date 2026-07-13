@@ -79,6 +79,34 @@ jobs:
         env:
           CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
 
+      - name: Clean up HTTP-01 test resources
+        if: always()
+        run: make clean-certs clean-issuers clean-pebble || true
+
+      - name: Run quick self-signed CA test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 2
+          retry_on: error
+          command: make quick-selfsigned-test
+
+      - name: Clean up self-signed test resources
+        if: always()
+        run: make clean-selfsigned || true
+
+      - name: Run quick DNS-01 test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 30
+          max_attempts: 2
+          retry_on: error
+          command: make quick-dns-test
+
+      - name: Clean up DNS-01 test resources
+        if: always()
+        run: make clean-certs clean-issuers clean-pebble clean-fake-dns || true
+
       - name: Run multi-algorithm certificate test
         uses: nick-fields/retry@v4
         with:
