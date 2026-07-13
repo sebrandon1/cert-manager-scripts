@@ -14,11 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=../lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  CERT-MANAGER SCRIPTS - PREFLIGHT CHECK"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+print_header "CERT-MANAGER SCRIPTS - PREFLIGHT CHECK"
 
 FAILED=0
 WARNINGS=0
@@ -133,10 +129,7 @@ fi
 # ============================================================================
 # Summary
 # ============================================================================
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  SUMMARY"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+print_header "SUMMARY"
 
 if [[ $FAILED -eq 0 && $WARNINGS -eq 0 ]]; then
 	log_success "All checks passed!"

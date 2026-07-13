@@ -119,12 +119,8 @@ verify_restored_resources() {
 	oc get certificates -n "$TARGET_NAMESPACE" -o wide
 }
 
-print_summary() {
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo "  IBU Preserved Simulation Complete"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo
+print_simulation_summary() {
+	print_header "IBU Preserved Simulation Complete"
 	echo "  Backup:   $BACKUP_NAME"
 	echo "  Restore:  $RESTORE_NAME"
 	echo "  Mode:     Certificate Preservation (LCA-style)"
@@ -135,7 +131,6 @@ print_summary() {
 	echo "  3. Restored from backup (including original cert data)"
 	echo
 	echo "  Next step: Validate that certificates were preserved"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	echo
 }
 
@@ -153,7 +148,7 @@ main() {
 	restore_from_backup
 	verify_restored_resources
 
-	print_summary
+	print_simulation_summary
 	log_success "IBU preserved simulation complete!"
 }
 

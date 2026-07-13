@@ -66,12 +66,8 @@ label_secrets() {
 	log_success "Labeled $labeled TLS secrets"
 }
 
-print_summary() {
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo "  Resource Labeling Complete"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo
+print_labeling_summary() {
+	print_header "Resource Labeling Complete"
 	echo "  Labeled resources with: lca.openshift.io/backup=$BACKUP_NAME"
 	echo
 	echo "  These resources will be preserved during IBU when using"
@@ -80,7 +76,6 @@ print_summary() {
 	echo "  Verify labels:"
 	echo "    oc get certificates -n $TARGET_NAMESPACE --show-labels"
 	echo "    oc get secrets -n $TARGET_NAMESPACE --show-labels"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	echo
 }
 
@@ -103,7 +98,7 @@ main() {
 	log_info "Annotation value for Backup CR:"
 	echo "  lca.openshift.io/apply-label: $annotation_value"
 
-	print_summary
+	print_labeling_summary
 	log_success "Resource labeling complete!"
 }
 

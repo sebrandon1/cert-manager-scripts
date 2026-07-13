@@ -112,12 +112,8 @@ wait_for_cert_manager_reconcile() {
 	oc get certificates -n "$TARGET_NAMESPACE"
 }
 
-print_summary() {
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo "  IBU Simulation Complete"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo
+print_simulation_summary() {
+	print_header "IBU Simulation Complete"
 	echo "  Backup:   $BACKUP_NAME"
 	echo "  Restore:  $RESTORE_NAME"
 	echo
@@ -127,7 +123,6 @@ print_summary() {
 	echo "  3. Restored from backup"
 	echo
 	echo "  Next step: Run validate-cert-loss.sh to compare states"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	echo
 }
 
@@ -144,7 +139,7 @@ main() {
 	restore_from_backup
 	wait_for_cert_manager_reconcile
 
-	print_summary
+	print_simulation_summary
 	log_success "IBU simulation complete!"
 }
 
