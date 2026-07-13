@@ -72,31 +72,18 @@ create_issuer() {
 	apply_yaml_template "$YAML_DIR/pebble-clusterissuer.yaml" "ClusterIssuer"
 }
 
+check_issuer_ready() {
+	local ready
+	ready=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+	[ "$ready" = "True" ]
+}
+
 verify_issuer() {
 	log_info "Waiting for ClusterIssuer to be ready..."
 
-	local max_attempts=30
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local ready=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
-
-		if [ "$ready" = "True" ]; then
-			log_info "ClusterIssuer is ready!"
-			break
-		fi
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 5)) -eq 0 ]; then
-			echo -n " [${attempt}/${max_attempts}]"
-		else
-			echo -n "."
-		fi
-		sleep 2
-	done
-	echo
-
-	if [ $attempt -eq $max_attempts ]; then
+	if wait_for_condition 30 2 check_issuer_ready; then
+		log_success "ClusterIssuer is ready!"
+	else
 		log_warn "Timeout waiting for ClusterIssuer to be ready."
 		log_info "Check status with: oc describe clusterissuer $ISSUER_NAME"
 	fi

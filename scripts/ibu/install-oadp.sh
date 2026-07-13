@@ -83,31 +83,22 @@ configure_dpa() {
 	wait_for_dpa
 }
 
+check_dpa_reconciled() {
+	local status
+	status=$(oc get dataprotectionapplication velero -n "$OADP_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Reconciled")].status}')
+	[ "$status" = "True" ]
+}
+
 wait_for_dpa() {
 	log_info "Waiting for DataProtectionApplication to reconcile..."
 
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local status
-		status=$(oc get dataprotectionapplication velero -n "$OADP_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Reconciled")].status}' 2>/dev/null || echo "")
-
-		if [ "$status" = "True" ]; then
-			log_success "DataProtectionApplication is reconciled!"
-			return 0
-		fi
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 6)) -eq 0 ]; then
-			log_info "Waiting for DPA... ($attempt/$max_attempts)"
-		fi
-		sleep 5
-	done
-
-	log_error "Timeout waiting for DPA to reconcile."
-	log_info "Check status with: oc describe dpa velero -n $OADP_NAMESPACE"
-	return 1
+	if wait_for_condition 60 5 check_dpa_reconciled; then
+		log_success "DataProtectionApplication is reconciled!"
+	else
+		log_error "Timeout waiting for DPA to reconcile."
+		log_info "Check status with: oc describe dpa velero -n $OADP_NAMESPACE"
+		return 1
+	fi
 }
 
 verify_installation() {

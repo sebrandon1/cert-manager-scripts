@@ -25,23 +25,10 @@ SECRET_NAME="apiserver-cert-tls"
 check_prerequisites() {
 	require_cmd oc jq
 
-	# Try multiple times to connect - cluster may be temporarily unstable
-	local max_attempts=3
-	local attempt=1
-	while [ $attempt -le $max_attempts ]; do
-		if oc whoami &>/dev/null; then
-			return 0
-		fi
-		if [ $attempt -lt $max_attempts ]; then
-			log_warn "Cluster connection attempt $attempt/$max_attempts failed, retrying..."
-			sleep 5
-		fi
-		attempt=$((attempt + 1))
-	done
-
-	log_error "Not logged in to OpenShift cluster after $max_attempts attempts."
-	log_error "Cluster may be unstable. Please check cluster connectivity."
-	exit 1
+	if ! retry 3 5 oc whoami; then
+		log_error "Cluster may be unstable. Please check cluster connectivity."
+		exit 1
+	fi
 }
 
 verify_api_server_access() {

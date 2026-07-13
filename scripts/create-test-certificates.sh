@@ -113,55 +113,24 @@ show_http01_flow() {
 	echo
 }
 
-# Function to wait for certificates
+check_test_certs_ready() {
+	for cert in test-cert-simple test-cert-app test-cert-api; do
+		if oc get certificate "$cert" -n "$CERT_NAMESPACE" &>/dev/null; then
+			local ready
+			ready=$(oc get certificate "$cert" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' || echo "False")
+			[ "$ready" != "True" ] && return 1
+		fi
+	done
+	return 0
+}
+
 wait_for_certificates() {
 	log_info "Waiting for certificates to be issued..."
-	echo
+	show_http01_flow
 
-	local max_wait=60
-	local wait_time=0
-	local shown_flow=false
-
-	while [ $wait_time -lt $max_wait ]; do
-		local all_ready=true
-
-		# Check each certificate
-		for cert in test-cert-simple test-cert-app test-cert-api; do
-			if oc get certificate "$cert" -n "$CERT_NAMESPACE" &>/dev/null; then
-				local ready
-				ready=$(oc get certificate "$cert" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
-
-				if [ "$ready" != "True" ]; then
-					all_ready=false
-
-					# Show flow once when challenges are detected
-					if [ "$shown_flow" = false ]; then
-						if oc get challenge -n "$CERT_NAMESPACE" 2>/dev/null | grep -q "test-cert"; then
-							show_http01_flow
-							shown_flow=true
-						fi
-					fi
-				fi
-			fi
-		done
-
-		if [ "$all_ready" = true ]; then
-			log_success "All certificates are ready!"
-			break
-		fi
-
-		if [ $((wait_time % 10)) -eq 0 ]; then
-			echo -n " [${wait_time}s/${max_wait}s]"
-		else
-			echo -n "."
-		fi
-
-		sleep 2
-		wait_time=$((wait_time + 2))
-	done
-	echo
-
-	if [ $wait_time -ge $max_wait ]; then
+	if wait_for_condition 30 2 check_test_certs_ready; then
+		log_success "All certificates are ready!"
+	else
 		log_warn "Timeout waiting for all certificates to be ready."
 		log_info "This is normal if using PEBBLE_ALWAYS_VALID=0 without proper DNS/HTTP setup."
 		log_info "Check certificate status below for details."

@@ -211,6 +211,32 @@ retry() {
 	done
 }
 
+# Wait for a condition to become true with fixed polling interval
+# Usage: wait_for_condition <max_attempts> <interval_seconds> <command...>
+# Example: wait_for_condition 30 2 check_issuer_ready
+wait_for_condition() {
+	local max_attempts="$1"
+	local interval="$2"
+	shift 2
+
+	local attempt=1
+	while true; do
+		if "$@" 2>/dev/null; then
+			return 0
+		fi
+
+		if [[ $attempt -ge $max_attempts ]]; then
+			return 1
+		fi
+
+		if [[ $((attempt % 5)) -eq 0 ]]; then
+			log_info "Still waiting... ($attempt/$max_attempts)"
+		fi
+		sleep "$interval"
+		attempt=$((attempt + 1))
+	done
+}
+
 # ============================================================================
 # SUMMARY OUTPUT
 # ============================================================================

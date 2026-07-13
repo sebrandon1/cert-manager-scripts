@@ -110,32 +110,23 @@ create_all_certificates() {
 	log_info "All certificate resources created."
 }
 
+check_all_certs_ready() {
+	local not_ready
+	not_ready=$(oc get certificates -n "$TARGET_NAMESPACE" -l app="$CERT_LABEL" -o json |
+		jq '[.items[] | select((.status.conditions // [] | map(select(.type=="Ready" and .status=="True")) | length) == 0)] | length')
+	[ "$not_ready" -eq 0 ]
+}
+
 wait_for_certificates() {
 	log_info "Waiting for certificates to become ready..."
 
-	local max_attempts=60
-	local attempt=0
-
-	while [ $attempt -lt $max_attempts ]; do
-		local not_ready
-		not_ready=$(oc get certificates -n "$TARGET_NAMESPACE" -l app="$CERT_LABEL" -o json 2>/dev/null |
-			jq '[.items[] | select((.status.conditions // [] | map(select(.type=="Ready" and .status=="True")) | length) == 0)] | length')
-
-		if [ "$not_ready" -eq 0 ]; then
-			log_success "All certificates are ready!"
-			return 0
-		fi
-
-		attempt=$((attempt + 1))
-		if [ $((attempt % 5)) -eq 0 ]; then
-			log_info "Still waiting... ($not_ready not ready, ${attempt}/${max_attempts})"
-		fi
-		sleep 2
-	done
-
-	log_error "Timeout waiting for certificates to become ready."
-	log_info "Check status: oc get certificates -n $TARGET_NAMESPACE -l app=$CERT_LABEL"
-	exit 1
+	if wait_for_condition 60 2 check_all_certs_ready; then
+		log_success "All certificates are ready!"
+	else
+		log_error "Timeout waiting for certificates to become ready."
+		log_info "Check status: oc get certificates -n $TARGET_NAMESPACE -l app=$CERT_LABEL"
+		exit 1
+	fi
 }
 
 verify_key_formats() {
