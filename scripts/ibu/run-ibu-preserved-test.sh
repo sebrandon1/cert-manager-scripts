@@ -29,11 +29,7 @@ export RESTORE_NAME="${RESTORE_NAME:-${BACKUP_NAME}-restore}"
 MULTI_ALGO="${MULTI_ALGO:-false}"
 
 print_banner() {
-	echo
-	echo "╔═══════════════════════════════════════════════════════════════╗"
-	echo "║       IBU Certificate PRESERVATION Test (Scenario 2)         ║"
-	echo "╚═══════════════════════════════════════════════════════════════╝"
-	echo
+	print_header "IBU Certificate PRESERVATION Test (Scenario 2)"
 	echo "  This test validates that cert-manager certificates CAN BE"
 	echo "  preserved during IBU when using lca.openshift.io/apply-label."
 	echo
@@ -114,11 +110,7 @@ cleanup_state() {
 }
 
 print_final_summary() {
-	echo
-	echo "╔═══════════════════════════════════════════════════════════════╗"
-	echo "║       IBU Certificate Preservation Test Complete              ║"
-	echo "╚═══════════════════════════════════════════════════════════════╝"
-	echo
+	print_header "IBU Certificate Preservation Test Complete"
 	echo "  State files preserved in: $STATE_DIR"
 	echo
 	echo "  To review results:"
@@ -136,11 +128,7 @@ main() {
 	print_banner
 	check_prerequisites
 
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo "  Starting IBU Certificate Preservation Test"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo
+	print_header "Starting IBU Certificate Preservation Test"
 
 	label_resources_for_preservation
 	capture_before_state

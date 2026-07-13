@@ -23,11 +23,7 @@ export TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
 MULTI_ALGO="${MULTI_ALGO:-false}"
 
 print_banner() {
-	echo
-	echo "╔═══════════════════════════════════════════════════════════════╗"
-	echo "║         IBU Certificate Loss Validation Test                  ║"
-	echo "╚═══════════════════════════════════════════════════════════════╝"
-	echo
+	print_header "IBU Certificate Loss Validation Test"
 	echo "  This test validates that cert-manager certificates are NOT"
 	echo "  preserved during Image-Based Upgrade (IBU) operations."
 	echo
@@ -100,11 +96,7 @@ cleanup_state() {
 }
 
 print_final_summary() {
-	echo
-	echo "╔═══════════════════════════════════════════════════════════════╗"
-	echo "║         IBU Certificate Loss Test Complete                    ║"
-	echo "╚═══════════════════════════════════════════════════════════════╝"
-	echo
+	print_header "IBU Certificate Loss Test Complete"
 	echo "  State files preserved in: $STATE_DIR"
 	echo
 	echo "  To review results:"
@@ -122,11 +114,7 @@ main() {
 	print_banner
 	check_prerequisites
 
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo "  Starting IBU Certificate Loss Test"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo
+	print_header "Starting IBU Certificate Loss Test"
 
 	capture_before_state
 	simulate_ibu

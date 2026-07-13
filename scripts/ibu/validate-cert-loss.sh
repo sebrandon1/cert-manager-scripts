@@ -142,21 +142,15 @@ print_report() {
 	local missing=$3
 	local total=$4
 
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	if [ "$EXPECT_PRESERVED" = true ]; then
-		echo "  IBU Certificate Preservation Validation Report"
+		print_header "IBU Certificate Preservation Validation Report"
 	else
-		echo "  IBU Certificate Loss Validation Report"
+		print_header "IBU Certificate Loss Validation Report"
 	fi
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo
 	printf "  %-25s %s\n" "Total Secrets Compared:" "$total"
 	printf "  %-25s %s\n" "Changed (New Certs):" "$changed"
 	printf "  %-25s %s\n" "Unchanged (Same Certs):" "$unchanged"
 	printf "  %-25s %s\n" "Missing:" "$missing"
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	echo
 
 	# Determine test result based on expected behavior
@@ -299,11 +293,7 @@ compare_key_formats() {
 		return 0
 	fi
 
-	echo
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo "  Key PEM Format Comparison"
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	echo
+	print_header "Key PEM Format Comparison"
 
 	local format_changed=0
 	local format_unchanged=0
