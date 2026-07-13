@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
 # Configuration
-export STATE_DIR="${STATE_DIR:-/tmp/ibu-cert-state}"
+export STATE_DIR="${STATE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/ibu-cert-state.XXXXXX")}"
 export TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
 export BACKUP_NAME="${BACKUP_NAME:-ibu-preserved-$(date +%s)}"
 export RESTORE_NAME="${RESTORE_NAME:-${BACKUP_NAME}-restore}"
