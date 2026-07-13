@@ -43,7 +43,7 @@ log_info "Importing image to CRC/OpenShift..."
 # For CRC, we can use crc podman-env or import to internal registry
 if command -v crc &>/dev/null && crc status | grep -q "Running"; then
 	log_info "Detected CRC. Importing to CRC's podman..."
-	eval $(crc podman-env)
+	eval "$(crc podman-env)"
 	podman load -i /tmp/acme-dns.tar
 	log_info "Image imported to CRC!"
 else
@@ -65,13 +65,13 @@ else
 	# Tag and push
 	NEW_TAG="${REGISTRY}/${ACMEDNS_NAMESPACE}/acme-dns:latest"
 	log_info "Tagging image as: $NEW_TAG"
-	$CONTAINER_CMD tag $ACMEDNS_IMAGE $NEW_TAG
+	$CONTAINER_CMD tag "$ACMEDNS_IMAGE" "$NEW_TAG"
 
 	log_info "Logging into internal registry..."
-	$CONTAINER_CMD login -u kubeadmin -p $(oc whoami -t) $REGISTRY
+	$CONTAINER_CMD login -u kubeadmin -p "$(oc whoami -t)" "$REGISTRY"
 
 	log_info "Pushing image..."
-	$CONTAINER_CMD push $NEW_TAG
+	$CONTAINER_CMD push "$NEW_TAG"
 
 	log_info "Image pushed to internal registry!"
 	log_info "Update your deployment to use: $NEW_TAG"

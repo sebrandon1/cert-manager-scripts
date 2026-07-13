@@ -23,7 +23,7 @@ require_cluster
 
 log_info "Creating dummy RFC2136 secret in cert-manager namespace..."
 oc create secret generic rfc2136-credentials \
-	--from-literal=tsig-secret=$(echo -n "dummy-secret-key" | base64) \
+	--from-literal=tsig-secret="$(echo -n "dummy-secret-key" | base64)" \
 	--namespace cert-manager \
 	--dry-run=client -o yaml | oc apply -f -
 

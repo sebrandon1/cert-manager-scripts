@@ -11,6 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
+# shellcheck disable=SC2329
 check_cluster() {
 	oc whoami &>/dev/null && oc get nodes &>/dev/null
 }

@@ -159,6 +159,7 @@ _TEMP_FILES=()
 setup_cleanup() {
 	_START_TIME=$(date +%s)
 
+	# shellcheck disable=SC2329
 	cleanup() {
 		local exit_code=$?
 		local duration=$(($(date +%s) - _START_TIME))
@@ -171,7 +172,7 @@ setup_cleanup() {
 		if [[ $LOG_LEVEL -ge 3 ]]; then
 			log_info "Duration: ${duration}s"
 		fi
-		exit $exit_code
+		exit "$exit_code"
 	}
 	trap cleanup EXIT
 }

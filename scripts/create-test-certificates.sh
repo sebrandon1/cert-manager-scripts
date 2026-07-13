@@ -177,7 +177,8 @@ display_next_steps() {
 	echo
 
 	# Check if certificates failed
-	local failed_certs=$(oc get certificate -n "$CERT_NAMESPACE" -o json 2>/dev/null | jq -r '.items[] | select(.status.conditions[]? | select(.type=="Ready" and .status=="False")) | .metadata.name' | wc -l | tr -d ' ')
+	local failed_certs
+	failed_certs=$(oc get certificate -n "$CERT_NAMESPACE" -o json 2>/dev/null | jq -r '.items[] | select(.status.conditions[]? | select(.type=="Ready" and .status=="False")) | .metadata.name' | wc -l | tr -d ' ')
 
 	if [ "$failed_certs" -gt 0 ]; then
 		echo

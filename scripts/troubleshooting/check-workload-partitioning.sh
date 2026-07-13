@@ -32,7 +32,8 @@ check_workload_partitioning() {
 	echo
 
 	# Get all pods in the cert-manager namespace
-	local pods=$(oc get pods -n "$namespace" -o json 2>/dev/null)
+	local pods
+	pods=$(oc get pods -n "$namespace" -o json 2>/dev/null)
 
 	if [ -z "$pods" ] || [ "$(echo "$pods" | jq -r '.items | length')" -eq 0 ]; then
 		log_warn "No pods found in namespace $namespace"
@@ -40,18 +41,22 @@ check_workload_partitioning() {
 	fi
 
 	# Check each pod for workload partitioning annotations
-	local pod_count=$(echo "$pods" | jq -r '.items | length')
+	local pod_count
+	pod_count=$(echo "$pods" | jq -r '.items | length')
 	log_info "Found $pod_count pod(s) to check"
 	echo
 
 	for i in $(seq 0 $((pod_count - 1))); do
-		local pod_name=$(echo "$pods" | jq -r ".items[$i].metadata.name")
-		local annotations=$(echo "$pods" | jq -r ".items[$i].metadata.annotations // {}")
+		local pod_name
+		pod_name=$(echo "$pods" | jq -r ".items[$i].metadata.name")
+		local annotations
+		annotations=$(echo "$pods" | jq -r ".items[$i].metadata.annotations // {}")
 
 		log_debug "Checking pod: $pod_name"
 
 		# Check for the workload partitioning annotation
-		local wp_annotation=$(echo "$annotations" | jq -r '."target.workload.openshift.io/management" // empty')
+		local wp_annotation
+		wp_annotation=$(echo "$annotations" | jq -r '."target.workload.openshift.io/management" // empty')
 
 		if [ -n "$wp_annotation" ]; then
 			log_error "  ❌ Pod has workload partitioning annotation!"
@@ -64,7 +69,8 @@ check_workload_partitioning() {
 		fi
 
 		# Also check for other workload-related annotations
-		local other_wp_annotations=$(echo "$annotations" | jq -r 'to_entries | map(select(.key | contains("workload"))) | .[] | "\(.key)=\(.value)"' 2>/dev/null || echo "")
+		local other_wp_annotations
+		other_wp_annotations=$(echo "$annotations" | jq -r 'to_entries | map(select(.key | contains("workload"))) | .[] | "\(.key)=\(.value)"' 2>/dev/null || echo "")
 
 		if [ -n "$other_wp_annotations" ]; then
 			log_warn "  ⚠️  Other workload-related annotations found:"
@@ -89,17 +95,22 @@ check_deployment_configs() {
 	echo
 
 	# Check deployments
-	local deployments=$(oc get deployments -n "$namespace" -o json 2>/dev/null)
+	local deployments
+	deployments=$(oc get deployments -n "$namespace" -o json 2>/dev/null)
 	if [ -n "$deployments" ]; then
-		local deploy_count=$(echo "$deployments" | jq -r '.items | length')
+		local deploy_count
+		deploy_count=$(echo "$deployments" | jq -r '.items | length')
 
 		for i in $(seq 0 $((deploy_count - 1))); do
-			local deploy_name=$(echo "$deployments" | jq -r ".items[$i].metadata.name")
-			local pod_annotations=$(echo "$deployments" | jq -r ".items[$i].spec.template.metadata.annotations // {}")
+			local deploy_name
+			deploy_name=$(echo "$deployments" | jq -r ".items[$i].metadata.name")
+			local pod_annotations
+			pod_annotations=$(echo "$deployments" | jq -r ".items[$i].spec.template.metadata.annotations // {}")
 
 			log_debug "Checking deployment: $deploy_name"
 
-			local wp_annotation=$(echo "$pod_annotations" | jq -r '."target.workload.openshift.io/management" // empty')
+			local wp_annotation
+			wp_annotation=$(echo "$pod_annotations" | jq -r '."target.workload.openshift.io/management" // empty')
 
 			if [ -n "$wp_annotation" ]; then
 				log_error "  ❌ Deployment template has workload partitioning annotation!"
@@ -121,7 +132,7 @@ provide_recommendations() {
 
 	print_header "Summary"
 
-	if [ $has_issues -eq 0 ]; then
+	if [ "$has_issues" -eq 0 ]; then
 		log_info "✅ All checks passed!"
 		echo
 		log_info "cert-manager pods are correctly configured without workload partitioning annotations."
@@ -172,7 +183,7 @@ main() {
 	fi
 
 	# Provide recommendations
-	provide_recommendations $exit_code
+	provide_recommendations "$exit_code"
 
 	exit $exit_code
 }

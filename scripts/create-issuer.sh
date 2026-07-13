@@ -32,7 +32,8 @@ check_pebble() {
 	else
 		log_info "Pebble ACME server is available."
 
-		local ready_replicas=$(oc get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+		local ready_replicas
+		ready_replicas=$(oc get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 		if [ "$ready_replicas" = "0" ]; then
 			log_warn "Pebble deployment exists but no replicas are ready."
 		else
@@ -47,7 +48,8 @@ check_existing_issuer() {
 	if oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 		log_warn "ClusterIssuer '$ISSUER_NAME' already exists."
 
-		local current_server=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.server}' 2>/dev/null || echo "unknown")
+		local current_server
+		current_server=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.server}' 2>/dev/null || echo "unknown")
 		log_debug "Current ACME server: $current_server"
 
 		echo
