@@ -160,7 +160,7 @@ The LCA (Lifecycle Agent) apply-label format is `<apiGroup>/<version>/<resourceT
 - Scripts resolve their own location with `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` (varies by depth — see sourcing patterns above)
 - Use shared functions: `require_cmd`/`require_cluster` instead of inline prerequisite checks, `apply_yaml_template` instead of inline envsubst, `print_header` instead of inline echo headers, `wait_for_resource` instead of custom polling loops
 - `shfmt` formatting: 2-space indentation (tabs in Makefile), binary operators at line start, switch cases indented
-- `shellcheck` with severity=error; excluded codes: SC1091, SC2034, SC2086, SC2155, SC2046, SC2181, SC2126, SC2329
+- `shellcheck` with severity=error; excluded codes: SC1091, SC2034
 - Cleanup operations use `--ignore-not-found=true` for idempotency
 - New Makefile targets need a `## Description` comment suffix for `make help` integration
 

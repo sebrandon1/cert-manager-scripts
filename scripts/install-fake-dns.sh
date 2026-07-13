@@ -42,7 +42,8 @@ verify_installation() {
 configure_coredns() {
 	log_info "Configuring CoreDNS to delegate example.com to fake DNS server..."
 
-	local fake_dns_ip=$(oc get service fake-dns-api -n "$FAKEDNS_NAMESPACE" -o jsonpath='{.spec.clusterIP}')
+	local fake_dns_ip
+	fake_dns_ip=$(oc get service fake-dns-api -n "$FAKEDNS_NAMESPACE" -o jsonpath='{.spec.clusterIP}')
 
 	if [ -z "$fake_dns_ip" ]; then
 		log_error "Could not get fake-dns service ClusterIP"
@@ -57,7 +58,8 @@ configure_coredns() {
 		return
 	fi
 
-	local corefile=$(oc get configmap dns-default -n openshift-dns -o jsonpath='{.data.Corefile}')
+	local corefile
+	corefile=$(oc get configmap dns-default -n openshift-dns -o jsonpath='{.data.Corefile}')
 
 	if echo "$corefile" | grep -q "example.com:53"; then
 		log_info "CoreDNS already configured for example.com"

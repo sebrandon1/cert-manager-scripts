@@ -44,7 +44,8 @@ verify_installation() {
 	oc get route pebble-acme -n "$PEBBLE_NAMESPACE"
 	echo
 
-	local route_host=$(oc get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+	local route_host
+	route_host=$(oc get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 
 	if [ -n "$route_host" ]; then
 		log_info "Pebble ACME directory URL: https://${route_host}/dir"
@@ -74,7 +75,8 @@ display_configuration() {
 }
 
 display_next_steps() {
-	local route_host=$(oc get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+	local route_host
+	route_host=$(oc get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 	local service_url="https://pebble.${PEBBLE_NAMESPACE}.svc.cluster.local:14000/dir"
 
 	print_header "Installation Complete!"

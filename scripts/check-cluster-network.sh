@@ -22,7 +22,8 @@ log_detail() {
 # Function to get cluster version
 get_cluster_version() {
 	log_info "Checking OpenShift version..."
-	local version=$(oc get clusterversion version -o jsonpath='{.status.desired.version}' 2>/dev/null || echo "Unknown")
+	local version
+	version=$(oc get clusterversion version -o jsonpath='{.status.desired.version}' 2>/dev/null || echo "Unknown")
 	echo "  OpenShift Version: $version"
 	echo
 }
@@ -31,7 +32,8 @@ get_cluster_version() {
 check_network_type() {
 	log_info "Checking network plugin type..."
 
-	local network_type=$(oc get network.config.openshift.io cluster -o jsonpath='{.spec.networkType}' 2>/dev/null || echo "Unknown")
+	local network_type
+	network_type=$(oc get network.config.openshift.io cluster -o jsonpath='{.spec.networkType}' 2>/dev/null || echo "Unknown")
 	echo "  Network Type: $network_type"
 
 	case "$network_type" in
@@ -117,11 +119,13 @@ check_ip_families() {
 check_api_server() {
 	log_info "Checking API Server configuration..."
 
-	local api_url=$(oc whoami --show-server 2>/dev/null)
+	local api_url
+	api_url=$(oc whoami --show-server 2>/dev/null)
 	echo "  API Server URL: $api_url"
 
 	# Extract hostname from URL
-	local api_host=$(echo "$api_url" | sed -E 's|https?://([^:/]+).*|\1|')
+	local api_host
+	api_host=$(echo "$api_url" | sed -E 's|https?://([^:/]+).*|\1|')
 
 	if [ -n "$api_host" ]; then
 		echo "  API Server Host: $api_host"
@@ -132,7 +136,8 @@ check_api_server() {
 			echo "  DNS Resolution:"
 
 			# Check for A record (IPv4)
-			local ipv4_records=$(dig +short A "$api_host" 2>/dev/null | grep -v "^$" | head -3)
+			local ipv4_records
+			ipv4_records=$(dig +short A "$api_host" 2>/dev/null | grep -v "^$" | head -3)
 			if [ -n "$ipv4_records" ]; then
 				echo "    IPv4 (A records):"
 				echo "$ipv4_records" | while read -r ip; do
@@ -141,7 +146,8 @@ check_api_server() {
 			fi
 
 			# Check for AAAA record (IPv6)
-			local ipv6_records=$(dig +short AAAA "$api_host" 2>/dev/null | grep -v "^$" | head -3)
+			local ipv6_records
+			ipv6_records=$(dig +short AAAA "$api_host" 2>/dev/null | grep -v "^$" | head -3)
 			if [ -n "$ipv6_records" ]; then
 				echo "    IPv6 (AAAA records):"
 				echo "$ipv6_records" | while read -r ip; do
@@ -163,18 +169,21 @@ check_api_server() {
 check_node_addresses() {
 	log_info "Checking node IP addresses (first 3 nodes)..."
 
-	local nodes=$(oc get nodes -o json 2>/dev/null)
+	local nodes
+	nodes=$(oc get nodes -o json 2>/dev/null)
 
 	if [ -z "$nodes" ]; then
 		log_error "Unable to retrieve node information"
 		return 1
 	fi
 
-	local node_count=$(echo "$nodes" | jq -r '.items | length')
+	local node_count
+	node_count=$(echo "$nodes" | jq -r '.items | length')
 	local display_count=$((node_count < 3 ? node_count : 3))
 
 	for i in $(seq 0 $((display_count - 1))); do
-		local node_name=$(echo "$nodes" | jq -r ".items[$i].metadata.name")
+		local node_name
+		node_name=$(echo "$nodes" | jq -r ".items[$i].metadata.name")
 		local internal_ips
 		internal_ips=$(echo "$nodes" | jq -r ".items[$i].status.addresses[] | select(.type==\"InternalIP\") | .address")
 
@@ -204,7 +213,8 @@ check_cert_manager_compatibility() {
 		log_detail "cert-manager namespace found"
 
 		# Check cert-manager pods
-		local cm_pods=$(oc get pods -n cert-manager -l app.kubernetes.io/instance=cert-manager --no-headers 2>/dev/null | wc -l | tr -d ' ')
+		local cm_pods
+		cm_pods=$(oc get pods -n cert-manager -l app.kubernetes.io/instance=cert-manager --no-headers 2>/dev/null | wc -l | tr -d ' ')
 		if [ "$cm_pods" -gt 0 ]; then
 			echo "  cert-manager components: $cm_pods pods running"
 		fi
@@ -270,7 +280,8 @@ provide_recommendations() {
 # Function to export network info (for scripting)
 export_network_info() {
 	if [ "${EXPORT_FORMAT:-}" = "json" ]; then
-		local cluster_networks=$(oc get network.config.openshift.io cluster -o json 2>/dev/null)
+		local cluster_networks
+		cluster_networks=$(oc get network.config.openshift.io cluster -o json 2>/dev/null)
 		echo "$cluster_networks" | jq '{
             clusterNetwork: .spec.clusterNetwork,
             serviceNetwork: .spec.serviceNetwork,

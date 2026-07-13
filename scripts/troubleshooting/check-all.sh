@@ -127,7 +127,7 @@ echo
 # Section 6: Active Challenges
 print_header "Active Challenges"
 
-CHALLENGES=$(oc get challenge -A 2>/dev/null | grep -v "^NAMESPACE" | wc -l | xargs || echo "0")
+CHALLENGES=$(oc get challenge -A 2>/dev/null | grep -cv "^NAMESPACE" || echo "0")
 
 if [ "$CHALLENGES" -gt 0 ]; then
 	log_info "Found $CHALLENGES active challenge(s):"

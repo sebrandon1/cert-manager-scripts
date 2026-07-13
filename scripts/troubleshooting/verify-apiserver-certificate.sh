@@ -46,7 +46,8 @@ verify_api_server_access() {
 	# Test 2: Can we reach the API server?
 	if oc whoami &>/dev/null; then
 		log_info "  ✅ API server is accessible (authenticated)"
-		local username=$(oc whoami 2>/dev/null || echo "unknown")
+		local username
+		username=$(oc whoami 2>/dev/null || echo "unknown")
 		log_debug "     Logged in as: $username"
 	else
 		log_error "  ❌ Cannot authenticate with API server"
@@ -55,7 +56,8 @@ verify_api_server_access() {
 
 	# Test 3: Can we list resources?
 	if oc get nodes &>/dev/null; then
-		local node_count=$(oc get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
+		local node_count
+		node_count=$(oc get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
 		log_info "  ✅ Can list cluster resources ($node_count nodes)"
 	else
 		log_error "  ❌ Cannot list cluster resources"
@@ -63,7 +65,8 @@ verify_api_server_access() {
 	fi
 
 	# Test 4: Can we get API server info?
-	local api_url=$(oc whoami --show-server 2>/dev/null || echo "")
+	local api_url
+	api_url=$(oc whoami --show-server 2>/dev/null || echo "")
 	if [ -n "$api_url" ]; then
 		log_info "  ✅ API server URL: $api_url"
 	else
@@ -87,7 +90,8 @@ verify_certificate_exists() {
 		log_info "  ✅ Certificate '$CERT_NAME' exists"
 
 		# Check if certificate is ready
-		local ready=$(oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
+		local ready
+		ready=$(oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
 
 		if [ "$ready" = "True" ]; then
 			log_info "  ✅ Certificate is READY"
@@ -112,8 +116,10 @@ verify_certificate_secret() {
 		log_info "  ✅ Secret '$SECRET_NAME' exists"
 
 		# Check if secret has required keys
-		local has_tls_crt=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null)
-		local has_tls_key=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.key}' 2>/dev/null)
+		local has_tls_crt
+		has_tls_crt=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null)
+		local has_tls_key
+		has_tls_key=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.key}' 2>/dev/null)
 
 		if [ -n "$has_tls_crt" ]; then
 			log_info "  ✅ Secret contains tls.crt"
@@ -142,11 +148,13 @@ verify_certificate_details() {
 	local has_issues=0
 
 	# Extract and verify certificate
-	local cert_pem=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d)
+	local cert_pem
+	cert_pem=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d)
 
 	if [ -n "$cert_pem" ]; then
 		# Check expiration
-		local not_after=$(echo "$cert_pem" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+		local not_after
+		not_after=$(echo "$cert_pem" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 		if [ -n "$not_after" ]; then
 			log_info "  ✅ Certificate expires: $not_after"
 
@@ -160,19 +168,22 @@ verify_certificate_details() {
 		fi
 
 		# Check subject
-		local subject=$(echo "$cert_pem" | openssl x509 -noout -subject 2>/dev/null)
+		local subject
+		subject=$(echo "$cert_pem" | openssl x509 -noout -subject 2>/dev/null)
 		if [ -n "$subject" ]; then
 			log_debug "  Subject: $subject"
 		fi
 
 		# Check SANs
-		local sans=$(echo "$cert_pem" | openssl x509 -noout -text 2>/dev/null | grep -A1 "Subject Alternative Name" | tail -1 | sed 's/^[[:space:]]*//')
+		local sans
+		sans=$(echo "$cert_pem" | openssl x509 -noout -text 2>/dev/null | grep -A1 "Subject Alternative Name" | tail -1 | sed 's/^[[:space:]]*//')
 		if [ -n "$sans" ]; then
 			log_debug "  SANs: $sans"
 		fi
 
 		# Check issuer
-		local issuer=$(echo "$cert_pem" | openssl x509 -noout -issuer 2>/dev/null)
+		local issuer
+		issuer=$(echo "$cert_pem" | openssl x509 -noout -issuer 2>/dev/null)
 		if [ -n "$issuer" ]; then
 			log_debug "  Issuer: $issuer"
 		fi
@@ -189,10 +200,12 @@ check_apiserver_configuration() {
 	log_info "Checking API server configuration..."
 
 	# Check if the API server is configured to use our certificate
-	local apiserver_config=$(oc get apiserver cluster -o json 2>/dev/null)
+	local apiserver_config
+	apiserver_config=$(oc get apiserver cluster -o json 2>/dev/null)
 
 	if [ -n "$apiserver_config" ]; then
-		local serving_certs=$(echo "$apiserver_config" | jq -r '.spec.servingCerts.namedCertificates[]?.names[]?' 2>/dev/null | head -5)
+		local serving_certs
+		serving_certs=$(echo "$apiserver_config" | jq -r '.spec.servingCerts.namedCertificates[]?.names[]?' 2>/dev/null | head -5)
 
 		if [ -n "$serving_certs" ]; then
 			log_info "  Named certificates configured:"
@@ -216,7 +229,7 @@ provide_recommendations() {
 
 	print_header "Summary"
 
-	if [ $total_issues -eq 0 ]; then
+	if [ "$total_issues" -eq 0 ]; then
 		log_info "✅ All checks passed!"
 		echo
 		log_info "The cert-manager issued API server certificate:"
@@ -259,10 +272,10 @@ main() {
 	check_apiserver_configuration
 
 	# Provide recommendations
-	provide_recommendations $total_issues
+	provide_recommendations "$total_issues"
 
 	# Exit with error if there were issues
-	if [ $total_issues -gt 0 ]; then
+	if [ "$total_issues" -gt 0 ]; then
 		exit 1
 	fi
 

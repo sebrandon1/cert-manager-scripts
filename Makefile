@@ -97,7 +97,7 @@ lint: ## Check shell script formatting with shfmt and shellcheck
 	  exit 1; \
 	fi
 	@echo "$(DIM)  Running shellcheck...$(RESET)"
-	@find . -name '*.sh' -type f -not -path './venv/*' | xargs shellcheck -e SC1091,SC2034,SC2086,SC2155,SC2046,SC2181,SC2126,SC2329 || (echo "$(RED)shellcheck failed!$(RESET)" && exit 1)
+	@find . -name '*.sh' -type f -not -path './venv/*' | xargs shellcheck -e SC1091,SC2034 || (echo "$(RED)shellcheck failed!$(RESET)" && exit 1)
 	@if ! command -v shfmt >/dev/null 2>&1; then \
 	  echo "$(RED)shfmt not found. Please install it:$(RESET)"; \
 	  echo "$(DIM)  macOS: brew install shfmt$(RESET)"; \

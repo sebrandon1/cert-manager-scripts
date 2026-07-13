@@ -48,7 +48,8 @@ check_existing_installation() {
 		log_info "cert-manager-operator subscription already exists."
 
 		# Get current version/channel
-		local current_channel=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" -o jsonpath='{.spec.channel}')
+		local current_channel
+		current_channel=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" -o jsonpath='{.spec.channel}')
 		log_info "Current channel: $current_channel"
 
 		# Check if it's healthy
