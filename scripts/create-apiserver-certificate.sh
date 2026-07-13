@@ -109,48 +109,24 @@ EOF
 	fi
 }
 
+check_apiserver_cert_ready() {
+	oc whoami &>/dev/null || return 1
+	local ready
+	ready=$(oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+	[ "$ready" = "True" ]
+}
+
 wait_for_certificate() {
 	log_info "Waiting for certificate to be issued..."
-	echo
 
-	# Use shorter timeout for CI environments to avoid cluster instability issues
-	local max_wait=${CERT_WAIT_TIMEOUT:-60}
-	local wait_time=0
-
-	while [ $wait_time -lt $max_wait ]; do
-		# Check cluster connectivity first
-		if ! oc whoami &>/dev/null; then
-			log_warn "Cluster connectivity lost during certificate wait"
-			return 1
-		fi
-
-		local ready=$(oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
-
-		if [ "$ready" = "True" ]; then
-			log_info "✅ Certificate is READY!"
-			return 0
-		fi
-
-		if [ $((wait_time % 10)) -eq 0 ]; then
-			echo -n " [${wait_time}s/${max_wait}s]"
-		else
-			echo -n "."
-		fi
-
-		sleep 2
-		wait_time=$((wait_time + 2))
-	done
-	echo
-
-	if [ $wait_time -ge $max_wait ]; then
-		log_warn "Timeout waiting for certificate to be ready (${max_wait}s)."
+	local max_attempts=$(((${CERT_WAIT_TIMEOUT:-60} + 1) / 2))
+	if wait_for_condition "$max_attempts" 2 check_apiserver_cert_ready; then
+		log_success "Certificate is READY!"
+	else
+		log_warn "Timeout waiting for certificate to be ready."
 		log_info "The certificate resource was created - it may become ready later."
 		log_info "Check certificate status: oc describe certificate $CERT_NAME -n $CERT_NAMESPACE"
-		# Return success since certificate was created, even if not ready yet
-		return 0
 	fi
-
-	return 0
 }
 
 display_certificate_info() {
