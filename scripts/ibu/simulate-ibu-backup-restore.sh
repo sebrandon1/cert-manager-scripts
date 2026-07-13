@@ -14,6 +14,7 @@ set -euo pipefail
 # Get script directory and source common library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
+setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/backup"
 OADP_NAMESPACE="${OADP_NAMESPACE:-openshift-adp}"

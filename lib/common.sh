@@ -163,9 +163,9 @@ setup_cleanup() {
 		local exit_code=$?
 		local duration=$(($(date +%s) - _START_TIME))
 
-		# Clean up temp files
+		# Clean up temp files and directories
 		for f in "${_TEMP_FILES[@]:-}"; do
-			[[ -f "$f" ]] && rm -f "$f"
+			[[ -e "$f" ]] && rm -rf "$f"
 		done
 
 		if [[ $LOG_LEVEL -ge 3 ]]; then

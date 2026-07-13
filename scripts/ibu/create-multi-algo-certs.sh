@@ -11,6 +11,7 @@ set -euo pipefail
 # Get script directory and source common library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
+setup_cleanup
 
 # Configuration
 export TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
