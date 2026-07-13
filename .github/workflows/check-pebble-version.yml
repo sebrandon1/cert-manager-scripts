@@ -26,7 +26,7 @@ jobs:
 
       - name: Query GitHub for latest Pebble version
         id: latest
-        run: ./scripts/workflows/query-pebble-version.sh
+        run: ./scripts/workflows/query-version.sh pebble
 
       - name: Compare versions
         id: compare
@@ -34,7 +34,7 @@ jobs:
 
       - name: Update deployment files
         if: steps.compare.outputs.needs_update == 'true'
-        run: ./scripts/workflows/update-pebble-version.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+        run: ./scripts/workflows/update-version.sh pebble "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
 
       - name: Create pull request
         if: steps.compare.outputs.needs_update == 'true'

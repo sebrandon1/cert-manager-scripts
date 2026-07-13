@@ -26,7 +26,7 @@ jobs:
 
       - name: Query Red Hat catalog for latest version
         id: latest
-        run: ./scripts/workflows/query-ubi9-python-version.sh
+        run: ./scripts/workflows/query-version.sh ubi9-python
 
       - name: Compare versions
         id: compare
@@ -34,7 +34,7 @@ jobs:
 
       - name: Update deployment file
         if: steps.compare.outputs.needs_update == 'true'
-        run: ./scripts/workflows/update-ubi9-python-version.sh "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
+        run: ./scripts/workflows/update-version.sh ubi9-python "${{ steps.current.outputs.version }}" "${{ steps.latest.outputs.version }}"
 
       - name: Create pull request
         if: steps.compare.outputs.needs_update == 'true'

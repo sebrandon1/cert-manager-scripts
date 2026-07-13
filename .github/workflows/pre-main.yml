@@ -93,13 +93,12 @@ jobs:
       - name: Run all version query scripts
         run: |
           failed=0
-          for script in scripts/workflows/query-*-version.sh; do
-            name=$(basename "$script")
-            echo "--- $name ---"
-            if GITHUB_OUTPUT=/dev/null bash "$script"; then
-              echo "PASS: $name"
+          for component in pebble acme-dns operator minio ubi9-python; do
+            echo "--- $component ---"
+            if GITHUB_OUTPUT=/dev/null bash scripts/workflows/query-version.sh "$component"; then
+              echo "PASS: $component"
             else
-              echo "FAIL: $name"
+              echo "FAIL: $component"
               failed=$((failed + 1))
             fi
             echo ""
