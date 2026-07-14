@@ -285,6 +285,39 @@ require_cluster_admin() {
 	log_debug "Cluster-admin privileges confirmed"
 }
 
+# Wait for critical cluster operators to be healthy before deploying workloads.
+# Checks dns, network, and ingress operators — degraded state in any of these
+# prevents pods from scheduling, pulling images, or receiving traffic.
+# Usage: require_healthy_cluster [max_attempts] [interval]
+require_healthy_cluster() {
+	local max_attempts="${1:-30}"
+	local interval="${2:-10}"
+
+	check_critical_operators() {
+		local unhealthy
+		unhealthy=$(oc get clusteroperator dns network ingress \
+			-o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Available")].status}{"\n"}{end}' 2>/dev/null |
+			grep -cve '^True$' || true)
+		[ "$unhealthy" -eq 0 ]
+	}
+
+	log_info "Checking critical cluster operators (dns, network, ingress)..."
+	if check_critical_operators; then
+		log_info "Critical cluster operators are healthy."
+		return 0
+	fi
+
+	log_warn "Critical cluster operators not yet healthy. Waiting up to $((max_attempts * interval))s..."
+	if wait_for_condition "$max_attempts" "$interval" check_critical_operators; then
+		log_success "Critical cluster operators are healthy."
+	else
+		log_error "Critical cluster operators still unhealthy after $((max_attempts * interval))s."
+		log_error "Operator status:"
+		oc get clusteroperator dns network ingress 2>/dev/null || true
+		return 1
+	fi
+}
+
 # Wait for a resource to be ready
 # Usage: wait_for_resource <type/name> <namespace> <timeout>
 wait_for_resource() {

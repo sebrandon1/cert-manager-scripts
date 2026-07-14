@@ -210,11 +210,6 @@ test-all: install-all create-issuer create-certs ## Complete HTTP-01 setup (inst
 	@echo "  oc get order,challenge -A"
 
 test-dns01: install-fake-dns ## Complete DNS-01 setup (air-gapped)
-	@echo "Reinstalling Pebble with fake DNS..."
-	@oc delete namespace pebble --ignore-not-found=true
-	@sleep 10
-	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 PEBBLE_ALWAYS_VALID=1 ./scripts/install-pebble.sh
-	@echo ""
 	@echo "Creating DNS-01 issuer..."
 	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 	@echo ""

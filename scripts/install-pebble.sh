@@ -136,6 +136,7 @@ main() {
 	fi
 
 	display_configuration
+	require_healthy_cluster
 
 	if check_deployment_exists pebble "$PEBBLE_NAMESPACE"; then
 		log_info "Pebble is already installed and healthy."

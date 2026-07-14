@@ -2,7 +2,7 @@
 #
 # Runs the fake DNS API server on UBI9 Python. Accepts RFC2136 DNS updates and
 # responds to SOA/TXT queries for air-gapped cert-manager DNS-01 testing.
-# Requires root privileges for binding to privileged port 53.
+# Listens on unprivileged port 5353; the Service maps external port 53 to it.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -30,11 +30,14 @@ spec:
         - /app/dns-api.py
         ports:
         - name: dns
-          containerPort: 53
+          containerPort: 5353
           protocol: UDP
         - name: health
           containerPort: 8080
           protocol: TCP
+        env:
+        - name: DNS_PORT
+          value: "5353"
         volumeMounts:
         - name: script
           mountPath: /app
@@ -51,8 +54,13 @@ spec:
           initialDelaySeconds: 2
           periodSeconds: 5
         securityContext:
-          # Need elevated privileges for port 53
-          runAsUser: 0
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
       volumes:
       - name: script
         configMap:

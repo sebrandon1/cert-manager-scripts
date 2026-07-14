@@ -14,6 +14,7 @@ data:
     for testing DNS-01 challenges in air-gapped environments.
     """
     
+    import os
     import socket
     import struct
     import threading
@@ -200,7 +201,7 @@ data:
             logger.error(f"Error handling DNS packet: {e}")
             return None
     
-    def start_dns_server(port=53):
+    def start_dns_server(port=5353):
         """Start UDP DNS server"""
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('0.0.0.0', port))
@@ -225,7 +226,8 @@ data:
         logger.info("Starting fake DNS API server for air-gapped testing")
         
         # Start DNS server in background thread
-        dns_thread = threading.Thread(target=start_dns_server, daemon=True)
+        dns_port = int(os.environ.get('DNS_PORT', '5353'))
+        dns_thread = threading.Thread(target=start_dns_server, args=(dns_port,), daemon=True)
         dns_thread.start()
         
         # Start health server in main thread

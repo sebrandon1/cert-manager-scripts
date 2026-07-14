@@ -125,6 +125,7 @@ Key functions:
 - **Logging**: `log_error`, `log_warn`, `log_info`, `log_success`, `log_debug` — color-aware, respects `LOG_LEVEL`
 - **Dependencies**: `require_cmd oc yq jq` — validates commands with install hints
 - **Cluster**: `require_cluster` / `require_cluster_admin` — validates connectivity and privileges
+- **Cluster**: `require_healthy_cluster [max_attempts] [interval]` — waits for dns, network, ingress operators to be Available
 - **Environment**: `load_env` — loads `.env` from script or parent directory
 - **Retry**: `retry <max_attempts> <delay> <command...>` — exponential backoff
 - **Wait**: `wait_for_resource <type/name> <namespace> <timeout>` — uses `oc wait --for=condition=available`

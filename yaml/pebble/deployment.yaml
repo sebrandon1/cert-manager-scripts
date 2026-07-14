@@ -41,6 +41,20 @@ spec:
           value: "1"
         - name: PEBBLE_VA_ALWAYS_VALID
           value: "${PEBBLE_ALWAYS_VALID}"
+        readinessProbe:
+          httpGet:
+            path: /dir
+            port: 14000
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /dir
+            port: 14000
+            scheme: HTTPS
+          initialDelaySeconds: 10
+          periodSeconds: 10
         volumeMounts:
         - name: config
           mountPath: /test/config

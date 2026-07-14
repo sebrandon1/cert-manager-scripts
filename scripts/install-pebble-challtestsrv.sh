@@ -18,6 +18,7 @@ print_header "Install Pebble Challenge Test Server"
 
 require_cmd oc
 require_cluster
+require_healthy_cluster
 
 if ! oc get namespace "$PEBBLE_NAMESPACE" &>/dev/null; then
 	log_error "Pebble namespace '$PEBBLE_NAMESPACE' not found. Install Pebble first."
