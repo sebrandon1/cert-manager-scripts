@@ -47,14 +47,9 @@ spec:
             port: 14000
             scheme: HTTPS
           initialDelaySeconds: 5
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /dir
-            port: 14000
-            scheme: HTTPS
-          initialDelaySeconds: 10
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         volumeMounts:
         - name: config
           mountPath: /test/config
