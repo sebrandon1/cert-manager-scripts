@@ -331,8 +331,24 @@ wait_for_resource() {
 		return 0
 	else
 		log_error "$resource failed to become ready within $timeout"
+		dump_resource_diagnostics "$namespace" "$resource"
 		return 1
 	fi
+}
+
+# Dump diagnostic info for a namespace and optional resource
+# Usage: dump_resource_diagnostics <namespace> [resource]
+dump_resource_diagnostics() {
+	local namespace="$1"
+	local resource="${2:-}"
+
+	log_warn "--- Diagnostics for namespace '$namespace' ---"
+	oc get pods -n "$namespace" -o wide 2>/dev/null || true
+	if [[ -n "$resource" ]]; then
+		oc describe "$resource" -n "$namespace" 2>/dev/null | tail -30 || true
+	fi
+	oc get events -n "$namespace" --sort-by='.lastTimestamp' 2>/dev/null | tail -20 || true
+	log_warn "--- End diagnostics ---"
 }
 
 # Verify cert-manager is installed and webhook is ready
