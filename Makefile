@@ -428,13 +428,13 @@ clean-certs: ## Clean up certificates, orders, and challenges
 
 clean-pebble: ## Clean up Pebble ACME test server
 	@echo "$(BOLD)$(YELLOW)Cleaning up Pebble...$(RESET)"
-	@oc delete namespace pebble --ignore-not-found=true
+	@oc delete namespace pebble --ignore-not-found=true --timeout=60s --wait=false
 	@oc delete secret pebble-dns01-issuer-account-key pebble-issuer-account-key -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Pebble cleaned.$(RESET)"
 
 clean-fake-dns: ## Clean up fake DNS API
 	@echo "$(BOLD)$(YELLOW)Cleaning up fake DNS...$(RESET)"
-	@oc delete namespace fake-dns --ignore-not-found=true
+	@oc delete namespace fake-dns --ignore-not-found=true --timeout=60s --wait=false
 	@echo "$(GREEN)Fake DNS cleaned.$(RESET)"
 
 clean-dns-config: ## Restore DNS configuration
