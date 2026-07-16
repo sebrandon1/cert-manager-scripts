@@ -155,7 +155,7 @@ main() {
 	fi
 
 	install_pebble
-	wait_for_resource "deployment/pebble" "$PEBBLE_NAMESPACE" "600s"
+	wait_for_resource "deployment/pebble" "$PEBBLE_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-600s}"
 	verify_installation
 	display_next_steps
 }

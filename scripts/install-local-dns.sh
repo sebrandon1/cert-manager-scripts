@@ -91,7 +91,7 @@ main() {
 	fi
 
 	install_acme_dns
-	wait_for_resource "deployment/acme-dns" "$ACMEDNS_NAMESPACE" "300s"
+	wait_for_resource "deployment/acme-dns" "$ACMEDNS_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-300s}"
 	verify_installation
 	display_next_steps
 }
