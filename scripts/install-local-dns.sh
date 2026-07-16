@@ -14,6 +14,7 @@ load_env
 YAML_DIR="${SCRIPT_DIR}/../yaml/acme-dns"
 
 export ACMEDNS_NAMESPACE="${ACMEDNS_NAMESPACE:-acme-dns}"
+export ACMEDNS_VERSION="${ACMEDNS_VERSION:-v2.0.2}"
 
 install_acme_dns() {
 	log_info "Installing acme-dns..."

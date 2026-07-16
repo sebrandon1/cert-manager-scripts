@@ -15,6 +15,7 @@ setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/minio"
 MINIO_NAMESPACE="${MINIO_NAMESPACE:-minio}"
+export MINIO_VERSION="${MINIO_VERSION:-RELEASE.2025-09-07T16-13-09Z}"
 
 check_prerequisites() {
 	log_info "Checking prerequisites..."

@@ -14,6 +14,7 @@ load_env
 YAML_DIR="${SCRIPT_DIR}/../yaml/fake-dns-api"
 
 export FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
+export UBI9_PYTHON_VERSION="${UBI9_PYTHON_VERSION:-9.8}"
 
 install_fake_dns() {
 	log_info "Installing fake DNS API server..."
