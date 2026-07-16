@@ -26,6 +26,7 @@ jobs:
   test:
     name: OCP ${{ inputs.ocp-version }} / cert-manager ${{ inputs.cert-manager-version || 'default' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - name: Check Red Hat Status
         uses: palmsoftware/redhat-status@v0
@@ -87,6 +88,7 @@ jobs:
 
       - name: Clean up HTTP-01 test resources
         if: always()
+        timeout-minutes: 2
         run: make clean-certs clean-issuers || true
 
       - name: Run quick self-signed CA test
@@ -103,6 +105,7 @@ jobs:
 
       - name: Clean up self-signed test resources
         if: always()
+        timeout-minutes: 2
         run: make clean-selfsigned || true
 
       - name: Verify Pebble health before DNS-01 test
@@ -132,6 +135,7 @@ jobs:
 
       - name: Clean up DNS-01 test resources
         if: always()
+        timeout-minutes: 2
         run: make clean-certs clean-issuers clean-pebble clean-fake-dns || true
 
       - name: Run multi-algorithm certificate test
