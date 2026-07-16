@@ -85,6 +85,19 @@ if command -v oc &>/dev/null; then
 			log_warn "Cluster-admin privileges: no (some operations may fail)"
 			WARNINGS=$((WARNINGS + 1))
 		fi
+		# Check OCP version (4.14+ required for cert-manager operator)
+		if oc get clusterversion version &>/dev/null 2>&1; then
+			ocp_version=$(oc get clusterversion version -o jsonpath='{.status.desired.version}' 2>/dev/null || echo "unknown")
+			ocp_major_minor=$(echo "$ocp_version" | grep -oE '^[0-9]+\.[0-9]+')
+			log_success "OpenShift version: $ocp_version"
+			if [[ -n "$ocp_major_minor" ]]; then
+				ocp_minor=$(echo "$ocp_major_minor" | cut -d. -f2)
+				if [[ "$ocp_minor" -lt 14 ]]; then
+					log_warn "OpenShift 4.14+ recommended for cert-manager operator"
+					WARNINGS=$((WARNINGS + 1))
+				fi
+			fi
+		fi
 	else
 		log_warn "Not connected to cluster (optional for preflight)"
 		log_info "Run 'oc login' before running scripts that require cluster access"
