@@ -38,6 +38,7 @@ BG_BLUE := \033[44m
         troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
+        clean-acmedns clean-challtestsrv \
         uninstall-cert-manager-operator \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu \
@@ -451,6 +452,18 @@ clean-fake-dns: ## Clean up fake DNS API
 	@$(KUBE_CLI) delete namespace fake-dns --ignore-not-found=true --timeout=60s --wait=false
 	@echo "$(GREEN)Fake DNS cleaned.$(RESET)"
 
+clean-acmedns: ## Clean up acme-dns local DNS server
+	@echo "$(BOLD)$(YELLOW)Cleaning up acme-dns...$(RESET)"
+	@$(KUBE_CLI) delete namespace acme-dns --ignore-not-found=true --timeout=60s --wait=false
+	@echo "$(GREEN)acme-dns cleaned.$(RESET)"
+
+clean-challtestsrv: ## Clean up Pebble challenge test server
+	@echo "$(BOLD)$(YELLOW)Cleaning up pebble-challtestsrv...$(RESET)"
+	@$(KUBE_CLI) delete deployment pebble-challtestsrv -n pebble --ignore-not-found=true
+	@$(KUBE_CLI) delete service pebble-challtestsrv -n pebble --ignore-not-found=true
+	@$(KUBE_CLI) delete configmap pebble-challtestsrv-config -n pebble --ignore-not-found=true
+	@echo "$(GREEN)pebble-challtestsrv cleaned.$(RESET)"
+
 clean-dns-config: ## Restore DNS configuration
 	@echo "Restoring DNS configuration..."
 	@if [ "$(CLUSTER_TYPE)" = "openshift" ]; then \
@@ -484,7 +497,7 @@ clean-temp: ## Clean up temporary files
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
 
-clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-dns-config ## Clean everything except cert-manager-operator
+clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config ## Clean everything except cert-manager-operator
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
