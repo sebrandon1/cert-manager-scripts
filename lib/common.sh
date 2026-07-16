@@ -431,6 +431,12 @@ apply_yaml_template() {
 		return 1
 	fi
 
+	if [[ "${DRY_RUN:-false}" == "true" ]]; then
+		log_info "[DRY RUN] Would apply $resource_type from $(basename "$yaml_file"):"
+		envsubst <"$yaml_file"
+		return 0
+	fi
+
 	log_info "Applying $resource_type from $(basename "$yaml_file")..."
 	envsubst <"$yaml_file" | "$KUBE_CLI" apply -f -
 }
@@ -439,6 +445,11 @@ apply_yaml_template() {
 # Usage: ensure_namespace <namespace>
 ensure_namespace() {
 	local namespace="$1"
+
+	if [[ "${DRY_RUN:-false}" == "true" ]]; then
+		log_info "[DRY RUN] Would create namespace '$namespace'"
+		return 0
+	fi
 
 	if "$KUBE_CLI" get namespace "$namespace" &>/dev/null; then
 		log_info "Namespace '$namespace' already exists."
