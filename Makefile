@@ -39,7 +39,7 @@ BG_BLUE := \033[44m
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
         clean-acmedns clean-challtestsrv \
-        uninstall-cert-manager-operator \
+        uninstall-cert-manager-operator uninstall-all \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu \
         create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
@@ -517,3 +517,5 @@ uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
 	@oc delete csv -n openshift-cert-manager-operator -l operators.coreos.com/cert-manager-operator.openshift-cert-manager-operator --ignore-not-found=true
 	@oc delete namespace openshift-cert-manager-operator --ignore-not-found=true
 	@echo "$(GREEN)cert-manager-operator uninstalled.$(RESET)"
+
+uninstall-all: clean clean-ibu uninstall-cert-manager-operator ## Full teardown of all components (WARNING!)
