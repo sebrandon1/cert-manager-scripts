@@ -168,6 +168,10 @@ jobs:
           retry_on: error
           command: ./scripts/workflows/verify-cluster-access.sh
 
+      - name: Recreate issuer for API server cert test
+        run: |
+          PEBBLE_ALWAYS_VALID=1 make install-pebble create-issuer || true
+
       - name: Create API server certificate
         uses: nick-fields/retry@v4
         with:
