@@ -89,6 +89,7 @@ jobs:
       - name: Clean up HTTP-01 test resources
         if: always()
         timeout-minutes: 2
+        continue-on-error: true
         run: make clean-certs clean-issuers || true
 
       - name: Run quick self-signed CA test
@@ -106,6 +107,7 @@ jobs:
       - name: Clean up self-signed test resources
         if: always()
         timeout-minutes: 2
+        continue-on-error: true
         run: make clean-selfsigned || true
 
       - name: Verify Pebble health before DNS-01 test
@@ -136,6 +138,7 @@ jobs:
       - name: Clean up DNS-01 test resources
         if: always()
         timeout-minutes: 2
+        continue-on-error: true
         run: make clean-certs clean-issuers clean-pebble clean-fake-dns || true
 
       - name: Run multi-algorithm certificate test
