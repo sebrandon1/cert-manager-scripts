@@ -29,20 +29,20 @@ ALGO_SPECS=(
 
 check_prerequisites() {
 	log_info "Checking prerequisites..."
-	require_cmd oc jq
+	require_cmd "$KUBE_CLI" jq
 	require_cluster
 	require_cert_manager
 	log_success "Prerequisites met."
 }
 
 ensure_selfsigned_issuer() {
-	if oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
+	if "$KUBE_CLI" get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 		log_info "ClusterIssuer '$ISSUER_NAME' already exists."
 		return 0
 	fi
 
 	log_info "Creating selfsigned ClusterIssuer..."
-	cat <<EOF | oc apply -f -
+	cat <<EOF | "$KUBE_CLI" apply -f -
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -60,7 +60,7 @@ create_algo_certificate() {
 	local cert_name="ibu-cert-${name_suffix}"
 	local secret_name="${cert_name}-tls"
 
-	if oc get certificate "$cert_name" -n "$TARGET_NAMESPACE" &>/dev/null; then
+	if "$KUBE_CLI" get certificate "$cert_name" -n "$TARGET_NAMESPACE" &>/dev/null; then
 		log_warn "Certificate '$cert_name' already exists, skipping."
 		return 0
 	fi
@@ -77,7 +77,7 @@ create_algo_certificate() {
     algorithm: $algorithm"
 	fi
 
-	cat <<EOF | oc apply -f -
+	cat <<EOF | "$KUBE_CLI" apply -f -
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -112,7 +112,7 @@ create_all_certificates() {
 
 check_all_certs_ready() {
 	local not_ready
-	not_ready=$(oc get certificates -n "$TARGET_NAMESPACE" -l app="$CERT_LABEL" -o json |
+	not_ready=$("$KUBE_CLI" get certificates -n "$TARGET_NAMESPACE" -l app="$CERT_LABEL" -o json |
 		jq '[.items[] | select((.status.conditions // [] | map(select(.type=="Ready" and .status=="True")) | length) == 0)] | length')
 	[ "$not_ready" -eq 0 ]
 }
@@ -136,7 +136,7 @@ verify_key_formats() {
 	local fail_count=0
 
 	local secrets_json
-	secrets_json=$(oc get secrets -n "$TARGET_NAMESPACE" -o json 2>/dev/null || echo '{"items":[]}')
+	secrets_json=$("$KUBE_CLI" get secrets -n "$TARGET_NAMESPACE" -o json 2>/dev/null || echo '{"items":[]}')
 
 	printf "  %-22s %-18s %-18s %s\n" "CERTIFICATE" "EXPECTED" "ACTUAL" "STATUS"
 	printf "  %-22s %-18s %-18s %s\n" "───────────" "────────" "──────" "──────"

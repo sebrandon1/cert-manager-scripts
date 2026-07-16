@@ -34,6 +34,4 @@ spec:
           tsigSecretSecretRef:
             name: rfc2136-credentials
             key: tsig-secret
-            # For ClusterIssuer, secret must be in cert-manager namespace
-            namespace: cert-manager
 

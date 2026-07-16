@@ -83,6 +83,33 @@ log_debug() {
 }
 
 # ============================================================================
+# CLUSTER TYPE DETECTION
+# ============================================================================
+detect_cluster_type() {
+	if command -v oc &>/dev/null && oc whoami &>/dev/null 2>&1; then
+		CLUSTER_TYPE="openshift"
+		KUBE_CLI="oc"
+	elif command -v kubectl &>/dev/null && kubectl config current-context &>/dev/null 2>&1; then
+		CLUSTER_TYPE="kubernetes"
+		KUBE_CLI="kubectl"
+	elif command -v oc &>/dev/null; then
+		CLUSTER_TYPE="openshift"
+		KUBE_CLI="oc"
+	elif command -v kubectl &>/dev/null; then
+		CLUSTER_TYPE="kubernetes"
+		KUBE_CLI="kubectl"
+	else
+		CLUSTER_TYPE="unknown"
+		KUBE_CLI="kubectl"
+	fi
+	export CLUSTER_TYPE KUBE_CLI
+}
+
+if [[ -z "${CLUSTER_TYPE:-}" ]]; then
+	detect_cluster_type
+fi
+
+# ============================================================================
 # DEPENDENCY CHECKING
 # ============================================================================
 # Check if required commands are available
@@ -108,18 +135,20 @@ require_cmd() {
 # Verify cluster connectivity
 # Usage: require_cluster
 require_cluster() {
-	if ! command -v oc &>/dev/null; then
-		log_error "OpenShift CLI (oc) not found."
-		exit 1
+	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+		if ! oc whoami &>/dev/null 2>&1; then
+			log_error "Not connected to OpenShift cluster. Run 'oc login' first."
+			exit 1
+		fi
+		log_debug "Connected to cluster as: $(oc whoami)"
+		log_debug "Cluster: $(oc whoami --show-server 2>/dev/null || echo 'unknown')"
+	else
+		if ! kubectl cluster-info &>/dev/null 2>&1; then
+			log_error "Not connected to Kubernetes cluster. Check KUBECONFIG."
+			exit 1
+		fi
+		log_debug "Connected to cluster: $(kubectl config current-context 2>/dev/null || echo 'unknown')"
 	fi
-
-	if ! oc whoami &>/dev/null 2>&1; then
-		log_error "Not connected to OpenShift cluster. Run 'oc login' first."
-		exit 1
-	fi
-
-	log_debug "Connected to cluster as: $(oc whoami)"
-	log_debug "Cluster: $(oc whoami --show-server 2>/dev/null || echo 'unknown')"
 }
 
 # ============================================================================
@@ -278,44 +307,11 @@ confirm() {
 # Check if running with cluster-admin privileges
 require_cluster_admin() {
 	require_cluster
-	if ! oc auth can-i '*' '*' --all-namespaces &>/dev/null; then
+	if ! "$KUBE_CLI" auth can-i '*' '*' --all-namespaces &>/dev/null; then
 		log_error "Cluster-admin privileges required."
 		exit 1
 	fi
 	log_debug "Cluster-admin privileges confirmed"
-}
-
-# Wait for critical cluster operators to be healthy before deploying workloads.
-# Checks dns, network, and ingress operators — degraded state in any of these
-# prevents pods from scheduling, pulling images, or receiving traffic.
-# Usage: require_healthy_cluster [max_attempts] [interval]
-require_healthy_cluster() {
-	local max_attempts="${1:-30}"
-	local interval="${2:-10}"
-
-	check_critical_operators() {
-		local unhealthy
-		unhealthy=$(oc get clusteroperator dns network ingress \
-			-o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Available")].status}{"\n"}{end}' 2>/dev/null |
-			grep -cve '^True$' || true)
-		[ "$unhealthy" -eq 0 ]
-	}
-
-	log_info "Checking critical cluster operators (dns, network, ingress)..."
-	if check_critical_operators; then
-		log_info "Critical cluster operators are healthy."
-		return 0
-	fi
-
-	log_warn "Critical cluster operators not yet healthy. Waiting up to $((max_attempts * interval))s..."
-	if wait_for_condition "$max_attempts" "$interval" check_critical_operators; then
-		log_success "Critical cluster operators are healthy."
-	else
-		log_error "Critical cluster operators still unhealthy after $((max_attempts * interval))s."
-		log_error "Operator status:"
-		oc get clusteroperator dns network ingress 2>/dev/null || true
-		return 1
-	fi
 }
 
 # Wait for a resource to be ready
@@ -326,7 +322,7 @@ wait_for_resource() {
 	local timeout="${3:-300s}"
 
 	log_info "Waiting for $resource to be ready..."
-	if oc wait --for=condition=available --timeout="$timeout" "$resource" -n "$namespace"; then
+	if "$KUBE_CLI" wait --for=condition=available --timeout="$timeout" "$resource" -n "$namespace"; then
 		log_success "$resource is ready"
 		return 0
 	else
@@ -343,29 +339,74 @@ dump_resource_diagnostics() {
 	local resource="${2:-}"
 
 	log_warn "--- Diagnostics for namespace '$namespace' ---"
-	oc get pods -n "$namespace" -o wide 2>/dev/null || true
+	"$KUBE_CLI" get pods -n "$namespace" -o wide 2>/dev/null || true
 	if [[ -n "$resource" ]]; then
-		oc describe "$resource" -n "$namespace" 2>/dev/null | tail -30 || true
+		"$KUBE_CLI" describe "$resource" -n "$namespace" 2>/dev/null | tail -30 || true
 	fi
-	oc get events -n "$namespace" --sort-by='.lastTimestamp' 2>/dev/null | tail -20 || true
+	"$KUBE_CLI" get events -n "$namespace" --sort-by='.lastTimestamp' 2>/dev/null | tail -20 || true
 	log_warn "--- End diagnostics ---"
 }
 
 # Verify cert-manager is installed and webhook is ready
 require_cert_manager() {
-	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
-		log_error "cert-manager not found. Please install cert-manager-operator first."
-		log_info "  Run: make install-cert-manager-operator"
+	if ! "$KUBE_CLI" get deployment -n cert-manager cert-manager &>/dev/null; then
+		log_error "cert-manager not found."
+		log_info "  Run: make install-cert-manager-operator (OpenShift) or make install-cert-manager-helm (Kubernetes)"
 		exit 1
 	fi
 
 	log_info "Waiting for cert-manager webhook to be ready..."
-	if ! oc wait --for=condition=available --timeout=120s deployment/cert-manager-webhook -n cert-manager; then
+	if ! $KUBE_CLI wait --for=condition=available --timeout=120s deployment/cert-manager-webhook -n cert-manager; then
 		log_error "Timeout waiting for cert-manager webhook to be ready."
-		log_info "  Check webhook status: oc get deployment cert-manager-webhook -n cert-manager"
 		exit 1
 	fi
 	log_info "cert-manager webhook is ready."
+}
+
+# Wait for cluster health (OpenShift: cluster operators, Kubernetes: node readiness)
+# Usage: require_healthy_cluster [max_attempts] [interval]
+require_healthy_cluster() {
+	local max_attempts="${1:-30}"
+	local interval="${2:-10}"
+
+	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+		check_critical_operators() {
+			local unhealthy
+			unhealthy=$("$KUBE_CLI" get clusteroperator dns network ingress \
+				-o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Available")].status}{"\n"}{end}' 2>/dev/null |
+				grep -cve '^True' || true)
+			[ "$unhealthy" -eq 0 ]
+		}
+
+		if check_critical_operators; then
+			log_info "Critical cluster operators are healthy."
+			return 0
+		fi
+
+		log_info "Waiting for critical cluster operators (dns, network, ingress)..."
+		if wait_for_condition "$max_attempts" "$interval" check_critical_operators; then
+			log_success "Critical cluster operators are healthy."
+		else
+			log_error "Critical cluster operators not healthy after $((max_attempts * interval))s."
+			"$KUBE_CLI" get clusteroperator dns network ingress 2>/dev/null || true
+			return 1
+		fi
+	else
+		check_nodes_ready() {
+			local not_ready
+			not_ready=$("$KUBE_CLI" get nodes --no-headers 2>/dev/null | grep -cve '\sReady\s' || true)
+			[ "$not_ready" -eq 0 ]
+		}
+
+		log_info "Checking node readiness..."
+		if wait_for_condition "$max_attempts" "$interval" check_nodes_ready; then
+			log_success "All nodes are ready."
+		else
+			log_error "Nodes not ready after $((max_attempts * interval))s."
+			"$KUBE_CLI" get nodes 2>/dev/null || true
+			return 1
+		fi
+	fi
 }
 
 # Print a formatted section header
@@ -391,7 +432,7 @@ apply_yaml_template() {
 	fi
 
 	log_info "Applying $resource_type from $(basename "$yaml_file")..."
-	envsubst <"$yaml_file" | oc apply -f -
+	envsubst <"$yaml_file" | "$KUBE_CLI" apply -f -
 }
 
 # Create a namespace if it doesn't exist
@@ -399,11 +440,11 @@ apply_yaml_template() {
 ensure_namespace() {
 	local namespace="$1"
 
-	if oc get namespace "$namespace" &>/dev/null; then
+	if "$KUBE_CLI" get namespace "$namespace" &>/dev/null; then
 		log_info "Namespace '$namespace' already exists."
 	else
 		log_info "Creating namespace '$namespace'..."
-		oc create namespace "$namespace"
+		"$KUBE_CLI" create namespace "$namespace"
 		log_info "Namespace '$namespace' created successfully."
 	fi
 }
@@ -415,20 +456,12 @@ check_deployment_exists() {
 	local deployment="$1"
 	local namespace="$2"
 
-	if ! oc get namespace "$namespace" &>/dev/null; then
-		return 1
-	fi
+	local info
+	info=$("$KUBE_CLI" get deployment "$deployment" -n "$namespace" \
+		-o jsonpath='{.spec.replicas},{.status.readyReplicas}' 2>/dev/null) || return 1
 
-	if ! oc get deployment "$deployment" -n "$namespace" &>/dev/null; then
-		return 1
-	fi
-
-	local ready_replicas
-	ready_replicas=$(oc get deployment "$deployment" -n "$namespace" \
-		-o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-	local desired_replicas
-	desired_replicas=$(oc get deployment "$deployment" -n "$namespace" \
-		-o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+	local desired_replicas="${info%%,*}"
+	local ready_replicas="${info##*,}"
 
 	if [[ "$ready_replicas" = "$desired_replicas" ]] && [[ "$ready_replicas" != "0" ]]; then
 		return 0

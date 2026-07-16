@@ -21,28 +21,28 @@ export CERT_NAMESPACE="${CERT_NAMESPACE:-default}"
 check_prerequisites() {
 	log_info "Checking prerequisites..."
 
-	require_cmd oc envsubst
+	require_cmd "$KUBE_CLI" envsubst
 	require_cluster
 
 	# Check if cert-manager is installed
-	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
+	if ! "$KUBE_CLI" get deployment -n cert-manager cert-manager &>/dev/null; then
 		log_error "cert-manager not found. Please install cert-manager-operator first."
 		log_info "  Run: make install-cert-manager-operator"
 		exit 1
 	fi
 
 	# Check if issuer exists
-	if ! oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
+	if ! "$KUBE_CLI" get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 		log_error "ClusterIssuer '$ISSUER_NAME' not found."
 		log_info "  Create an issuer first: make create-issuer"
 		exit 1
 	fi
 
 	# Check if namespace exists
-	if ! oc get namespace "$CERT_NAMESPACE" &>/dev/null; then
+	if ! "$KUBE_CLI" get namespace "$CERT_NAMESPACE" &>/dev/null; then
 		log_warn "Namespace '$CERT_NAMESPACE' does not exist."
 		if confirm "Create namespace '$CERT_NAMESPACE'?"; then
-			oc create namespace "$CERT_NAMESPACE"
+			"$KUBE_CLI" create namespace "$CERT_NAMESPACE"
 			log_info "Namespace '$CERT_NAMESPACE' created."
 		else
 			log_error "Cannot create certificates without target namespace."
@@ -67,7 +67,7 @@ create_certificate() {
 	log_info "Creating certificate: $cert_name ($description)..."
 
 	# Check if certificate already exists
-	if oc get certificate "$cert_name" -n "$CERT_NAMESPACE" &>/dev/null; then
+	if "$KUBE_CLI" get certificate "$cert_name" -n "$CERT_NAMESPACE" &>/dev/null; then
 		log_warn "Certificate '$cert_name' already exists in namespace '$CERT_NAMESPACE'."
 		return 0
 	fi
@@ -115,9 +115,9 @@ show_http01_flow() {
 
 check_test_certs_ready() {
 	for cert in test-cert-simple test-cert-app test-cert-api; do
-		if oc get certificate "$cert" -n "$CERT_NAMESPACE" &>/dev/null; then
+		if "$KUBE_CLI" get certificate "$cert" -n "$CERT_NAMESPACE" &>/dev/null; then
 			local ready
-			ready=$(oc get certificate "$cert" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' || echo "False")
+			ready=$("$KUBE_CLI" get certificate "$cert" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' || echo "False")
 			[ "$ready" != "True" ] && return 1
 		fi
 	done
@@ -142,19 +142,19 @@ display_certificate_status() {
 	print_header "Certificate Status"
 
 	log_info "Certificates:"
-	oc get certificate -n "$CERT_NAMESPACE" 2>/dev/null || echo "No certificates found"
+	"$KUBE_CLI" get certificate -n "$CERT_NAMESPACE" 2>/dev/null || echo "No certificates found"
 
 	echo
 	log_info "Certificate Requests:"
-	oc get certificaterequest -n "$CERT_NAMESPACE" 2>/dev/null || echo "No certificate requests found"
+	"$KUBE_CLI" get certificaterequest -n "$CERT_NAMESPACE" 2>/dev/null || echo "No certificate requests found"
 
 	echo
 	log_info "ACME Orders:"
-	oc get order -n "$CERT_NAMESPACE" 2>/dev/null || echo "No orders found"
+	"$KUBE_CLI" get order -n "$CERT_NAMESPACE" 2>/dev/null || echo "No orders found"
 
 	echo
 	log_info "ACME Challenges:"
-	oc get challenge -n "$CERT_NAMESPACE" 2>/dev/null || echo "No challenges found"
+	"$KUBE_CLI" get challenge -n "$CERT_NAMESPACE" 2>/dev/null || echo "No challenges found"
 }
 
 # Function to display next steps
@@ -178,7 +178,7 @@ display_next_steps() {
 
 	# Check if certificates failed
 	local failed_certs
-	failed_certs=$(oc get certificate -n "$CERT_NAMESPACE" -o json 2>/dev/null | jq -r '.items[] | select(.status.conditions[]? | select(.type=="Ready" and .status=="False")) | .metadata.name' | wc -l | tr -d ' ')
+	failed_certs=$("$KUBE_CLI" get certificate -n "$CERT_NAMESPACE" -o json 2>/dev/null | jq -r '.items[] | select(.status.conditions[]? | select(.type=="Ready" and .status=="False")) | .metadata.name' | wc -l | tr -d ' ')
 
 	if [ "$failed_certs" -gt 0 ]; then
 		echo
