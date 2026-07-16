@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: pebble
-        image: ghcr.io/letsencrypt/pebble:v2.10.1
+        image: ghcr.io/letsencrypt/pebble:2.10.1
         imagePullPolicy: IfNotPresent
         args:
         - -config
@@ -41,6 +41,15 @@ spec:
           value: "1"
         - name: PEBBLE_VA_ALWAYS_VALID
           value: "${PEBBLE_ALWAYS_VALID}"
+        readinessProbe:
+          httpGet:
+            path: /dir
+            port: 14000
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         volumeMounts:
         - name: config
           mountPath: /test/config

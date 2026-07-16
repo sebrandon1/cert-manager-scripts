@@ -36,7 +36,7 @@ envsubst < yaml/fake-dns-api/service.yaml | oc apply -f -
 ## How It Works
 
 The fake DNS API server:
-1. Listens on port 53 for DNS queries (SOA, TXT)
+1. Listens on port 5353 for DNS queries (SOA, TXT), exposed as port 53 via the Service
 2. Accepts RFC2136 dynamic DNS UPDATE requests
 3. Stores TXT records in memory
 4. Returns stored records when queried

@@ -19,10 +19,6 @@ install_fake_dns() {
 
 	apply_yaml_template "$YAML_DIR/namespace.yaml" "Namespace"
 	apply_yaml_template "$YAML_DIR/serviceaccount.yaml" "ServiceAccount"
-
-	log_info "Granting anyuid SCC to fake-dns-api ServiceAccount..."
-	oc adm policy add-scc-to-user anyuid -z fake-dns-api -n "$FAKEDNS_NAMESPACE"
-
 	apply_yaml_template "$YAML_DIR/configmap.yaml" "ConfigMap"
 	apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
 	apply_yaml_template "$YAML_DIR/service.yaml" "Service"
@@ -146,6 +142,7 @@ main() {
 
 	require_cmd oc envsubst
 	require_cluster
+	require_healthy_cluster
 
 	install_fake_dns
 	wait_for_resource "deployment/fake-dns-api" "$FAKEDNS_NAMESPACE" "600s"

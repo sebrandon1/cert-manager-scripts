@@ -21,6 +21,19 @@ print_header "Create DNS-01 ClusterIssuer"
 
 require_cluster
 
+check_pebble_responding() {
+	oc get deployment pebble -n "${PEBBLE_NAMESPACE:-pebble}" -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -q '^[1-9]'
+}
+
+log_info "Waiting for Pebble ACME server to be available..."
+if wait_for_condition 60 10 check_pebble_responding; then
+	log_info "Pebble ACME server is available."
+else
+	log_error "Pebble ACME server is not available. Install Pebble first: make install-pebble"
+	dump_resource_diagnostics "${PEBBLE_NAMESPACE:-pebble}" "deployment/pebble"
+	exit 1
+fi
+
 log_info "Creating dummy RFC2136 secret in cert-manager namespace..."
 oc create secret generic rfc2136-credentials \
 	--from-literal=tsig-secret="$(echo -n "dummy-secret-key" | base64)" \
@@ -30,7 +43,7 @@ oc create secret generic rfc2136-credentials \
 apply_yaml_template "$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" "DNS-01 ClusterIssuer"
 
 log_info "Waiting for ClusterIssuer to be ready..."
-retry 3 5 oc wait --for=condition=Ready clusterissuer/"$ISSUER_NAME" --timeout=10s 2>/dev/null
+retry 5 10 oc wait --for=condition=Ready clusterissuer/"$ISSUER_NAME" --timeout=30s 2>/dev/null
 
 if oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 	oc get clusterissuer "$ISSUER_NAME"

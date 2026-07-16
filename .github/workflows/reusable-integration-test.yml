@@ -26,6 +26,7 @@ jobs:
   test:
     name: OCP ${{ inputs.ocp-version }} / cert-manager ${{ inputs.cert-manager-version || 'default' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - name: Check Red Hat Status
         uses: palmsoftware/redhat-status@v0
@@ -75,13 +76,21 @@ jobs:
           timeout_minutes: 30
           max_attempts: 3
           retry_on: error
+          on_retry_command: |
+            echo "=== Pebble diagnostics ==="
+            oc get pods -n pebble -o wide 2>/dev/null || true
+            oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
+            echo "=== cert-manager diagnostics ==="
+            oc get pods -n cert-manager 2>/dev/null || true
           command: make quick-http-test
         env:
           CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
 
       - name: Clean up HTTP-01 test resources
         if: always()
-        run: make clean-certs clean-issuers clean-pebble || true
+        timeout-minutes: 2
+        continue-on-error: true
+        run: make clean-certs clean-issuers || true
 
       - name: Run quick self-signed CA test
         uses: nick-fields/retry@v4
@@ -89,11 +98,28 @@ jobs:
           timeout_minutes: 10
           max_attempts: 2
           retry_on: error
+          on_retry_command: |
+            echo "=== cert-manager diagnostics ==="
+            oc get pods -n cert-manager 2>/dev/null || true
+            oc get events -n cert-manager --sort-by='.lastTimestamp' 2>/dev/null | tail -10 || true
           command: make quick-selfsigned-test
 
       - name: Clean up self-signed test resources
         if: always()
+        timeout-minutes: 2
+        continue-on-error: true
         run: make clean-selfsigned || true
+
+      - name: Verify Pebble health before DNS-01 test
+        run: |
+          echo "Checking Pebble pod status before DNS-01 test..."
+          oc get pods -n pebble -o wide 2>/dev/null || true
+          oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -10 || true
+          if ! oc get deployment pebble -n pebble -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -q '^[1-9]'; then
+            echo "WARNING: Pebble is not healthy, DNS-01 test may fail"
+          else
+            echo "Pebble is healthy"
+          fi
 
       - name: Run quick DNS-01 test
         uses: nick-fields/retry@v4
@@ -101,10 +127,18 @@ jobs:
           timeout_minutes: 30
           max_attempts: 2
           retry_on: error
+          on_retry_command: |
+            echo "=== Pebble diagnostics ==="
+            oc get pods -n pebble -o wide 2>/dev/null || true
+            oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
+            echo "=== fake-dns diagnostics ==="
+            oc get pods -n fake-dns -o wide 2>/dev/null || true
           command: make quick-dns-test
 
       - name: Clean up DNS-01 test resources
         if: always()
+        timeout-minutes: 2
+        continue-on-error: true
         run: make clean-certs clean-issuers clean-pebble clean-fake-dns || true
 
       - name: Run multi-algorithm certificate test
@@ -133,6 +167,10 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: ./scripts/workflows/verify-cluster-access.sh
+
+      - name: Recreate issuer for API server cert test
+        run: |
+          PEBBLE_ALWAYS_VALID=1 make install-pebble create-issuer || true
 
       - name: Create API server certificate
         uses: nick-fields/retry@v4

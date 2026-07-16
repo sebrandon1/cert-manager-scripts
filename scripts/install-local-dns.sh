@@ -75,6 +75,7 @@ main() {
 
 	require_cmd oc envsubst
 	require_cluster
+	require_healthy_cluster
 
 	if [ ! -d "$YAML_DIR" ]; then
 		log_error "YAML directory not found: $YAML_DIR"
