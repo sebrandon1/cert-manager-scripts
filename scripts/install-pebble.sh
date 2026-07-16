@@ -24,7 +24,11 @@ install_pebble() {
 	apply_yaml_template "$YAML_DIR/configmap.yaml" "ConfigMap"
 	apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
 	apply_yaml_template "$YAML_DIR/service.yaml" "Service"
-	apply_yaml_template "$YAML_DIR/route.yaml" "Route"
+	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+		apply_yaml_template "$YAML_DIR/route.yaml" "Route"
+	else
+		log_info "Skipping Route (not on OpenShift)."
+	fi
 
 	log_info "Resources applied. Waiting for Pebble to be ready..."
 }
@@ -33,22 +37,24 @@ verify_installation() {
 	log_info "Verifying Pebble installation..."
 
 	log_info "Checking pod status..."
-	oc get pods -n "$PEBBLE_NAMESPACE"
+	"$KUBE_CLI" get pods -n "$PEBBLE_NAMESPACE"
 	echo
 
 	log_info "Checking service..."
-	oc get service pebble -n "$PEBBLE_NAMESPACE"
+	"$KUBE_CLI" get service pebble -n "$PEBBLE_NAMESPACE"
 	echo
 
-	log_info "Checking route..."
-	oc get route pebble-acme -n "$PEBBLE_NAMESPACE"
-	echo
+	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+		log_info "Checking route..."
+		"$KUBE_CLI" get route pebble-acme -n "$PEBBLE_NAMESPACE"
+		echo
 
-	local route_host
-	route_host=$(oc get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+		local route_host
+		route_host=$("$KUBE_CLI" get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 
-	if [ -n "$route_host" ]; then
-		log_info "Pebble ACME directory URL: https://${route_host}/dir"
+		if [ -n "$route_host" ]; then
+			log_info "Pebble ACME directory URL: https://${route_host}/dir"
+		fi
 	fi
 
 	local service_url="https://pebble.${PEBBLE_NAMESPACE}.svc.cluster.local:14000/dir"
@@ -75,8 +81,10 @@ display_configuration() {
 }
 
 display_next_steps() {
-	local route_host
-	route_host=$(oc get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+	local route_host=""
+	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+		route_host=$("$KUBE_CLI" get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+	fi
 	local service_url="https://pebble.${PEBBLE_NAMESPACE}.svc.cluster.local:14000/dir"
 
 	print_header "Installation Complete!"
@@ -127,7 +135,7 @@ display_next_steps() {
 main() {
 	print_header "Pebble ACME Test Server Installation"
 
-	require_cmd oc envsubst
+	require_cmd "$KUBE_CLI" envsubst
 	require_cluster
 
 	if [ ! -d "$YAML_DIR" ]; then

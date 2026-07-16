@@ -18,7 +18,7 @@ TARGET_NAMESPACE="${TARGET_NAMESPACE:-default}"
 
 check_prerequisites() {
 	log_info "Checking prerequisites..."
-	require_cmd oc jq
+	require_cmd "$KUBE_CLI" jq
 	require_cluster
 	log_success "Prerequisites met."
 }

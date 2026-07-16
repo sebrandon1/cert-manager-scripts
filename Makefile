@@ -1,4 +1,11 @@
 # ────────────────────────────────────────────────────────────────────────────────
+# CLI Detection
+# ────────────────────────────────────────────────────────────────────────────────
+KUBE_CLI ?= $(shell command -v oc >/dev/null 2>&1 && echo oc || echo kubectl)
+CLUSTER_TYPE ?= $(shell command -v oc >/dev/null 2>&1 && oc whoami >/dev/null 2>&1 && echo openshift || echo kubernetes)
+export KUBE_CLI CLUSTER_TYPE
+
+# ────────────────────────────────────────────────────────────────────────────────
 # Color Definitions
 # ────────────────────────────────────────────────────────────────────────────────
 RESET := \033[0m
@@ -23,7 +30,7 @@ BG_BLUE := \033[44m
 # ────────────────────────────────────────────────────────────────────────────────
 # Target Definitions
 # ────────────────────────────────────────────────────────────────────────────────
-.PHONY: all help banner preflight lint install-cert-manager-operator install-pebble \
+.PHONY: all help banner preflight lint install-cert-manager-operator install-cert-manager-helm install-pebble \
         install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
         create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
@@ -97,7 +104,7 @@ lint: ## Check shell script formatting with shfmt and shellcheck
 	  exit 1; \
 	fi
 	@echo "$(DIM)  Running shellcheck...$(RESET)"
-	@find . -name '*.sh' -type f -not -path './venv/*' | xargs shellcheck -e SC1091,SC2034 || (echo "$(RED)shellcheck failed!$(RESET)" && exit 1)
+	@find . -name '*.sh' -type f -not -path './venv/*' | xargs shellcheck -e SC1091,SC2034,SC2329 || (echo "$(RED)shellcheck failed!$(RESET)" && exit 1)
 	@if ! command -v shfmt >/dev/null 2>&1; then \
 	  echo "$(RED)shfmt not found. Please install it:$(RESET)"; \
 	  echo "$(DIM)  macOS: brew install shfmt$(RESET)"; \
@@ -125,6 +132,12 @@ install-cert-manager-operator: ## Install cert-manager Operator for Red Hat Open
 	@echo "$(BOLD)$(BLUE)Installing cert-manager Operator...$(RESET)"
 	@./scripts/install-cert-manager-operator.sh
 	@echo "$(GREEN)cert-manager Operator installation completed!$(RESET)"
+	@echo ""
+
+install-cert-manager-helm: ## Install cert-manager via Helm (vanilla Kubernetes)
+	@echo "$(BOLD)$(BLUE)Installing cert-manager via Helm...$(RESET)"
+	@./scripts/install-cert-manager-helm.sh
+	@echo "$(GREEN)cert-manager Helm installation completed!$(RESET)"
 	@echo ""
 
 install-pebble: ## Install Pebble ACME test server
@@ -172,22 +185,22 @@ verify-apiserver-cert: ## Verify API server certificate
 
 test-cert: ## Create a test wildcard certificate (DNS-01)
 	@echo "Creating test wildcard certificate..."
-	@printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: wildcard-test\n  namespace: default\nspec:\n  secretName: wildcard-test-tls\n  issuerRef:\n    name: pebble-dns01-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - "*.example.com"\n  - "example.com"\n' | oc apply -f -
+	@printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: wildcard-test\n  namespace: default\nspec:\n  secretName: wildcard-test-tls\n  issuerRef:\n    name: pebble-dns01-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - "*.example.com"\n  - "example.com"\n' | $(KUBE_CLI) apply -f -
 	@echo "Certificate created. Run 'make verify-cert' to check status."
 
 verify-cert: ## Verify certificate status
 	@echo ""
 	@echo "$(BOLD)Certificate Status$(RESET)"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@oc get certificate wildcard-test -n default 2>/dev/null || echo "Certificate not found"
+	@$(KUBE_CLI) get certificate wildcard-test -n default 2>/dev/null || echo "Certificate not found"
 	@echo ""
 	@echo "Orders:"
-	@oc get order -n default 2>/dev/null || echo "No orders found"
+	@$(KUBE_CLI) get order -n default 2>/dev/null || echo "No orders found"
 	@echo ""
 	@echo "Challenges:"
-	@oc get challenge -n default 2>/dev/null || echo "No challenges found"
+	@$(KUBE_CLI) get challenge -n default 2>/dev/null || echo "No challenges found"
 	@echo ""
-	@if oc get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+	@if $(KUBE_CLI) get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
 		echo "$(GREEN)Certificate is READY!$(RESET)"; \
 	else \
 		echo "$(YELLOW)Certificate is still being issued...$(RESET)"; \
@@ -222,19 +235,20 @@ test-dns01: install-fake-dns ## Complete DNS-01 setup (air-gapped)
 	@echo "Test with: make test-cert"
 	@echo "Monitor progress: watch oc get certificate -n default"
 
-quick-http-test: install-cert-manager-operator ## Quick end-to-end HTTP-01 test
+quick-http-test: ## Quick end-to-end HTTP-01 test
 	@echo ""
 	@echo "$(BOLD)$(BLUE)Quick HTTP-01 Test Running...$(RESET)"
 	@echo ""
+	@if [ "$(CLUSTER_TYPE)" = "openshift" ]; then $(MAKE) install-cert-manager-operator; else $(MAKE) install-cert-manager-helm; fi
 	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble || true
 	@$(MAKE) create-issuer || true
-	@CLUSTER_DOMAIN=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "apps-crc.testing"); \
-	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | oc apply -f -
+	@CLUSTER_DOMAIN=$$($(KUBE_CLI) get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "example.com"); \
+	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | $(KUBE_CLI) apply -f -
 	@echo ""
 	@echo "Waiting for certificate (timeout: 3 minutes)..."
 	@timeout=180; elapsed=0; \
 	while [ $$elapsed -lt $$timeout ]; do \
-		if oc get certificate test-cert-http01 -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+		if $(KUBE_CLI) get certificate test-cert-http01 -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
 			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
 			break; \
 		fi; \
@@ -244,18 +258,18 @@ quick-http-test: install-cert-manager-operator ## Quick end-to-end HTTP-01 test
 	@echo ""
 	@echo "Quick HTTP-01 test complete! Run 'make clean' to clean up."
 
-quick-selfsigned-test: install-cert-manager-operator create-selfsigned-issuer ## Quick end-to-end self-signed CA test
+quick-selfsigned-test: create-selfsigned-issuer ## Quick end-to-end self-signed CA test
 	@echo ""
 	@echo "$(BOLD)$(BLUE)Quick Self-Signed CA Test Running...$(RESET)"
 	@echo ""
-	@CLUSTER_DOMAIN=$$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "apps-crc.testing"); \
+	@CLUSTER_DOMAIN=$$($(KUBE_CLI) get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "example.com"); \
 	ISSUER_NAME=$$(echo "$${CA_ISSUER_NAME:-selfsigned-ca-issuer}"); \
-	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-selfsigned\n  namespace: default\nspec:\n  secretName: test-cert-selfsigned-tls\n  issuerRef:\n    name: '"$$ISSUER_NAME"'\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n  - "*.'"$$CLUSTER_DOMAIN"'"\n' | oc apply -f -
+	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-selfsigned\n  namespace: default\nspec:\n  secretName: test-cert-selfsigned-tls\n  issuerRef:\n    name: '"$$ISSUER_NAME"'\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n  - "*.'"$$CLUSTER_DOMAIN"'"\n' | $(KUBE_CLI) apply -f -
 	@echo ""
 	@echo "Waiting for certificate (timeout: 2 minutes)..."
 	@timeout=120; elapsed=0; \
 	while [ $$elapsed -lt $$timeout ]; do \
-		if oc get certificate test-cert-selfsigned -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+		if $(KUBE_CLI) get certificate test-cert-selfsigned -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
 			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
 			break; \
 		fi; \
@@ -272,7 +286,7 @@ quick-dns-test: test-dns01 test-cert ## Quick end-to-end DNS-01 test
 	@echo "Waiting for certificate (timeout: 5 minutes)..."
 	@timeout=300; elapsed=0; \
 	while [ $$elapsed -lt $$timeout ]; do \
-		if oc get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
+		if $(KUBE_CLI) get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
 			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
 			break; \
 		fi; \
@@ -283,7 +297,7 @@ quick-dns-test: test-dns01 test-cert ## Quick end-to-end DNS-01 test
 	@echo ""
 	@echo "Quick DNS-01 test complete! Run 'make clean' to clean up."
 
-quick-multi-algo-test: install-cert-manager-operator create-multi-algo-certs ## Quick multi-algorithm certificate test (ECDSA, RSA, Ed25519)
+quick-multi-algo-test: create-multi-algo-certs ## Quick multi-algorithm certificate test (ECDSA, RSA, Ed25519)
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
@@ -394,8 +408,8 @@ test-ibu-multi-algo: ## Run IBU cert loss test with all key algorithms
 
 clean-multi-algo-certs: ## Clean up multi-algorithm test certificates
 	@echo "$(BOLD)$(YELLOW)Cleaning up multi-algorithm test certificates...$(RESET)"
-	@oc delete certificate -n default -l app=ibu-multi-algo-test --ignore-not-found=true 2>/dev/null || true
-	@oc delete secret -n default ibu-cert-ecdsa-p256-tls ibu-cert-ecdsa-p384-tls ibu-cert-rsa-2048-tls ibu-cert-rsa-4096-tls ibu-cert-ed25519-tls --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete certificate -n default -l app=ibu-multi-algo-test --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete secret -n default ibu-cert-ecdsa-p256-tls ibu-cert-ecdsa-p384-tls ibu-cert-rsa-2048-tls ibu-cert-rsa-4096-tls ibu-cert-ed25519-tls --ignore-not-found=true 2>/dev/null || true
 	@echo "$(GREEN)Multi-algorithm test certificates cleaned.$(RESET)"
 
 clean-ibu: ## Clean up IBU test resources (MinIO, OADP, backups)
@@ -419,47 +433,49 @@ clean-ibu: ## Clean up IBU test resources (MinIO, OADP, backups)
 
 clean-certs: ## Clean up certificates, orders, and challenges
 	@echo "$(BOLD)$(YELLOW)Cleaning up certificates...$(RESET)"
-	@oc delete certificates --all -n default --ignore-not-found=true
-	@oc delete certificaterequests --all -n default --ignore-not-found=true
-	@oc delete orders --all -n default --ignore-not-found=true
-	@oc delete challenges --all -n default --ignore-not-found=true
-	@oc delete secrets wildcard-test-tls test-cert-simple-tls test-cert-app-tls test-cert-api-tls test-cert-http01-tls -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete certificates --all -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete certificaterequests --all -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete orders --all -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete challenges --all -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete secrets wildcard-test-tls test-cert-simple-tls test-cert-app-tls test-cert-api-tls test-cert-http01-tls -n default --ignore-not-found=true
 	@echo "$(GREEN)Certificates cleaned.$(RESET)"
 
 clean-pebble: ## Clean up Pebble ACME test server
 	@echo "$(BOLD)$(YELLOW)Cleaning up Pebble...$(RESET)"
-	@oc delete namespace pebble --ignore-not-found=true --timeout=60s --wait=false
-	@oc delete secret pebble-dns01-issuer-account-key pebble-issuer-account-key -n cert-manager --ignore-not-found=true
+	@$(KUBE_CLI) delete namespace pebble --ignore-not-found=true --timeout=60s --wait=false
+	@$(KUBE_CLI) delete secret pebble-dns01-issuer-account-key pebble-issuer-account-key -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Pebble cleaned.$(RESET)"
 
 clean-fake-dns: ## Clean up fake DNS API
 	@echo "$(BOLD)$(YELLOW)Cleaning up fake DNS...$(RESET)"
-	@oc delete namespace fake-dns --ignore-not-found=true --timeout=60s --wait=false
+	@$(KUBE_CLI) delete namespace fake-dns --ignore-not-found=true --timeout=60s --wait=false
 	@echo "$(GREEN)Fake DNS cleaned.$(RESET)"
 
 clean-dns-config: ## Restore DNS configuration
 	@echo "Restoring DNS configuration..."
-	@oc patch dns.operator.openshift.io/default --type=json -p='[{"op": "remove", "path": "/spec/servers"}]' 2>/dev/null || true
+	@if [ "$(CLUSTER_TYPE)" = "openshift" ]; then \
+		$(KUBE_CLI) patch dns.operator.openshift.io/default --type=json -p='[{"op": "remove", "path": "/spec/servers"}]' 2>/dev/null || true; \
+	fi
 	@echo "DNS configuration restored."
 
 clean-issuers: ## Clean up ClusterIssuers (ACME/Pebble)
 	@echo "$(BOLD)$(YELLOW)Cleaning up ClusterIssuers...$(RESET)"
-	@oc delete clusterissuer pebble-issuer pebble-dns01-issuer --ignore-not-found=true
-	@oc delete secret rfc2136-credentials -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete clusterissuer pebble-issuer pebble-dns01-issuer --ignore-not-found=true
+	@$(KUBE_CLI) delete secret rfc2136-credentials -n default --ignore-not-found=true
 	@echo "$(GREEN)ClusterIssuers cleaned.$(RESET)"
 
 clean-selfsigned: ## Clean up self-signed CA chain
 	@echo "$(BOLD)$(YELLOW)Cleaning up self-signed CA resources...$(RESET)"
-	@oc delete certificate test-cert-selfsigned -n default --ignore-not-found=true
-	@oc delete secret test-cert-selfsigned-tls -n default --ignore-not-found=true
-	@oc delete clusterissuer selfsigned-ca-issuer selfsigned-issuer --ignore-not-found=true
-	@oc delete certificate root-ca -n cert-manager --ignore-not-found=true
-	@oc delete secret root-ca-secret -n cert-manager --ignore-not-found=true
+	@$(KUBE_CLI) delete certificate test-cert-selfsigned -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete secret test-cert-selfsigned-tls -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete clusterissuer selfsigned-ca-issuer selfsigned-issuer --ignore-not-found=true
+	@$(KUBE_CLI) delete certificate root-ca -n cert-manager --ignore-not-found=true
+	@$(KUBE_CLI) delete secret root-ca-secret -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Self-signed CA resources cleaned.$(RESET)"
 
 clean-monitoring: ## Clean up cert-manager monitoring resources
 	@echo "$(BOLD)$(YELLOW)Cleaning up monitoring resources...$(RESET)"
-	@oc delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts -n cert-manager --ignore-not-found=true
+	@$(KUBE_CLI) delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Monitoring resources cleaned.$(RESET)"
 
 clean-temp: ## Clean up temporary files

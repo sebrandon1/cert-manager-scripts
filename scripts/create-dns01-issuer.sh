@@ -22,7 +22,7 @@ print_header "Create DNS-01 ClusterIssuer"
 require_cluster
 
 check_pebble_responding() {
-	oc get deployment pebble -n "${PEBBLE_NAMESPACE:-pebble}" -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -q '^[1-9]'
+	"$KUBE_CLI" get deployment pebble -n "${PEBBLE_NAMESPACE:-pebble}" -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -q '^[1-9]'
 }
 
 log_info "Waiting for Pebble ACME server to be available..."
@@ -35,18 +35,18 @@ else
 fi
 
 log_info "Creating dummy RFC2136 secret in cert-manager namespace..."
-oc create secret generic rfc2136-credentials \
+"$KUBE_CLI" create secret generic rfc2136-credentials \
 	--from-literal=tsig-secret="$(echo -n "dummy-secret-key" | base64)" \
 	--namespace cert-manager \
-	--dry-run=client -o yaml | oc apply -f -
+	--dry-run=client -o yaml | "$KUBE_CLI" apply -f -
 
 apply_yaml_template "$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" "DNS-01 ClusterIssuer"
 
 log_info "Waiting for ClusterIssuer to be ready..."
-retry 5 10 oc wait --for=condition=Ready clusterissuer/"$ISSUER_NAME" --timeout=30s 2>/dev/null
+retry 5 10 "$KUBE_CLI" wait --for=condition=Ready clusterissuer/"$ISSUER_NAME" --timeout=30s 2>/dev/null
 
-if oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
-	oc get clusterissuer "$ISSUER_NAME"
+if "$KUBE_CLI" get clusterissuer "$ISSUER_NAME" &>/dev/null; then
+	"$KUBE_CLI" get clusterissuer "$ISSUER_NAME"
 	echo
 	log_info "DNS-01 ClusterIssuer created!"
 	echo

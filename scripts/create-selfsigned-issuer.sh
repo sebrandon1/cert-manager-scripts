@@ -32,17 +32,17 @@ check_existing_issuer() {
 
 	local exists=false
 
-	if oc get clusterissuer "$SELFSIGNED_ISSUER_NAME" &>/dev/null; then
+	if $KUBE_CLI get clusterissuer "$SELFSIGNED_ISSUER_NAME" &>/dev/null; then
 		log_warn "ClusterIssuer '$SELFSIGNED_ISSUER_NAME' already exists."
 		exists=true
 	fi
 
-	if oc get clusterissuer "$CA_ISSUER_NAME" &>/dev/null; then
+	if $KUBE_CLI get clusterissuer "$CA_ISSUER_NAME" &>/dev/null; then
 		log_warn "ClusterIssuer '$CA_ISSUER_NAME' already exists."
 		exists=true
 	fi
 
-	if oc get certificate "$ROOT_CA_NAME" -n "$ROOT_CA_NAMESPACE" &>/dev/null; then
+	if $KUBE_CLI get certificate "$ROOT_CA_NAME" -n "$ROOT_CA_NAMESPACE" &>/dev/null; then
 		log_warn "Root CA Certificate '$ROOT_CA_NAME' already exists in namespace '$ROOT_CA_NAMESPACE'."
 		exists=true
 	fi
@@ -74,7 +74,7 @@ create_selfsigned_issuer() {
 	apply_yaml_template "$YAML_DIR/selfsigned-clusterissuer.yaml" "SelfSigned ClusterIssuer"
 
 	log_info "Waiting for SelfSigned ClusterIssuer to be ready..."
-	retry 10 2 oc wait --for=condition=Ready clusterissuer/"$SELFSIGNED_ISSUER_NAME" --timeout=30s
+	retry 10 2 "$KUBE_CLI" wait --for=condition=Ready clusterissuer/"$SELFSIGNED_ISSUER_NAME" --timeout=30s
 	log_success "SelfSigned ClusterIssuer is ready."
 }
 
@@ -83,7 +83,7 @@ create_root_ca() {
 	apply_yaml_template "$YAML_DIR/root-ca-certificate.yaml" "Root CA Certificate"
 
 	log_info "Waiting for Root CA Certificate to be issued..."
-	retry 15 2 oc wait --for=condition=Ready certificate/"$ROOT_CA_NAME" -n "$ROOT_CA_NAMESPACE" --timeout=30s
+	retry 15 2 "$KUBE_CLI" wait --for=condition=Ready certificate/"$ROOT_CA_NAME" -n "$ROOT_CA_NAMESPACE" --timeout=30s
 	log_success "Root CA Certificate is ready."
 }
 
@@ -92,7 +92,7 @@ create_ca_issuer() {
 	apply_yaml_template "$YAML_DIR/ca-clusterissuer.yaml" "CA ClusterIssuer"
 
 	log_info "Waiting for CA ClusterIssuer to be ready..."
-	retry 10 2 oc wait --for=condition=Ready clusterissuer/"$CA_ISSUER_NAME" --timeout=30s
+	retry 10 2 "$KUBE_CLI" wait --for=condition=Ready clusterissuer/"$CA_ISSUER_NAME" --timeout=30s
 	log_success "CA ClusterIssuer is ready."
 }
 
@@ -132,7 +132,7 @@ display_next_steps() {
 main() {
 	print_header "Create Self-Signed CA Chain"
 
-	require_cmd oc envsubst
+	require_cmd "$KUBE_CLI" envsubst
 	require_cluster
 	require_cert_manager
 

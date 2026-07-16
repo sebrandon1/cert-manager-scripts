@@ -1,0 +1,131 @@
+name: Reusable Kind Integration Test
+
+on:
+  workflow_call:
+    inputs:
+      cert-manager-version:
+        required: false
+        type: string
+        default: 'v1.20.0'
+      checkout-ref:
+        required: false
+        type: string
+        default: ''
+
+env:
+  SHELL: /bin/bash
+  CLUSTER_TYPE: kubernetes
+  KUBE_CLI: kubectl
+  PEBBLE_ALWAYS_VALID: '1'
+  SKIP_CONFIRM: '1'
+
+jobs:
+  test:
+    name: kind / cert-manager ${{ inputs.cert-manager-version || 'default' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout-ref || github.sha }}
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: cert-manager-test
+          wait: 120s
+
+      - name: Verify cluster access
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install cert-manager via Helm
+        run: ./scripts/install-cert-manager-helm.sh
+        env:
+          CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
+
+      - name: Run quick HTTP-01 test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 2
+          retry_on: error
+          on_retry_command: |
+            echo "=== Pebble diagnostics ==="
+            kubectl get pods -n pebble -o wide 2>/dev/null || true
+            kubectl get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
+            echo "=== cert-manager diagnostics ==="
+            kubectl get pods -n cert-manager 2>/dev/null || true
+          command: make quick-http-test
+
+      - name: Clean up HTTP-01 test resources
+        if: always()
+        timeout-minutes: 2
+        continue-on-error: true
+        run: make clean-certs clean-issuers || true
+
+      - name: Run quick self-signed CA test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 2
+          retry_on: error
+          on_retry_command: |
+            echo "=== cert-manager diagnostics ==="
+            kubectl get pods -n cert-manager 2>/dev/null || true
+          command: make quick-selfsigned-test
+
+      - name: Clean up self-signed test resources
+        if: always()
+        timeout-minutes: 2
+        continue-on-error: true
+        run: make clean-selfsigned || true
+
+      - name: Run quick DNS-01 test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 2
+          retry_on: error
+          on_retry_command: |
+            echo "=== Pebble diagnostics ==="
+            kubectl get pods -n pebble -o wide 2>/dev/null || true
+            kubectl get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
+            echo "=== fake-dns diagnostics ==="
+            kubectl get pods -n fake-dns -o wide 2>/dev/null || true
+          command: make quick-dns-test
+
+      - name: Clean up DNS-01 test resources
+        if: always()
+        timeout-minutes: 2
+        continue-on-error: true
+        run: make clean-certs clean-issuers clean-pebble clean-fake-dns || true
+
+      - name: Run multi-algorithm certificate test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 2
+          retry_on: error
+          command: make quick-multi-algo-test
+
+      - name: Display component status
+        if: always()
+        run: |
+          echo "cert-manager pods:"
+          kubectl get pods -n cert-manager || true
+          echo ""
+          echo "Pebble pods:"
+          kubectl get pods -n pebble || true
+          echo ""
+          echo "ClusterIssuer status:"
+          kubectl get clusterissuer -o wide || true
+          echo ""
+          echo "Certificate status:"
+          kubectl get certificate -n default || true

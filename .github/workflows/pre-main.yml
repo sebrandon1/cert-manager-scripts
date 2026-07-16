@@ -108,6 +108,23 @@ jobs:
             exit 1
           fi
 
+  kind-integration-test:
+    name: Kind Integration Test (CM ${{ matrix.cert-manager-version }})
+    needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure]
+    if: |
+      needs.shell-format-check.result == 'success' &&
+      needs.shellcheck.result == 'success' &&
+      needs.workload-partitioning-check.result == 'success' &&
+      needs.verify-structure.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        cert-manager-version: ['v1.19.0', 'v1.20.0']
+    uses: ./.github/workflows/reusable-kind-integration-test.yml
+    with:
+      cert-manager-version: ${{ matrix.cert-manager-version }}
+      checkout-ref: ${{ github.sha }}
+
   integration-test:
     name: Integration Test (OCP ${{ matrix.ocp-version }} / CM ${{ matrix.cert-manager-version }})
     needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure]

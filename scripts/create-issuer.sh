@@ -15,12 +15,16 @@ YAML_DIR="${SCRIPT_DIR}/../yaml/issuers"
 export ISSUER_NAME="${ISSUER_NAME:-pebble-issuer}"
 export ACME_SERVER_URL="${ACME_SERVER_URL:-https://pebble.pebble.svc.cluster.local:14000/dir}"
 export ACME_EMAIL="${ACME_EMAIL:-test@example.com}"
-export INGRESS_CLASS="${INGRESS_CLASS:-openshift-default}"
+if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+	export INGRESS_CLASS="${INGRESS_CLASS:-openshift-default}"
+else
+	export INGRESS_CLASS="${INGRESS_CLASS:-}"
+fi
 
 check_pebble() {
 	log_info "Checking if Pebble is available..."
 
-	if ! oc get deployment -n pebble pebble &>/dev/null; then
+	if ! "$KUBE_CLI" get deployment -n pebble pebble &>/dev/null; then
 		log_warn "Pebble ACME server not found."
 		log_info "This issuer will point to: $ACME_SERVER_URL"
 		log_warn "If using Pebble, install it first: make install-pebble"
@@ -33,7 +37,7 @@ check_pebble() {
 		log_info "Pebble ACME server is available."
 
 		local ready_replicas
-		ready_replicas=$(oc get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+		ready_replicas=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 		if [ "$ready_replicas" = "0" ]; then
 			log_warn "Pebble deployment exists but no replicas are ready."
 		else
@@ -45,11 +49,11 @@ check_pebble() {
 check_existing_issuer() {
 	log_info "Checking for existing ClusterIssuer '$ISSUER_NAME'..."
 
-	if oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
+	if "$KUBE_CLI" get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 		log_warn "ClusterIssuer '$ISSUER_NAME' already exists."
 
 		local current_server
-		current_server=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.server}' 2>/dev/null || echo "unknown")
+		current_server=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.server}' 2>/dev/null || echo "unknown")
 		log_debug "Current ACME server: $current_server"
 
 		echo
@@ -76,7 +80,7 @@ create_issuer() {
 
 check_issuer_ready() {
 	local ready
-	ready=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+	ready=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
 	[ "$ready" = "True" ]
 }
 
@@ -92,7 +96,7 @@ verify_issuer() {
 
 	echo
 	log_info "ClusterIssuer status:"
-	oc get clusterissuer "$ISSUER_NAME"
+	"$KUBE_CLI" get clusterissuer "$ISSUER_NAME"
 }
 
 # Function to display next steps
@@ -141,7 +145,7 @@ display_next_steps() {
 main() {
 	print_header "Create cert-manager ClusterIssuer"
 
-	require_cmd oc envsubst
+	require_cmd "$KUBE_CLI" envsubst
 	require_cluster
 	require_cert_manager
 

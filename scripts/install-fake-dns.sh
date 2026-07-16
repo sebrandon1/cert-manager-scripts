@@ -29,9 +29,9 @@ install_fake_dns() {
 verify_installation() {
 	log_info "Verifying fake-dns-api installation..."
 
-	oc get pods -n "$FAKEDNS_NAMESPACE"
+	"$KUBE_CLI" get pods -n "$FAKEDNS_NAMESPACE"
 	echo
-	oc get service fake-dns-api -n "$FAKEDNS_NAMESPACE"
+	"$KUBE_CLI" get service fake-dns-api -n "$FAKEDNS_NAMESPACE"
 	echo
 }
 
@@ -39,7 +39,7 @@ configure_coredns() {
 	log_info "Configuring CoreDNS to delegate example.com to fake DNS server..."
 
 	local fake_dns_ip
-	fake_dns_ip=$(oc get service fake-dns-api -n "$FAKEDNS_NAMESPACE" -o jsonpath='{.spec.clusterIP}')
+	fake_dns_ip=$("$KUBE_CLI" get service fake-dns-api -n "$FAKEDNS_NAMESPACE" -o jsonpath='{.spec.clusterIP}')
 
 	if [ -z "$fake_dns_ip" ]; then
 		log_error "Could not get fake-dns service ClusterIP"
@@ -48,26 +48,37 @@ configure_coredns() {
 
 	log_info "Fake DNS server IP: $fake_dns_ip"
 
-	if ! oc get configmap dns-default -n openshift-dns &>/dev/null; then
+	local dns_namespace dns_configmap dns_rollout_target
+	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+		dns_namespace="openshift-dns"
+		dns_configmap="dns-default"
+		dns_rollout_target="daemonset/dns-default"
+	else
+		dns_namespace="kube-system"
+		dns_configmap="coredns"
+		dns_rollout_target="deployment/coredns"
+	fi
+
+	if ! "$KUBE_CLI" get configmap "$dns_configmap" -n "$dns_namespace" &>/dev/null; then
 		log_warn "CoreDNS configmap not found, skipping CoreDNS configuration"
 		log_warn "You may need to manually configure DNS forwarding for example.com"
 		return
 	fi
 
 	local corefile
-	corefile=$(oc get configmap dns-default -n openshift-dns -o jsonpath='{.data.Corefile}')
+	corefile=$("$KUBE_CLI" get configmap "$dns_configmap" -n "$dns_namespace" -o jsonpath='{.data.Corefile}')
 
 	if echo "$corefile" | grep -q "example.com:53"; then
 		log_info "CoreDNS already configured for example.com"
 	else
 		log_info "Adding example.com zone to CoreDNS..."
 
-		cat <<EOF | oc apply -f -
+		cat <<EOF | "$KUBE_CLI" apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: dns-default
-  namespace: openshift-dns
+  name: $dns_configmap
+  namespace: $dns_namespace
 data:
   Corefile: |
     example.com:53 {
@@ -91,7 +102,7 @@ data:
 EOF
 
 		log_info "CoreDNS configured. Waiting for DNS pods to restart..."
-		oc rollout status daemonset/dns-default -n openshift-dns --timeout=60s 2>/dev/null || log_warn "DNS rollout may still be in progress"
+		"$KUBE_CLI" rollout status "$dns_rollout_target" -n "$dns_namespace" --timeout=60s 2>/dev/null || log_warn "DNS rollout may still be in progress"
 	fi
 }
 
@@ -140,7 +151,7 @@ display_next_steps() {
 main() {
 	print_header "Install Fake DNS API (Air-gapped)"
 
-	require_cmd oc envsubst
+	require_cmd "$KUBE_CLI" envsubst
 	require_cluster
 	require_healthy_cluster
 
