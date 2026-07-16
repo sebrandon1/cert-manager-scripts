@@ -107,7 +107,7 @@ main() {
 		log_info "Verifying existing installation..."
 	else
 		install_minio
-		wait_for_resource "deployment/minio" "$MINIO_NAMESPACE" "300s"
+		wait_for_resource "deployment/minio" "$MINIO_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-300s}"
 		create_velero_bucket
 	fi
 

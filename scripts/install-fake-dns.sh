@@ -158,7 +158,7 @@ main() {
 	require_healthy_cluster
 
 	install_fake_dns
-	wait_for_resource "deployment/fake-dns-api" "$FAKEDNS_NAMESPACE" "600s"
+	wait_for_resource "deployment/fake-dns-api" "$FAKEDNS_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-600s}"
 	verify_installation
 	configure_coredns
 	display_next_steps

@@ -38,7 +38,7 @@ main() {
 
 	log_info "Verifying cert-manager installation..."
 	"$KUBE_CLI" get pods -n "$CERT_MANAGER_NAMESPACE"
-	wait_for_resource "deployment/cert-manager-webhook" "$CERT_MANAGER_NAMESPACE" "120s"
+	wait_for_resource "deployment/cert-manager-webhook" "$CERT_MANAGER_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-120s}"
 
 	log_success "cert-manager ${CERT_MANAGER_VERSION} installed via Helm."
 }
