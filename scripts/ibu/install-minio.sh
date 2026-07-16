@@ -16,6 +16,8 @@ setup_cleanup
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/minio"
 MINIO_NAMESPACE="${MINIO_NAMESPACE:-minio}"
 export MINIO_VERSION="${MINIO_VERSION:-RELEASE.2025-09-07T16-13-09Z}"
+export MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minio}"
+export MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minio123}"
 
 check_prerequisites() {
 	log_info "Checking prerequisites..."
@@ -67,7 +69,7 @@ create_velero_bucket() {
 		--image=quay.io/minio/mc:latest \
 		-n "$MINIO_NAMESPACE" \
 		--command -- /bin/sh -c "
-			mc alias set myminio http://minio.minio.svc.cluster.local:9000 minio minio123 && \
+			mc alias set myminio http://minio.minio.svc.cluster.local:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY} && \
 			mc mb --ignore-existing myminio/velero && \
 			echo 'Bucket created successfully'
 		" 2>/dev/null || {
@@ -92,7 +94,7 @@ verify_installation() {
 
 	if [ -n "$route_host" ]; then
 		log_info "MinIO Console URL: https://${route_host}"
-		log_info "Login with: minio / minio123"
+		log_info "Login with: ${MINIO_ACCESS_KEY} / ${MINIO_SECRET_KEY}"
 	fi
 	echo
 

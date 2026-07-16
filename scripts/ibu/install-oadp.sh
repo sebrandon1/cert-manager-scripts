@@ -15,6 +15,8 @@ setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/oadp"
 OADP_NAMESPACE="${OADP_NAMESPACE:-openshift-adp}"
+export MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minio}"
+export MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minio123}"
 
 check_prerequisites() {
 	log_info "Checking prerequisites..."
