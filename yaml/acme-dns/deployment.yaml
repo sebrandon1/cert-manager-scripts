@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: acme-dns
-        image: joohoi/acme-dns:v2.0.2
+        image: joohoi/acme-dns:${ACMEDNS_VERSION}
         imagePullPolicy: IfNotPresent
         ports:
         - name: dns-udp

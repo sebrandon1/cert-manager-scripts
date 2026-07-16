@@ -23,7 +23,7 @@ spec:
       serviceAccountName: fake-dns-api
       containers:
       - name: dns-api
-        image: registry.access.redhat.com/ubi9/python-39:9.8
+        image: registry.access.redhat.com/ubi9/python-39:${UBI9_PYTHON_VERSION}
         imagePullPolicy: IfNotPresent
         command:
         - python3
