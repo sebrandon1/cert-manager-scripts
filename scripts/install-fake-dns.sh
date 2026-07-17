@@ -17,6 +17,18 @@ YAML_DIR="${SCRIPT_DIR}/../yaml/fake-dns-api"
 export FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
 export UBI9_PYTHON_VERSION="${UBI9_PYTHON_VERSION:-9.8}"
 
+if [[ "${CLUSTER_TYPE:-}" == "openshift" ]]; then
+	DNS_NAMESPACE="openshift-dns"
+	DNS_CONFIGMAP="dns-default"
+	DNS_ROLLOUT_TARGET="daemonset/dns-default"
+	DNS_SERVICE="dns-default"
+else
+	DNS_NAMESPACE="kube-system"
+	DNS_CONFIGMAP="coredns"
+	DNS_ROLLOUT_TARGET="deployment/coredns"
+	DNS_SERVICE="kube-dns"
+fi
+
 install_fake_dns() {
 	log_info "Installing fake DNS API server..."
 
@@ -51,25 +63,14 @@ configure_coredns() {
 
 	log_info "Fake DNS server IP: $fake_dns_ip"
 
-	local dns_namespace dns_configmap dns_rollout_target
-	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
-		dns_namespace="openshift-dns"
-		dns_configmap="dns-default"
-		dns_rollout_target="daemonset/dns-default"
-	else
-		dns_namespace="kube-system"
-		dns_configmap="coredns"
-		dns_rollout_target="deployment/coredns"
-	fi
-
-	if ! "$KUBE_CLI" get configmap "$dns_configmap" -n "$dns_namespace" &>/dev/null; then
+	if ! "$KUBE_CLI" get configmap "$DNS_CONFIGMAP" -n "$DNS_NAMESPACE" &>/dev/null; then
 		log_warn "CoreDNS configmap not found, skipping CoreDNS configuration"
 		log_warn "You may need to manually configure DNS forwarding for example.com"
 		return
 	fi
 
 	local corefile
-	corefile=$("$KUBE_CLI" get configmap "$dns_configmap" -n "$dns_namespace" -o jsonpath='{.data.Corefile}')
+	corefile=$("$KUBE_CLI" get configmap "$DNS_CONFIGMAP" -n "$DNS_NAMESPACE" -o jsonpath='{.data.Corefile}')
 
 	if echo "$corefile" | grep -q "example.com:53"; then
 		log_info "CoreDNS already configured for example.com"
@@ -80,8 +81,8 @@ configure_coredns() {
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: $dns_configmap
-  namespace: $dns_namespace
+  name: $DNS_CONFIGMAP
+  namespace: $DNS_NAMESPACE
 data:
   Corefile: |
     example.com:53 {
@@ -105,7 +106,38 @@ data:
 EOF
 
 		log_info "CoreDNS configured. Waiting for DNS pods to restart..."
-		"$KUBE_CLI" rollout status "$dns_rollout_target" -n "$dns_namespace" --timeout=60s 2>/dev/null || log_warn "DNS rollout may still be in progress"
+		"$KUBE_CLI" rollout status "$DNS_ROLLOUT_TARGET" -n "$DNS_NAMESPACE" --timeout=60s 2>/dev/null || log_warn "DNS rollout may still be in progress"
+	fi
+}
+
+verify_dns_resolution() {
+	log_info "Verifying DNS resolution through CoreDNS..."
+
+	local dns_pod
+	dns_pod=$("$KUBE_CLI" get pods -n "$FAKEDNS_NAMESPACE" -l app=fake-dns-api \
+		-o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+	if [ -z "$dns_pod" ]; then
+		log_warn "Could not find fake-dns-api pod for DNS verification"
+		return
+	fi
+
+	local dns_service_ip
+	dns_service_ip=$("$KUBE_CLI" get service "$DNS_SERVICE" -n "$DNS_NAMESPACE" \
+		-o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
+
+	if [ -z "$dns_service_ip" ]; then
+		log_warn "Could not determine cluster DNS service IP, skipping verification"
+		return
+	fi
+
+	if retry 5 5 "$KUBE_CLI" exec "$dns_pod" -n "$FAKEDNS_NAMESPACE" -- \
+		sh -c "nslookup test.example.com $dns_service_ip 2>/dev/null || host test.example.com $dns_service_ip 2>/dev/null" >/dev/null 2>&1; then
+		log_success "DNS resolution for example.com is working through CoreDNS"
+	else
+		log_warn "DNS resolution verification did not succeed yet"
+		log_warn "CoreDNS may need additional time to reload — this is not necessarily a failure"
+		log_info "Manual check: $KUBE_CLI exec $dns_pod -n $FAKEDNS_NAMESPACE -- nslookup test.example.com"
 	fi
 }
 
@@ -162,6 +194,7 @@ main() {
 	wait_for_resource "deployment/fake-dns-api" "$FAKEDNS_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-600s}"
 	verify_installation
 	configure_coredns
+	verify_dns_resolution
 	display_next_steps
 }
 
