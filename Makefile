@@ -35,6 +35,7 @@ BG_BLUE := \033[44m
         create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
         test-cert verify-cert \
+        status \
         troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
@@ -307,6 +308,41 @@ quick-multi-algo-test: create-multi-algo-certs ## Quick multi-algorithm certific
 	@echo "$(RESET)"
 	@echo ""
 	@echo "Run 'make clean-multi-algo-certs' to clean up."
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Status
+# ────────────────────────────────────────────────────────────────────────────────
+
+status: ## Show installed components and their status
+	@echo ""
+	@echo "$(BOLD)$(BLUE)Component Status Dashboard$(RESET)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	@printf "  $(BOLD)%-25s %s$(RESET)\n" "Component" "Status"
+	@echo "  ─────────────────────── ──────────────────────────"
+	@printf "  %-25s " "cert-manager"; \
+		if $(KUBE_CLI) get deployment cert-manager -n cert-manager &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@printf "  %-25s " "cert-manager-webhook"; \
+		if $(KUBE_CLI) get deployment cert-manager-webhook -n cert-manager &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@printf "  %-25s " "Pebble ACME server"; \
+		if $(KUBE_CLI) get deployment pebble -n pebble &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@printf "  %-25s " "Fake DNS API"; \
+		if $(KUBE_CLI) get deployment fake-dns-api -n fake-dns &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@printf "  %-25s " "acme-dns"; \
+		if $(KUBE_CLI) get deployment acme-dns -n acme-dns &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@printf "  %-25s " "pebble-challtestsrv"; \
+		if $(KUBE_CLI) get deployment pebble-challtestsrv -n pebble &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@printf "  %-25s " "MinIO"; \
+		if $(KUBE_CLI) get deployment minio -n minio &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@printf "  %-25s " "OADP"; \
+		if $(KUBE_CLI) get deployment -n openshift-adp -l app.kubernetes.io/name=velero &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
+	@echo ""
+	@echo "  $(BOLD)Issuers:$(RESET)"
+	@$(KUBE_CLI) get clusterissuer -o wide 2>/dev/null || echo "  $(DIM)No ClusterIssuers found$(RESET)"
+	@echo ""
+	@echo "  $(BOLD)Certificates:$(RESET)"
+	@$(KUBE_CLI) get certificate --all-namespaces 2>/dev/null || echo "  $(DIM)No Certificates found$(RESET)"
+	@echo ""
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Troubleshooting
