@@ -86,7 +86,7 @@ log_debug() {
 # HELP FLAG HANDLING
 # ============================================================================
 # Parse --help/-h from the calling script's header comment block
-# Usage: check_help "$@" (call before any other logic)
+# Usage: check_help "$@" && exit 0
 check_help() {
 	for arg in "$@"; do
 		case "$arg" in
@@ -97,6 +97,7 @@ check_help() {
 			;;
 		esac
 	done
+	return 1
 }
 
 # ============================================================================
