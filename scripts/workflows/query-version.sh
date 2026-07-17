@@ -30,6 +30,7 @@ query_github_latest() {
 case "$component" in
 pebble)
 	query_github_latest "letsencrypt/pebble" "Pebble"
+	latest="${latest#v}"
 	;;
 
 acme-dns)

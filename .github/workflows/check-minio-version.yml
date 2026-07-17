@@ -20,7 +20,7 @@ jobs:
       - name: Get current pinned version
         id: current
         run: |
-          current=$(grep 'quay.io/minio/minio:' yaml/ibu/minio/deployment.yaml | grep -oE 'RELEASE\.[0-9T-]+Z')
+          current=$(grep 'MINIO_VERSION:-' scripts/ibu/install-minio.sh | grep -oE 'RELEASE\.[0-9T-]+Z')
           echo "version=$current" >> "$GITHUB_OUTPUT"
           echo "Current pinned version: $current"
 

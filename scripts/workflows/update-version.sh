@@ -20,16 +20,16 @@ fi
 
 case "$component" in
 pebble)
-	sed -i "s|ghcr.io/letsencrypt/pebble:${current}|ghcr.io/letsencrypt/pebble:${latest}|" \
-		yaml/pebble/deployment.yaml
-	sed -i "s|ghcr.io/letsencrypt/pebble-challtestsrv:${current}|ghcr.io/letsencrypt/pebble-challtestsrv:${latest}|" \
-		yaml/pebble-challtestsrv/deployment.yaml
-	echo "Updated Pebble from $current to $latest in both deployment files"
+	sed -i "s|PEBBLE_VERSION:-${current}|PEBBLE_VERSION:-${latest}|" \
+		scripts/install-pebble.sh
+	sed -i "s|PEBBLE_CHALLTESTSRV_VERSION:-v${current}|PEBBLE_CHALLTESTSRV_VERSION:-v${latest}|" \
+		scripts/install-pebble-challtestsrv.sh
+	echo "Updated Pebble from $current to $latest in both install scripts"
 	;;
 
 acme-dns)
-	sed -i "s|joohoi/acme-dns:${current}|joohoi/acme-dns:${latest}|" \
-		yaml/acme-dns/deployment.yaml
+	sed -i "s|ACMEDNS_VERSION:-${current}|ACMEDNS_VERSION:-${latest}|" \
+		scripts/install-local-dns.sh
 	echo "Updated acme-dns from $current to $latest"
 	;;
 
@@ -45,14 +45,14 @@ operator)
 	;;
 
 minio)
-	sed -i "s|quay.io/minio/minio:${current}|quay.io/minio/minio:${latest}|" \
-		yaml/ibu/minio/deployment.yaml
+	sed -i "s|MINIO_VERSION:-${current}|MINIO_VERSION:-${latest}|" \
+		scripts/ibu/install-minio.sh
 	echo "Updated MinIO from $current to $latest"
 	;;
 
 ubi9-python)
-	sed -i "s|ubi9/python-39:${current}|ubi9/python-39:${latest}|" \
-		yaml/fake-dns-api/deployment.yaml
+	sed -i "s|UBI9_PYTHON_VERSION:-${current}|UBI9_PYTHON_VERSION:-${latest}|" \
+		scripts/install-fake-dns.sh
 	echo "Updated UBI9 Python 3.9 from $current to $latest"
 	;;
 
