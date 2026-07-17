@@ -44,7 +44,9 @@ BG_BLUE := \033[44m
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu \
         create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
-        quick-multi-algo-test
+        quick-multi-algo-test \
+        install-pebble-challtestsrv install-local-dns \
+        label-cert-resources simulate-ibu validate-cert-loss
 
 # Default target
 all: help
@@ -81,7 +83,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer)"
 	@echo ""
 	@echo "$(YELLOW)IBU Testing:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp|label-cert|validate-cert)"
 	@echo ""
 	@echo "$(YELLOW)Cleanup:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(clean|uninstall)"
@@ -154,6 +156,16 @@ install-fake-dns: ## Install fake DNS API for air-gapped DNS-01 testing
 
 install-monitoring: ## Install cert-manager Prometheus monitoring and alerts
 	@./scripts/install-monitoring.sh
+
+install-pebble-challtestsrv: ## Install Pebble challenge test server for DNS-01
+	@echo "$(BOLD)$(BLUE)Installing Pebble challenge test server...$(RESET)"
+	@./scripts/install-pebble-challtestsrv.sh
+	@echo ""
+
+install-local-dns: ## Install acme-dns local DNS server
+	@echo "$(BOLD)$(BLUE)Installing acme-dns local DNS server...$(RESET)"
+	@./scripts/install-local-dns.sh
+	@echo ""
 
 install-all: install-cert-manager-operator install-pebble ## Install cert-manager-operator and Pebble
 	@echo ""
@@ -441,6 +453,21 @@ verify-key-formats: ## Verify PEM key formats of TLS secrets in namespace
 test-ibu-multi-algo: ## Run IBU cert loss test with all key algorithms
 	@echo "$(BOLD)$(BLUE)Running multi-algorithm IBU certificate loss test...$(RESET)"
 	@MULTI_ALGO=true ./scripts/ibu/run-ibu-test.sh
+	@echo ""
+
+label-cert-resources: ## Label cert-manager resources for IBU preservation (LCA)
+	@echo "$(BOLD)$(BLUE)Labeling cert-manager resources for IBU preservation...$(RESET)"
+	@./scripts/ibu/label-cert-resources.sh
+	@echo ""
+
+simulate-ibu: ## Simulate IBU via OADP backup/restore cycle
+	@echo "$(BOLD)$(BLUE)Running IBU simulation via OADP backup/restore...$(RESET)"
+	@./scripts/ibu/simulate-ibu-backup-restore.sh
+	@echo ""
+
+validate-cert-loss: ## Compare before/after certificate states for IBU validation
+	@echo "$(BOLD)$(BLUE)Validating certificate state changes...$(RESET)"
+	@./scripts/ibu/validate-cert-loss.sh
 	@echo ""
 
 clean-multi-algo-certs: ## Clean up multi-algorithm test certificates
