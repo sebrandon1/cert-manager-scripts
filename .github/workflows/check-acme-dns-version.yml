@@ -20,7 +20,7 @@ jobs:
       - name: Get current pinned version
         id: current
         run: |
-          current=$(grep 'joohoi/acme-dns:' yaml/acme-dns/deployment.yaml | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          current=$(grep 'ACMEDNS_VERSION:-' scripts/install-local-dns.sh | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
           echo "version=$current" >> "$GITHUB_OUTPUT"
           echo "Current pinned version: $current"
 
