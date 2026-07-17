@@ -13,6 +13,7 @@ set -euo pipefail
 # Source common library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
+check_help "$@" && exit 0
 load_env
 
 # Configuration
