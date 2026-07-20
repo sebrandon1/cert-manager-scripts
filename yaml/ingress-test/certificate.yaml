@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ingress-tls-test
+  namespace: ${INGRESS_TEST_NAMESPACE}
+  labels:
+    app: ingress-tls-test
+spec:
+  secretName: ingress-tls-test-cert
+  issuerRef:
+    name: ${ISSUER_NAME}
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+  - ${INGRESS_TEST_HOSTNAME}
