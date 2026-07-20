@@ -36,7 +36,7 @@ BG_BLUE := \033[44m
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
         test-cert verify-cert \
         status \
-        troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
+        troubleshoot check-cert check-issuer verify-monitoring check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
         clean-acmedns clean-challtestsrv \
@@ -80,7 +80,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(quick-|test-all|test-dns01)"
 	@echo ""
 	@echo "$(YELLOW)Troubleshooting:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer|verify-monitoring)"
 	@echo ""
 	@echo "$(YELLOW)IBU Testing:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp|label-cert|validate-cert)"
@@ -384,6 +384,9 @@ diagnose-http01: ## Diagnose HTTP-01 challenge issues
 
 diagnose-dns01: ## Diagnose DNS-01 challenge issues
 	@./scripts/troubleshooting/diagnose-dns01.sh
+
+verify-monitoring: ## Verify cert-manager Prometheus monitoring setup
+	@./scripts/troubleshooting/verify-monitoring.sh
 
 # ────────────────────────────────────────────────────────────────────────────────
 # IBU Testing
