@@ -45,7 +45,7 @@ BG_BLUE := \033[44m
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu \
         create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
         quick-multi-algo-test \
-        install-pebble-challtestsrv install-local-dns \
+        install-pebble-challtestsrv install-local-dns register-acmedns \
         label-cert-resources simulate-ibu validate-cert-loss validate-post-restore
 
 # Default target
@@ -71,7 +71,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|check-network|check-workload)"
 	@echo ""
 	@echo "$(YELLOW)Installation:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(install-)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(install-|register-)"
 	@echo ""
 	@echo "$(YELLOW)Issuers & Certificates:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(create-|test-cert|verify-)"
@@ -166,6 +166,9 @@ install-local-dns: ## Install acme-dns local DNS server
 	@echo "$(BOLD)$(BLUE)Installing acme-dns local DNS server...$(RESET)"
 	@./scripts/install-local-dns.sh
 	@echo ""
+
+register-acmedns: ## Register acme-dns account and create credentials secret
+	@./scripts/register-acmedns-account.sh
 
 install-all: install-cert-manager-operator install-pebble ## Install cert-manager-operator and Pebble
 	@echo ""
