@@ -34,7 +34,7 @@ BG_BLUE := \033[44m
         install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
         create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
-        test-cert verify-cert \
+        test-cert verify-cert test-cert-renewal clean-cert-renewal \
         status \
         troubleshoot check-cert check-issuer check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
@@ -77,7 +77,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(create-|test-cert|verify-)"
 	@echo ""
 	@echo "$(YELLOW)Quick Tests:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(quick-|test-all|test-dns01)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(quick-|test-all|test-dns01|test-cert-renewal)"
 	@echo ""
 	@echo "$(YELLOW)Troubleshooting:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer)"
@@ -321,6 +321,9 @@ quick-multi-algo-test: create-multi-algo-certs ## Quick multi-algorithm certific
 	@echo ""
 	@echo "Run 'make clean-multi-algo-certs' to clean up."
 
+test-cert-renewal: ## Test automatic certificate renewal with a short-lived cert
+	@./scripts/test-cert-renewal.sh
+
 # ────────────────────────────────────────────────────────────────────────────────
 # Status
 # ────────────────────────────────────────────────────────────────────────────────
@@ -548,6 +551,12 @@ clean-selfsigned: ## Clean up self-signed CA chain
 	@$(KUBE_CLI) delete certificate root-ca -n cert-manager --ignore-not-found=true
 	@$(KUBE_CLI) delete secret root-ca-secret -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Self-signed CA resources cleaned.$(RESET)"
+
+clean-cert-renewal: ## Clean up renewal test certificate
+	@echo "$(BOLD)$(YELLOW)Cleaning up renewal test resources...$(RESET)"
+	@$(KUBE_CLI) delete certificate -l app=cert-renewal-test --all-namespaces --ignore-not-found=true
+	@$(KUBE_CLI) delete secret renewal-test-tls -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@echo "$(GREEN)Renewal test resources cleaned.$(RESET)"
 
 clean-monitoring: ## Clean up cert-manager monitoring resources
 	@echo "$(BOLD)$(YELLOW)Cleaning up monitoring resources...$(RESET)"

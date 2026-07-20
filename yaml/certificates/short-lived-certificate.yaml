@@ -1,0 +1,17 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${CERT_NAME}
+  namespace: ${CERT_NAMESPACE}
+  labels:
+    app: cert-renewal-test
+spec:
+  secretName: ${CERT_SECRET_NAME}
+  duration: ${CERT_DURATION}
+  renewBefore: ${CERT_RENEW_BEFORE}
+  issuerRef:
+    name: ${ISSUER_NAME}
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+  - ${CERT_DNS_NAME}
