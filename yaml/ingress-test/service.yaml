@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-tls-test
+  namespace: ${INGRESS_TEST_NAMESPACE}
+  labels:
+    app: ingress-tls-test
+spec:
+  selector:
+    app: ingress-tls-test
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
