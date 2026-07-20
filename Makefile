@@ -36,7 +36,7 @@ BG_BLUE := \033[44m
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
         test-cert verify-cert test-cert-renewal clean-cert-renewal \
         status \
-        troubleshoot check-cert check-issuer verify-monitoring check-network check-network-stack check-workload-partitioning \
+        troubleshoot check-cert check-cert-renewal check-issuer verify-monitoring check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
         clean-acmedns clean-challtestsrv \
@@ -387,6 +387,9 @@ diagnose-http01: ## Diagnose HTTP-01 challenge issues
 
 diagnose-dns01: ## Diagnose DNS-01 challenge issues
 	@./scripts/troubleshooting/diagnose-dns01.sh
+
+check-cert-renewal: ## Check certificate renewal status and upcoming renewals
+	@./scripts/troubleshooting/check-cert-renewal.sh $(if $(CERT),$(CERT) $(NS))
 
 verify-monitoring: ## Verify cert-manager Prometheus monitoring setup
 	@./scripts/troubleshooting/verify-monitoring.sh
