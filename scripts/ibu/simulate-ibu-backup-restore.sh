@@ -140,6 +140,7 @@ main() {
 	delete_namespace_resources
 	restore_from_backup
 	wait_for_cert_manager_reconcile
+	"$(dirname "${BASH_SOURCE[0]}")/validate-post-restore.sh"
 
 	print_simulation_summary
 	log_success "IBU simulation complete!"

@@ -46,7 +46,7 @@ BG_BLUE := \033[44m
         create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
         quick-multi-algo-test \
         install-pebble-challtestsrv install-local-dns \
-        label-cert-resources simulate-ibu validate-cert-loss
+        label-cert-resources simulate-ibu validate-cert-loss validate-post-restore
 
 # Default target
 all: help
@@ -83,7 +83,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer)"
 	@echo ""
 	@echo "$(YELLOW)IBU Testing:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp|label-cert|validate-cert)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp|label-cert|validate-cert|validate-post)"
 	@echo ""
 	@echo "$(YELLOW)Cleanup:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(clean|uninstall)"
@@ -469,6 +469,9 @@ validate-cert-loss: ## Compare before/after certificate states for IBU validatio
 	@echo "$(BOLD)$(BLUE)Validating certificate state changes...$(RESET)"
 	@./scripts/ibu/validate-cert-loss.sh
 	@echo ""
+
+validate-post-restore: ## Validate cluster health after IBU backup/restore
+	@./scripts/ibu/validate-post-restore.sh
 
 clean-multi-algo-certs: ## Clean up multi-algorithm test certificates
 	@echo "$(BOLD)$(YELLOW)Cleaning up multi-algorithm test certificates...$(RESET)"
