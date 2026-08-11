@@ -31,7 +31,8 @@ log_info "Waiting for Pebble ACME server to be available..."
 if wait_for_condition 60 10 check_pebble_responding; then
 	log_info "Pebble ACME server is available."
 else
-	log_error "Pebble ACME server is not available. Install Pebble first: make install-pebble"
+	log_error "Pebble ACME server is not available."
+	log_hint "Run 'make install-pebble' to install the ACME test server"
 	dump_resource_diagnostics "${PEBBLE_NAMESPACE:-pebble}" "deployment/pebble"
 	exit 1
 fi

@@ -26,7 +26,8 @@ check_prerequisites() {
 
 	# Check MinIO is running
 	if ! oc get deployment minio -n minio &>/dev/null; then
-		log_error "MinIO is not installed. Run 'make install-minio' first."
+		log_error "MinIO is not installed."
+		log_hint "Run 'make install-minio' first, or 'make install-ibu-prereqs' for full IBU setup"
 		exit 1
 	fi
 
@@ -100,7 +101,7 @@ wait_for_dpa() {
 		log_success "DataProtectionApplication is reconciled!"
 	else
 		log_error "Timeout waiting for DPA to reconcile."
-		log_info "Check status with: oc describe dpa velero -n $OADP_NAMESPACE"
+		log_hint "Check status: $KUBE_CLI describe dpa velero -n $OADP_NAMESPACE"
 		return 1
 	fi
 }

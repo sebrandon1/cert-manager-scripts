@@ -24,7 +24,8 @@ require_cluster
 require_healthy_cluster
 
 if ! oc get namespace "$PEBBLE_NAMESPACE" &>/dev/null; then
-	log_error "Pebble namespace '$PEBBLE_NAMESPACE' not found. Install Pebble first."
+	log_error "Pebble namespace '$PEBBLE_NAMESPACE' not found."
+	log_hint "Run 'make install-pebble' first"
 	exit 1
 fi
 

@@ -30,7 +30,7 @@ BG_BLUE := \033[44m
 # ────────────────────────────────────────────────────────────────────────────────
 # Target Definitions
 # ────────────────────────────────────────────────────────────────────────────────
-.PHONY: all help banner preflight lint install-cert-manager-operator install-cert-manager-helm install-pebble \
+.PHONY: all help banner preflight lint fmt _require-shfmt install-cert-manager-operator install-cert-manager-helm install-pebble \
         install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
         create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
@@ -39,6 +39,7 @@ BG_BLUE := \033[44m
         troubleshoot check-cert check-cert-renewal check-issuer verify-monitoring check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
+        delete-certificate delete-issuer \
         clean-acmedns clean-challtestsrv \
         uninstall-cert-manager-operator uninstall-all \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
@@ -68,7 +69,7 @@ help: banner ## Show this help message
 	@echo "$(BOLD)$(BLUE)Available Commands:$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Setup & Validation:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|check-network|check-workload)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|fmt|check-network|check-workload)"
 	@echo ""
 	@echo "$(YELLOW)Installation:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(install-|register-)"
@@ -79,14 +80,14 @@ help: banner ## Show this help message
 	@echo "$(YELLOW)Quick Tests:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(quick-|test-all|test-dns01|test-cert-renewal|test-ingress)"
 	@echo ""
-	@echo "$(YELLOW)Troubleshooting:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(troubleshoot|diagnose|check-cert|check-issuer|verify-monitoring)"
+	@echo "$(YELLOW)Status & Troubleshooting:$(RESET)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(status|troubleshoot|diagnose|check-cert|check-issuer|verify-monitoring)"
 	@echo ""
 	@echo "$(YELLOW)IBU Testing:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp|label-cert|validate-cert|validate-post)"
 	@echo ""
 	@echo "$(YELLOW)Cleanup:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(clean|uninstall)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(delete-|clean|uninstall)"
 	@echo ""
 	@echo "$(DIM)Usage: make <command>$(RESET)"
 	@echo ""
@@ -99,7 +100,7 @@ preflight: ## Check all dependencies and prerequisites
 	@./scripts/preflight-check.sh
 	@echo ""
 
-lint: ## Check shell script formatting with shfmt and shellcheck
+lint: _require-shfmt ## Check shell script formatting with shfmt and shellcheck
 	@echo "$(BOLD)$(BLUE)Linting Bash scripts...$(RESET)"
 	@if ! command -v shellcheck >/dev/null 2>&1; then \
 	  echo "$(RED)shellcheck not found. Please install it:$(RESET)"; \
@@ -109,15 +110,22 @@ lint: ## Check shell script formatting with shfmt and shellcheck
 	fi
 	@echo "$(DIM)  Running shellcheck...$(RESET)"
 	@find . -name '*.sh' -type f -not -path './venv/*' | xargs shellcheck -e SC1091,SC2034,SC2329 || (echo "$(RED)shellcheck failed!$(RESET)" && exit 1)
+	@echo "$(DIM)  Running shfmt...$(RESET)"
+	@shfmt -d scripts/ lib/ || (echo "$(RED)shfmt formatting check failed!$(RESET)" && echo "$(YELLOW)To fix: make fmt$(RESET)" && exit 1)
+	@echo "$(GREEN)Bash linting passed!$(RESET)"
+
+fmt: _require-shfmt ## Auto-fix shell script formatting with shfmt
+	@echo "$(BOLD)$(BLUE)Formatting shell scripts...$(RESET)"
+	@shfmt -w scripts/ lib/
+	@echo "$(GREEN)Shell scripts formatted!$(RESET)"
+
+_require-shfmt:
 	@if ! command -v shfmt >/dev/null 2>&1; then \
 	  echo "$(RED)shfmt not found. Please install it:$(RESET)"; \
 	  echo "$(DIM)  macOS: brew install shfmt$(RESET)"; \
 	  echo "$(DIM)  Linux: go install mvdan.cc/sh/v3/cmd/shfmt@latest$(RESET)"; \
 	  exit 1; \
 	fi
-	@echo "$(DIM)  Running shfmt...$(RESET)"
-	@shfmt -d scripts/ lib/ || (echo "$(RED)shfmt formatting check failed!$(RESET)" && echo "$(YELLOW)To fix: shfmt -w scripts/ lib/$(RESET)" && exit 1)
-	@echo "$(GREEN)Bash linting passed!$(RESET)"
 
 check-network: ## Check cluster network configuration (IPv4/IPv6/Dual-stack)
 	@./scripts/check-cluster-network.sh
@@ -227,7 +235,7 @@ verify-cert: ## Verify certificate status
 # Quick Tests
 # ────────────────────────────────────────────────────────────────────────────────
 
-test-all: install-all create-issuer create-certs ## Complete HTTP-01 setup (install + issuer + certs)
+test-all: install-all create-issuer create-certs ## Full HTTP-01 environment setup (install operator, Pebble, issuer, certs)
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
@@ -512,6 +520,30 @@ clean-ibu: ## Clean up IBU test resources (MinIO, OADP, backups)
 # ────────────────────────────────────────────────────────────────────────────────
 # Cleanup
 # ────────────────────────────────────────────────────────────────────────────────
+
+delete-certificate: ## Delete a specific certificate (CERT=name NS=namespace)
+	@if [ -z "$(CERT)" ] || [ -z "$(NS)" ]; then \
+	  echo "$(YELLOW)Usage: make delete-certificate CERT=<name> NS=<namespace>$(RESET)"; \
+	  echo "$(DIM)Example: make delete-certificate CERT=test-cert NS=default$(RESET)"; \
+	  exit 1; \
+	fi
+	@echo "$(BOLD)$(YELLOW)Deleting certificate $(CERT) in namespace $(NS)...$(RESET)"
+	@SECRET=$$($(KUBE_CLI) get certificate "$(CERT)" -n "$(NS)" -o jsonpath='{.spec.secretName}' 2>/dev/null || echo ""); \
+	$(KUBE_CLI) delete certificate "$(CERT)" -n "$(NS)" --ignore-not-found=true; \
+	if [ -n "$$SECRET" ]; then \
+	  $(KUBE_CLI) delete secret "$$SECRET" -n "$(NS)" --ignore-not-found=true; \
+	fi
+	@echo "$(GREEN)Certificate $(CERT) deleted.$(RESET)"
+
+delete-issuer: ## Delete a specific ClusterIssuer (ISSUER=name)
+	@if [ -z "$(ISSUER)" ]; then \
+	  echo "$(YELLOW)Usage: make delete-issuer ISSUER=<name>$(RESET)"; \
+	  echo "$(DIM)Example: make delete-issuer ISSUER=pebble-issuer$(RESET)"; \
+	  exit 1; \
+	fi
+	@echo "$(BOLD)$(YELLOW)Deleting ClusterIssuer $(ISSUER)...$(RESET)"
+	@$(KUBE_CLI) delete clusterissuer "$(ISSUER)" --ignore-not-found=true
+	@echo "$(GREEN)ClusterIssuer $(ISSUER) deleted.$(RESET)"
 
 clean-certs: ## Clean up certificates, orders, and challenges
 	@echo "$(BOLD)$(YELLOW)Cleaning up certificates...$(RESET)"

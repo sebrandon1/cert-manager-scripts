@@ -130,8 +130,8 @@ main() {
 	require_cluster
 
 	if ! oc get deployment -n "$CERT_MANAGER_NAMESPACE" cert-manager &>/dev/null; then
-		log_error "cert-manager not found. Please install cert-manager-operator first."
-		log_info "  Run: make install-cert-manager-operator"
+		log_error "cert-manager not found."
+		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
 		exit 1
 	fi
 

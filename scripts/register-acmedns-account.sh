@@ -110,7 +110,8 @@ main() {
 	require_cluster
 
 	if ! check_deployment_exists acme-dns "$ACMEDNS_NAMESPACE"; then
-		log_error "acme-dns is not installed. Run 'make install-local-dns' first."
+		log_error "acme-dns is not installed."
+		log_hint "Run 'make install-local-dns' first"
 		exit 1
 	fi
 

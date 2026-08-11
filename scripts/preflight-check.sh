@@ -158,7 +158,6 @@ elif [[ $FAILED -eq 0 ]]; then
 	exit 0
 else
 	log_error "Failed with $FAILED error(s) and $WARNINGS warning(s)"
-	echo ""
-	echo "Please install missing dependencies before proceeding."
+	log_hint "See docs/installation.md for setup instructions"
 	exit 1
 fi

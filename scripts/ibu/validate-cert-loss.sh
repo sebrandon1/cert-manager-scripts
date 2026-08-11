@@ -55,12 +55,14 @@ check_prerequisites() {
 
 	# Check state files exist
 	if [ ! -f "$STATE_DIR/checksums-before.json" ]; then
-		log_error "Before state not found. Run 'capture-cert-state.sh' with STATE_LABEL=before first."
+		log_error "Before state not found."
+		log_hint "Run 'make capture-cert-state' with STATE_LABEL=before first"
 		exit 1
 	fi
 
 	if [ ! -f "$STATE_DIR/checksums-after.json" ]; then
-		log_error "After state not found. Run 'capture-cert-state.sh' with STATE_LABEL=after first."
+		log_error "After state not found."
+		log_hint "Run 'make capture-cert-state' with STATE_LABEL=after after the IBU simulation"
 		exit 1
 	fi
 

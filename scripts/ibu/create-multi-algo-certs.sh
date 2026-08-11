@@ -126,7 +126,7 @@ wait_for_certificates() {
 		log_success "All certificates are ready!"
 	else
 		log_error "Timeout waiting for certificates to become ready."
-		log_info "Check status: oc get certificates -n $TARGET_NAMESPACE -l app=$CERT_LABEL"
+		log_hint "Check status: $KUBE_CLI get certificates -n $TARGET_NAMESPACE -l app=$CERT_LABEL"
 		exit 1
 	fi
 }

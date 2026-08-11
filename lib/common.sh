@@ -82,6 +82,10 @@ log_debug() {
 	[[ $LOG_LEVEL -ge 4 ]] && echo -e "${BOLD}[DEBUG]${NC} $*" || true
 }
 
+log_hint() {
+	[[ $LOG_LEVEL -ge 1 ]] && echo -e "  ${YELLOW}→ $*${NC}" >&2 || true
+}
+
 # ============================================================================
 # HELP FLAG HANDLING
 # ============================================================================
@@ -155,14 +159,16 @@ require_cmd() {
 require_cluster() {
 	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
 		if ! oc whoami &>/dev/null 2>&1; then
-			log_error "Not connected to OpenShift cluster. Run 'oc login' first."
+			log_error "Not connected to OpenShift cluster."
+			log_hint "Run 'oc login <cluster-url>' to connect"
 			exit 1
 		fi
 		log_debug "Connected to cluster as: $(oc whoami)"
 		log_debug "Cluster: $(oc whoami --show-server 2>/dev/null || echo 'unknown')"
 	else
 		if ! kubectl cluster-info &>/dev/null 2>&1; then
-			log_error "Not connected to Kubernetes cluster. Check KUBECONFIG."
+			log_error "Not connected to Kubernetes cluster."
+			log_hint "Check KUBECONFIG or run 'kubectl config use-context <context>'"
 			exit 1
 		fi
 		log_debug "Connected to cluster: $(kubectl config current-context 2>/dev/null || echo 'unknown')"
@@ -327,6 +333,7 @@ require_cluster_admin() {
 	require_cluster
 	if ! "$KUBE_CLI" auth can-i '*' '*' --all-namespaces &>/dev/null; then
 		log_error "Cluster-admin privileges required."
+		log_hint "Log in with an admin account or request cluster-admin role binding"
 		exit 1
 	fi
 	log_debug "Cluster-admin privileges confirmed"
@@ -345,6 +352,7 @@ wait_for_resource() {
 		return 0
 	else
 		log_error "$resource failed to become ready within $timeout"
+		log_hint "Run 'make troubleshoot' for diagnostics or 'make check-cert CERT=<name> NS=$namespace'"
 		dump_resource_diagnostics "$namespace" "$resource"
 		return 1
 	fi
@@ -369,7 +377,7 @@ dump_resource_diagnostics() {
 require_cert_manager() {
 	if ! "$KUBE_CLI" get deployment -n cert-manager cert-manager &>/dev/null; then
 		log_error "cert-manager not found."
-		log_info "  Run: make install-cert-manager-operator (OpenShift) or make install-cert-manager-helm (Kubernetes)"
+		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
 		exit 1
 	fi
 
@@ -526,6 +534,7 @@ wait_for_csv() {
 	echo
 
 	log_error "Timeout waiting for CSV to reach Succeeded phase."
+	log_hint "Check operator status: $KUBE_CLI get csv -n $namespace"
 	return 1
 }
 
@@ -566,6 +575,7 @@ wait_for_backup_restore() {
 	done
 
 	log_error "Timeout waiting for $resource_type to complete"
+	log_hint "Check status: oc describe $resource_type $name -n $namespace"
 	return 1
 }
 
