@@ -28,15 +28,15 @@ check_prerequisites() {
 
 	# Check if cert-manager is installed
 	if ! "$KUBE_CLI" get deployment -n cert-manager cert-manager &>/dev/null; then
-		log_error "cert-manager not found. Please install cert-manager-operator first."
-		log_info "  Run: make install-cert-manager-operator"
+		log_error "cert-manager not found."
+		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
 		exit 1
 	fi
 
 	# Check if issuer exists
 	if ! "$KUBE_CLI" get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 		log_error "ClusterIssuer '$ISSUER_NAME' not found."
-		log_info "  Create an issuer first: make create-issuer"
+		log_hint "Run 'make create-issuer' (HTTP-01) or 'make create-dns01-issuer' (DNS-01)"
 		exit 1
 	fi
 

@@ -58,6 +58,7 @@ configure_coredns() {
 
 	if [ -z "$fake_dns_ip" ]; then
 		log_error "Could not get fake-dns service ClusterIP"
+		log_hint "Check fake-dns deployment: make status"
 		exit 1
 	fi
 

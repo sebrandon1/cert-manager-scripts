@@ -76,6 +76,7 @@ wait_for_renewal() {
 	done
 
 	log_error "Timed out waiting for renewal after ${MAX_WAIT}s"
+	log_hint "Run 'make check-cert-renewal' to diagnose renewal status"
 	return 1
 }
 
@@ -122,7 +123,7 @@ main() {
 		log_success "Certificate renewal test passed!"
 	else
 		log_error "Certificate renewal test failed"
-		log_info "Check cert-manager logs: $KUBE_CLI logs -n cert-manager deployment/cert-manager --tail=50"
+		log_hint "Check logs: $KUBE_CLI logs -n cert-manager deployment/cert-manager --tail=50"
 		exit 1
 	fi
 }

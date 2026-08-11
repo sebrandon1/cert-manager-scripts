@@ -30,7 +30,8 @@ check_prerequisites() {
 
 	# Check if cert-manager is installed
 	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
-		log_error "cert-manager not found. Please install cert-manager-operator first."
+		log_error "cert-manager not found."
+		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
 		exit 1
 	fi
 
@@ -105,6 +106,7 @@ EOF
 		log_info "Certificate '$CERT_NAME' created successfully in namespace '$CERT_NAMESPACE'"
 	else
 		log_error "Failed to create certificate '$CERT_NAME'"
+		log_hint "Run 'make troubleshoot' for diagnostics"
 		exit 1
 	fi
 }
