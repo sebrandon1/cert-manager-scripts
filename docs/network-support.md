@@ -261,24 +261,23 @@ spec:
 
 ### Current Behavior
 
-Our scripts **do not automatically detect** network stack, but you can check manually:
+The toolkit includes network stack auto-detection via `scripts/troubleshooting/check-network-stack.sh` and `scripts/check-cluster-network.sh`. You can run it with:
 
 ```bash
-# Check cluster network configuration
 make check-network
-
-# The script will display:
-# - Network stack type (IPv4/IPv6/Dual-stack)
-# - Cluster and service CIDRs
-# - Recommendations for testing
 ```
 
-### Why Not Auto-Detect in Installation Scripts?
+This will detect and display:
+- Network stack type (IPv4, IPv6, or dual-stack)
+- Cluster and service network CIDRs
+- Node IP addresses and API server addresses
+- Recommendations for testing
+
+### Why Don't Installation Scripts Adapt Based on Network Stack?
 
 1. **cert-manager works with all stacks** - no need to modify installation
 2. **Pebble works with all stacks** - no configuration changes needed
-3. **User awareness** - better to explicitly check than silently adapt
-4. **Flexibility** - users might want to test specific scenarios
+3. **Flexibility** - users might want to test specific scenarios
 
 ### When to Check Network Configuration
 

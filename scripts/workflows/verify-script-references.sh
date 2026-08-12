@@ -11,7 +11,7 @@ FAILURES=0
 # 1. Verify all make target references in docs point to real Makefile targets
 echo "Checking make target references in documentation..."
 MAKEFILE_TARGETS=$(grep -oE '^[a-z][a-z0-9_-]*:' Makefile | sed 's/://')
-DOC_REFS=$(grep -roh 'make [a-z][a-z0-9_-]*' docs/ guide/ README.md 2>/dev/null | sed 's/make //' | sort -u)
+DOC_REFS=$(grep -roh 'make [a-z][a-z0-9_-]*' docs/ README.md 2>/dev/null | sed 's/make //' | sort -u)
 
 while IFS= read -r ref; do
 	[[ -z "$ref" ]] && continue

@@ -1,40 +1,35 @@
 # Documentation
 
-Technical documentation for cert-manager-scripts beyond the main guides.
-
-## Contents
+## Guides
 
 | Document | Description |
 |----------|-------------|
-| [IBU-FAQ.md](IBU-FAQ.md) | Frequently asked questions about IBU certificate testing |
-| [CRC-CLUSTER-HEALTH-IMPROVEMENTS.md](CRC-CLUSTER-HEALTH-IMPROVEMENTS.md) | CI workflow health check enhancements |
+| [Getting Started](getting-started.md) | Step-by-step walkthrough from prerequisites to testing |
+| [Installation](installation.md) | Detailed installation for each component |
+| [Pebble Usage](pebble-usage.md) | Working with the local ACME test server |
+| [DNS-01 Setup](dns01-setup.md) | Air-gapped DNS-01 challenge configuration |
+| [Network Support](network-support.md) | IPv4/IPv6/dual-stack cluster testing |
+| [IBU Testing](ibu-testing.md) | Image-Based Upgrade certificate validation |
+| [Troubleshooting](troubleshooting.md) | Common issues and diagnostic commands |
 
-## IBU-FAQ.md
+## Reference
 
-Answers common questions about cert-manager certificate behavior during OpenShift Image-Based Upgrade (IBU) operations:
+| Document | Description |
+|----------|-------------|
+| [IBU-FAQ](IBU-FAQ.md) | Frequently asked questions about IBU certificate testing |
+| [CRC Cluster Health](CRC-CLUSTER-HEALTH-IMPROVEMENTS.md) | CI workflow health check enhancements |
+| [Contributing](../CONTRIBUTING.md) | Development setup and pull request process |
 
-- Does this testing address IBU certificate concerns?
-- Is the cert immediately reissued or does it wait until expiration?
-- What is the workflow for labeling certs?
-- How does the simulation differ from real LCA behavior?
+## Choosing a Challenge Type
 
-## CRC-CLUSTER-HEALTH-IMPROVEMENTS.md
+| | HTTP-01 | DNS-01 |
+|---|---------|--------|
+| **Best for** | Standard, single-domain certificates | Wildcard certificates (`*.example.com`) |
+| **Setup complexity** | Low — just needs an accessible ingress/route | Medium — requires DNS server configuration |
+| **Air-gapped support** | Yes (with Pebble inside the cluster) | Yes (with fake-dns-api) |
+| **Wildcard support** | No | Yes |
+| **Quick test command** | `make quick-http-test` | `make quick-dns-test` |
 
-Documents CI workflow improvements for CRC cluster testing:
+**Start with HTTP-01** if you just need to verify cert-manager is working. **Use DNS-01** if you need wildcard certificates or want to test DNS-based validation flows.
 
-- Enhanced cluster verification scripts
-- Cluster recovery mechanisms
-- Health check integration in GitHub Actions
-- Troubleshooting transient failures
-
-## Guides
-
-| File | Description |
-|------|-------------|
-| [installation.md](installation.md) | Cert-manager installation guide |
-| [dns01-setup.md](dns01-setup.md) | DNS-01 challenge configuration |
-| [pebble-usage.md](pebble-usage.md) | Using Pebble for local ACME testing |
-| [network-support.md](network-support.md) | Network configuration details |
-| [ibu-testing.md](ibu-testing.md) | IBU certificate loss validation |
-| [troubleshooting.md](troubleshooting.md) | Common issues and solutions |
-| [CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution guidelines |
+See the [Getting Started](getting-started.md) guide for a hands-on walkthrough of both methods.

@@ -251,6 +251,61 @@ oc rollout restart deployment/pebble -n pebble
 - Check network policies in both namespaces
 - Verify `skipTLSVerify: true` is set in ClusterIssuer
 
+## Pebble Challenge Test Server (pebble-challtestsrv)
+
+Pebble ships with a companion service called `pebble-challtestsrv` — a mock DNS/HTTP server that provides configurable responses for ACME challenge validation. It is deployed automatically alongside Pebble by `make install-pebble`.
+
+### When to Use challtestsrv vs PEBBLE_ALWAYS_VALID
+
+| Approach | Use when |
+|----------|----------|
+| `PEBBLE_ALWAYS_VALID=1` | Quick smoke testing — all challenges auto-succeed, no DNS/HTTP setup needed |
+| `pebble-challtestsrv` | You need fine-grained control over challenge responses (e.g., testing failure scenarios, specific DNS records) |
+
+For most users, `PEBBLE_ALWAYS_VALID=1` is sufficient. Use `pebble-challtestsrv` when you want to simulate specific challenge behaviors.
+
+### challtestsrv Ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 8053 | UDP/TCP | DNS queries |
+| 5002 | TCP | HTTP-01 challenge responses |
+| 5001 | TCP | TLS-ALPN-01/HTTPS challenges |
+| 8055 | TCP | Management API |
+
+### Management API
+
+The management API on port 8055 lets you add and remove mock DNS records, configure HTTP-01 challenge responses, and set default IP addresses for challenge validation.
+
+```bash
+# Port-forward to access the management API locally
+oc port-forward -n pebble svc/pebble-challtestsrv 8055:8055
+
+# Add a mock A record
+curl -s -X POST http://localhost:8055/add-a \
+  -d '{"host": "example.com", "addresses": ["10.0.0.1"]}'
+
+# Add a mock TXT record (for DNS-01 challenges)
+curl -s -X POST http://localhost:8055/set-txt \
+  -d '{"host": "_acme-challenge.example.com.", "value": "challenge-token-here"}'
+
+# Set the default IPv4 address for all A record lookups
+curl -s -X POST http://localhost:8055/set-default-ipv4 \
+  -d '{"ip": "10.0.0.1"}'
+
+# Clear all mock records
+curl -s -X POST http://localhost:8055/clear-request-history
+```
+
+### Verifying challtestsrv is Running
+
+```bash
+oc get pods -n pebble -l app=pebble-challtestsrv
+oc logs -n pebble -l app=pebble-challtestsrv
+```
+
+See the [YAML manifest documentation](../yaml/pebble-challtestsrv/README.md) for deployment details.
+
 ## Advanced Usage
 
 ### Custom DNS Server for DNS-01 Testing

@@ -280,7 +280,7 @@ All scripts provide:
 ## Integration with Guides
 
 These scripts correspond to the troubleshooting sections in:
-- [guide/08-troubleshooting.md](../../guide/08-troubleshooting.md)
+- [docs/troubleshooting.md](../../docs/troubleshooting.md)
 
 Use the guide for step-by-step manual troubleshooting, or use these scripts for automated diagnostics.
 
