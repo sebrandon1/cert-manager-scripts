@@ -8,6 +8,7 @@ Before running any scripts, ensure you have:
 
 - **OpenShift cluster** (4.20+ recommended)
 - **`oc` CLI** installed and configured
+- **`openssl`** for certificate inspection (pre-installed on most systems)
 - **`envsubst`** command (part of gettext package)
   - macOS: `brew install gettext`
   - RHEL/Fedora: `dnf install gettext`

@@ -34,15 +34,22 @@ For DNS-01 with air-gapped fake DNS, use `make quick-dns-test` instead.
 | [Network Support](docs/network-support.md) | IPv4/IPv6/dual-stack cluster testing |
 | [IBU Testing](docs/ibu-testing.md) | Image-Based Upgrade certificate validation |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and diagnostic commands |
-| [Step-by-Step Guide](guide/README.md) | Numbered walkthrough from prerequisites to testing |
+| [Getting Started](docs/getting-started.md) | Step-by-step walkthrough from prerequisites to testing |
 | [Contributing](CONTRIBUTING.md) | Development setup and pull request process |
 
 ## Prerequisites
 
 - OpenShift cluster (4.20+)
 - `oc` CLI with cluster-admin privileges
+- `openssl`: certificate inspection (pre-installed on most systems)
 - `jq`: `brew install jq` (macOS) or `dnf install jq` (RHEL/Fedora)
 - `envsubst`: `brew install gettext` (macOS) or `dnf install gettext` (RHEL/Fedora)
+
+Optionally copy the environment template to customize defaults:
+
+```bash
+cp .env.example .env
+```
 
 ## Development
 
