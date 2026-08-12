@@ -31,10 +31,9 @@ jobs:
           ref: ${{ inputs.checkout-ref || github.sha }}
 
       - name: Create kind cluster
-        uses: helm/kind-action@v1
+        uses: palmsoftware/quick-k8s@v1
         with:
-          cluster_name: cert-manager-test
-          wait: 120s
+          clusterName: cert-manager-test
 
       - name: Verify cluster access
         run: |
