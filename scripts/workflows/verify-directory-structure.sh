@@ -11,7 +11,7 @@ REQUIRED_DIRS=(
 	"scripts"
 	"scripts/troubleshooting"
 	"yaml"
-	"guide"
+	"docs"
 )
 
 EXIT_CODE=0
