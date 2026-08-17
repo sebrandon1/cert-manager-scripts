@@ -339,6 +339,30 @@ require_cluster_admin() {
 	log_debug "Cluster-admin privileges confirmed"
 }
 
+# Parse a duration string into seconds.
+# Accepts a bare integer, or a number with suffix s/m/h (e.g. 300s, 5m, 1h).
+# Returns 1 for unknown formats so callers can fall back.
+_parse_duration_seconds() {
+	local value="$1"
+	if [[ "$value" =~ ^[0-9]+$ ]]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+	if [[ "$value" =~ ^([0-9]+)s$ ]]; then
+		printf '%s\n' "${BASH_REMATCH[1]}"
+		return 0
+	fi
+	if [[ "$value" =~ ^([0-9]+)m$ ]]; then
+		printf '%s\n' "$((BASH_REMATCH[1] * 60))"
+		return 0
+	fi
+	if [[ "$value" =~ ^([0-9]+)h$ ]]; then
+		printf '%s\n' "$((BASH_REMATCH[1] * 3600))"
+		return 0
+	fi
+	return 1
+}
+
 # Wait for a resource to be ready
 # Usage: wait_for_resource <type/name> <namespace> <timeout>
 wait_for_resource() {
@@ -346,16 +370,52 @@ wait_for_resource() {
 	local namespace="${2:-default}"
 	local timeout="${3:-300s}"
 
-	log_info "Waiting for $resource to be ready..."
-	if "$KUBE_CLI" wait --for=condition=available --timeout="$timeout" "$resource" -n "$namespace"; then
-		log_success "$resource is ready"
-		return 0
-	else
+	local timeout_sec
+	if ! timeout_sec=$(_parse_duration_seconds "$timeout"); then
+		log_info "Waiting for $resource to be ready..."
+		if "$KUBE_CLI" wait --for=condition=available --timeout="$timeout" "$resource" -n "$namespace"; then
+			log_success "$resource is ready"
+			return 0
+		fi
 		log_error "$resource failed to become ready within $timeout"
 		log_hint "Run 'make troubleshoot' for diagnostics or 'make check-cert CERT=<name> NS=$namespace'"
 		dump_resource_diagnostics "$namespace" "$resource"
 		return 1
 	fi
+
+	log_info "Waiting for $resource to be ready..."
+	local start elapsed last_progress tick_start tick_elapsed
+	local tick=5
+	local heartbeat=15
+	start=$(date +%s)
+	last_progress=0
+
+	while true; do
+		tick_start=$(date +%s)
+		if "$KUBE_CLI" wait --for=condition=available --timeout="${tick}s" "$resource" -n "$namespace" &>/dev/null; then
+			log_success "$resource is ready"
+			return 0
+		fi
+
+		elapsed=$(($(date +%s) - start))
+		if [[ $elapsed -ge $((last_progress + heartbeat)) ]]; then
+			log_info "Still waiting... (${elapsed}s/${timeout_sec}s)"
+			last_progress=$elapsed
+		fi
+
+		if [[ $elapsed -ge $timeout_sec ]]; then
+			log_error "$resource failed to become ready within $timeout"
+			log_hint "Run 'make troubleshoot' for diagnostics or 'make check-cert CERT=<name> NS=$namespace'"
+			dump_resource_diagnostics "$namespace" "$resource"
+			return 1
+		fi
+
+		# kubectl wait may return immediately (missing resource); consume the rest of the tick
+		tick_elapsed=$(($(date +%s) - tick_start))
+		if [[ $tick_elapsed -lt $tick ]]; then
+			sleep $((tick - tick_elapsed))
+		fi
+	done
 }
 
 # Dump diagnostic info for a namespace and optional resource

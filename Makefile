@@ -41,7 +41,7 @@ BG_BLUE := \033[44m
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
         delete-certificate delete-issuer \
         clean-acmedns clean-challtestsrv \
-        uninstall-cert-manager-operator uninstall-all \
+        uninstall-cert-manager-operator uninstall-monitoring uninstall-all \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu \
         create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
@@ -343,35 +343,7 @@ test-ingress-tls: ## End-to-end TLS integration test via Route/Ingress
 # ────────────────────────────────────────────────────────────────────────────────
 
 status: ## Show installed components and their status
-	@echo ""
-	@echo "$(BOLD)$(BLUE)Component Status Dashboard$(RESET)"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo ""
-	@printf "  $(BOLD)%-25s %s$(RESET)\n" "Component" "Status"
-	@echo "  ─────────────────────── ──────────────────────────"
-	@printf "  %-25s " "cert-manager"; \
-		if $(KUBE_CLI) get deployment cert-manager -n cert-manager &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@printf "  %-25s " "cert-manager-webhook"; \
-		if $(KUBE_CLI) get deployment cert-manager-webhook -n cert-manager &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@printf "  %-25s " "Pebble ACME server"; \
-		if $(KUBE_CLI) get deployment pebble -n pebble &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@printf "  %-25s " "Fake DNS API"; \
-		if $(KUBE_CLI) get deployment fake-dns-api -n fake-dns &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@printf "  %-25s " "acme-dns"; \
-		if $(KUBE_CLI) get deployment acme-dns -n acme-dns &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@printf "  %-25s " "pebble-challtestsrv"; \
-		if $(KUBE_CLI) get deployment pebble-challtestsrv -n pebble &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@printf "  %-25s " "MinIO"; \
-		if $(KUBE_CLI) get deployment minio -n minio &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@printf "  %-25s " "OADP"; \
-		if $(KUBE_CLI) get deployment -n openshift-adp -l app.kubernetes.io/name=velero &>/dev/null 2>&1; then echo "$(GREEN)Installed$(RESET)"; else echo "$(DIM)Not installed$(RESET)"; fi
-	@echo ""
-	@echo "  $(BOLD)Issuers:$(RESET)"
-	@$(KUBE_CLI) get clusterissuer -o wide 2>/dev/null || echo "  $(DIM)No ClusterIssuers found$(RESET)"
-	@echo ""
-	@echo "  $(BOLD)Certificates:$(RESET)"
-	@$(KUBE_CLI) get certificate --all-namespaces 2>/dev/null || echo "  $(DIM)No Certificates found$(RESET)"
-	@echo ""
+	@./scripts/status.sh
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Troubleshooting
@@ -610,10 +582,12 @@ clean-ingress-test: ## Clean up ingress TLS test resources
 	@$(KUBE_CLI) delete namespace ingress-tls-test --ignore-not-found=true --timeout=60s --wait=false
 	@echo "$(GREEN)Ingress TLS test resources cleaned.$(RESET)"
 
-clean-monitoring: ## Clean up cert-manager monitoring resources
+clean-monitoring: ## Clean up cert-manager monitoring resources (alias: uninstall-monitoring)
 	@echo "$(BOLD)$(YELLOW)Cleaning up monitoring resources...$(RESET)"
 	@$(KUBE_CLI) delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Monitoring resources cleaned.$(RESET)"
+
+uninstall-monitoring: clean-monitoring ## Uninstall cert-manager ServiceMonitor and PrometheusRule (alias of clean-monitoring)
 
 clean-temp: ## Clean up temporary files
 	@echo "Cleaning temporary files..."
