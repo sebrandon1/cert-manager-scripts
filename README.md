@@ -59,6 +59,7 @@ cp .env.example .env
 make help       # Show all available targets
 make preflight  # Check tool dependencies and cluster prerequisites
 make lint       # Run shellcheck + shfmt (CI gate)
+make test-unit  # Run BATS unit tests (no cluster)
 make fmt        # Auto-fix shell formatting
 ```
 

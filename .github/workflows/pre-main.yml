@@ -108,14 +108,33 @@ jobs:
             exit 1
           fi
 
+  unit-tests:
+    name: Unit Tests (BATS)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install bats-core
+        run: |
+          curl -fsSL https://github.com/bats-core/bats-core/archive/refs/tags/v1.11.1.tar.gz | tar xz
+          sudo ./bats-core-1.11.1/install.sh /usr/local
+
+      - name: Install gettext (envsubst)
+        run: sudo apt-get update && sudo apt-get install -y gettext-base
+
+      - name: Run unit tests
+        run: make test-unit
+
   kind-integration-test:
     name: Kind Integration Test (CM ${{ matrix.cert-manager-version }})
-    needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure]
+    needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure, unit-tests]
     if: |
       needs.shell-format-check.result == 'success' &&
       needs.shellcheck.result == 'success' &&
       needs.workload-partitioning-check.result == 'success' &&
-      needs.verify-structure.result == 'success'
+      needs.verify-structure.result == 'success' &&
+      needs.unit-tests.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -127,13 +146,14 @@ jobs:
 
   integration-test:
     name: Integration Test (OCP ${{ matrix.ocp-version }} / CM ${{ matrix.cert-manager-version }})
-    needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure]
+    needs: [shell-format-check, shellcheck, workload-partitioning-check, verify-structure, unit-tests]
     if: |
       github.actor != 'dependabot[bot]' &&
       needs.shell-format-check.result == 'success' &&
       needs.shellcheck.result == 'success' &&
       needs.workload-partitioning-check.result == 'success' &&
-      needs.verify-structure.result == 'success'
+      needs.verify-structure.result == 'success' &&
+      needs.unit-tests.result == 'success'
     strategy:
       fail-fast: false
       matrix:
