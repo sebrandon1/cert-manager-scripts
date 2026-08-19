@@ -63,7 +63,7 @@ make uninstall-cert-manager-operator   # Remove operator (interactive confirm)
 
 ### Fix Formatting
 ```bash
-shfmt -w scripts/ lib/    # Auto-fix shell formatting
+make fmt    # Auto-fix shell formatting (shfmt -w scripts/ lib/)
 ```
 
 ## Architecture
@@ -128,7 +128,7 @@ Key functions:
 - **Cluster**: `require_healthy_cluster [max_attempts] [interval]` — waits for dns, network, ingress operators to be Available
 - **Environment**: `load_env` — loads `.env` from script or parent directory
 - **Retry**: `retry <max_attempts> <delay> <command...>` — exponential backoff
-- **Wait**: `wait_for_resource <type/name> <namespace> <timeout>` — uses `oc wait --for=condition=available`
+- **Wait**: `wait_for_resource <type/name> <namespace> <timeout>` — polls until ready and logs progress every 15s
 - **Cleanup**: `setup_cleanup` + `register_temp_file` — trap-based cleanup with duration tracking
 - **Output**: `print_summary "Key1" "Val1" "Key2" "Val2"` — formatted summary table
 - **Headers**: `print_header "Title"` — formatted section header box
@@ -161,18 +161,20 @@ The LCA (Lifecycle Agent) apply-label format is `<apiGroup>/<version>/<resourceT
 - Scripts resolve their own location with `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` (varies by depth — see sourcing patterns above)
 - Use shared functions: `require_cmd`/`require_cluster` instead of inline prerequisite checks, `apply_yaml_template` instead of inline envsubst, `print_header` instead of inline echo headers, `wait_for_resource` instead of custom polling loops
 - `shfmt` formatting: 2-space indentation (tabs in Makefile), binary operators at line start, switch cases indented
-- `shellcheck` with severity=error; excluded codes: SC1091, SC2034
+- `shellcheck` with severity=error. Local `make lint` also excludes SC1091, SC2034, SC2329
 - Cleanup operations use `--ignore-not-found=true` for idempotency
 - New Makefile targets need a `## Description` comment suffix for `make help` integration
 
 ## CI Pipeline
 
 CI runs on PRs to main (`.github/workflows/pre-main.yml`):
-1. **shell-format-check** — `shfmt -d .`
-2. **shellcheck** — severity=error on `scripts/`
-3. **workload-partitioning-check** — validates script existence, executability, syntax
-4. **verify-structure** — directory layout and key files
-5. **integration-test** — deploys OCP 4.20/4.21 CRC cluster (matrix), runs `make quick-http-test`, API server cert creation/verification, workload partitioning check, network stack detection
+1. **shell-format-check** — `shfmt -d scripts/ lib/`
+2. **shellcheck** — severity=error on `scripts/` and `lib/`
+3. **workload-partitioning-check** — script exists, is executable, syntax + Makefile/docs mentions
+4. **verify-structure** — directory layout, key files, script references
+5. **version-query-check** — version query scripts for pebble, acme-dns, operator, minio, ubi9-python
+6. **kind-integration-test** — Kind cluster, cert-manager v1.19.0 / v1.20.0
+7. **integration-test** — OCP 4.20/4.21/4.22 × cert-manager v1.19.0/v1.20.0 CRC matrix (skipped for dependabot); `make quick-http-test`, API server cert, workload partitioning, network stack detection
 
 ## Requirements
 

@@ -6,14 +6,14 @@ Detailed installation instructions for cert-manager-scripts components.
 
 Before running any scripts, ensure you have:
 
-- **OpenShift cluster** (4.20+ recommended)
-- **`oc` CLI** installed and configured
-- **`openssl`** for certificate inspection (pre-installed on most systems)
-- **`envsubst`** command (part of gettext package)
+- **OpenShift cluster** (4.20+)
+- **`oc` CLI** installed and configured with cluster-admin privileges
+- **`openssl`** for certificate inspection
+- **`jq`** (`brew install jq` or `dnf install jq`)
+- **`envsubst`** (gettext package)
   - macOS: `brew install gettext`
   - RHEL/Fedora: `dnf install gettext`
-- **Cluster-admin privileges**
-- **Bash shell** (for shell scripts)
+- **Bash**
 
 ## Quick Installation
 
@@ -27,9 +27,13 @@ make test-all
 
 This will:
 - Install cert-manager-operator
-- Install Pebble with auto-validation enabled
-- Create a ClusterIssuer pointing to Pebble
-- Create test certificates
+- Install Pebble (default: real challenge validation, `PEBBLE_ALWAYS_VALID=0`)
+- Create an HTTP-01 ClusterIssuer pointing to Pebble
+- Create test certificates (`test-cert-simple`, `test-cert-app`, `test-cert-api`)
+
+For a smoke test that skips real ACME validation, use `make quick-http-test` instead (`PEBBLE_ALWAYS_VALID=1`).
+
+On vanilla Kubernetes (no OLM), install cert-manager with `make install-cert-manager-helm` instead of the operator target.
 
 ### Option 2: Step-by-Step Installation
 
@@ -254,7 +258,7 @@ After installing cert-manager-operator and Pebble, you can:
    - Verify HTTP-01 challenge handling
 
 2. **Test production-like scenarios:**
-   - Test apiServer certificate replacement
+   - Test API server certificate replacement
    - Test ingress certificate management
    - Test certificate renewal workflows
 

@@ -4,13 +4,13 @@ Common issues and solutions for cert-manager-scripts.
 
 ## Quick Test Issues
 
-The `quick-http-test` (or `quick-dns-test`) runs a complete end-to-end workflow and may fail for several reasons.
+The `quick-http-test` waits up to **3 minutes** for `test-cert-http01`. The `quick-dns-test` waits up to **5 minutes** for `wildcard-test`. Either can fail for several reasons.
 
 ### Common Issues
 
 #### 1. Timeout waiting for certificate (5 minutes)
 
-The test waits up to 5 minutes for the certificate to be issued.
+The test waits up to 3 minutes (HTTP-01) or 5 minutes (DNS-01) for the certificate to be issued.
 
 **Symptoms:**
 - Test hangs at "Waiting for certificate to be issued"
@@ -30,7 +30,10 @@ oc get order -n default
 # Verify Pebble is running
 oc get pods -n pebble
 
-# Check certificate details
+# Check certificate details (HTTP-01)
+oc describe certificate test-cert-http01 -n default
+
+# Check certificate details (DNS-01)
 oc describe certificate wildcard-test -n default
 ```
 

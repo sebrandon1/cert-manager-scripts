@@ -77,23 +77,25 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: pebble-dns-issuer
+  name: pebble-dns01-issuer
 spec:
   acme:
     server: https://pebble.pebble.svc.cluster.local:14000/dir
     skipTLSVerify: true
     privateKeySecretRef:
-      name: pebble-dns-account-key
+      name: pebble-dns01-account-key
     solvers:
     - dns01:
-        # Example: Using Route53
-        route53:
-          region: us-east-1
-          accessKeyID: YOUR_ACCESS_KEY_ID
-          secretAccessKeySecretRef:
-            name: route53-credentials
-            key: secret-access-key
+        rfc2136:
+          nameserver: fake-dns-api.fake-dns.svc.cluster.local:53
+          tsigKeyName: dummy-key
+          tsigAlgorithm: HMACSHA256
+          tsigSecretSecretRef:
+            name: rfc2136-credentials
+            key: tsig-secret
 ```
+
+Prefer `make create-dns01-issuer` over applying this by hand. See [DNS-01 Setup](dns01-setup.md).
 
 ## Testing Certificate Issuance
 
@@ -125,7 +127,7 @@ metadata:
 spec:
   secretName: wildcard-tls
   issuerRef:
-    name: pebble-dns-issuer
+    name: pebble-dns01-issuer
     kind: ClusterIssuer
   dnsNames:
   - "*.apps.example.com"
@@ -253,7 +255,7 @@ oc rollout restart deployment/pebble -n pebble
 
 ## Pebble Challenge Test Server (pebble-challtestsrv)
 
-Pebble ships with a companion service called `pebble-challtestsrv` — a mock DNS/HTTP server that provides configurable responses for ACME challenge validation. It is deployed automatically alongside Pebble by `make install-pebble`.
+Pebble ships with a companion service called `pebble-challtestsrv` — a mock DNS/HTTP server that provides configurable responses for ACME challenge validation. Install it separately with `make install-pebble-challtestsrv` (it is **not** started by `make install-pebble`).
 
 ### When to Use challtestsrv vs PEBBLE_ALWAYS_VALID
 
@@ -266,12 +268,12 @@ For most users, `PEBBLE_ALWAYS_VALID=1` is sufficient. Use `pebble-challtestsrv`
 
 ### challtestsrv Ports
 
-| Port | Protocol | Purpose |
-|------|----------|---------|
-| 8053 | UDP/TCP | DNS queries |
-| 5002 | TCP | HTTP-01 challenge responses |
-| 5001 | TCP | TLS-ALPN-01/HTTPS challenges |
-| 8055 | TCP | Management API |
+| Port | Protocol | Purpose | Exposed by Service |
+|------|----------|---------|--------------------|
+| 8053 | UDP/TCP | DNS queries | yes |
+| 8055 | TCP | Management API | yes |
+| 5002 | TCP | HTTP-01 challenge responses | container only |
+| 5001 | TCP | TLS-ALPN-01/HTTPS challenges | container only |
 
 ### Management API
 
@@ -351,7 +353,7 @@ make install-cert-manager-operator
 PEBBLE_ALWAYS_VALID=1 make install-pebble
 
 # 3. Create ClusterIssuer
-oc apply -f your-pebble-issuer.yaml
+make create-issuer
 
 # 4. Create test Certificate
 oc apply -f your-test-certificate.yaml
@@ -377,5 +379,5 @@ oc delete clusterissuer pebble-issuer
 
 - [Pebble GitHub Repository](https://github.com/letsencrypt/pebble)
 - [cert-manager Documentation](https://cert-manager.io/docs/)
-- [ACME Protocol (RFC 8555)](https://tools.ietf.org/html/rfc8555)
+- [ACME Protocol (RFC 8555)](https://datatracker.ietf.org/doc/html/rfc8555)
 

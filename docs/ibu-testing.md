@@ -30,7 +30,7 @@ Since IBU requires specific operators (Lifecycle Agent, TALM) and seed images, t
 
 ## Prerequisites
 
-- OpenShift 4.12+ cluster with default StorageClass
+- OpenShift 4.20+ cluster with default StorageClass
 - `oc` CLI with cluster-admin privileges
 - `jq` command-line JSON processor
 - `envsubst` command (`brew install gettext` on macOS)
@@ -185,6 +185,7 @@ metadata:
 | `make test-ibu-preserved` | Run Scenario 2: Certificate preservation test |
 | `make test-ibu-both` | Run both scenarios sequentially |
 | `make quick-ibu-test` | End-to-end test (prereqs + Scenario 1) |
+| `make test-ibu-multi-algo` | Scenario 1 with ECDSA, RSA, and Ed25519 certs |
 | `make clean-ibu` | Clean up all IBU test resources |
 
 ## Understanding Results
@@ -256,7 +257,7 @@ MinIO provides S3-compatible object storage for Velero backups:
 OADP installs Velero for backup/restore operations:
 
 - **Namespace**: `openshift-adp`
-- **Operator**: Red Hat OADP Operator (stable-1.4)
+- **Operator**: Red Hat OADP Operator (`stable` channel)
 - **Backup Location**: MinIO S3 bucket `velero`
 
 ## State Files
@@ -329,9 +330,7 @@ This removes:
 
 ## References
 
-- [Red Hat OADP Documentation](https://docs.openshift.com/container-platform/latest/backup_and_restore/application_backup_and_restore/oadp-intro.html)
-- [Image-Based Upgrade for SNO](https://docs.openshift.com/container-platform/latest/edge_computing/image_based_upgrade/cnf-about-image-based-upgrade.html)
-- [cert-manager on OpenShift](https://docs.openshift.com/container-platform/latest/security/cert_manager_operator/index.html)
-- [Creating ConfigMap objects for IBU](https://docs.openshift.com/container-platform/4.17/edge_computing/image_based_upgrade/preparing_for_image_based_upgrade/cnf-image-based-upgrade-prep-resources.html)
-- [IBU with GitOps ZTP](https://docs.openshift.com/container-platform/4.17/edge_computing/image_based_upgrade/preparing_for_image_based_upgrade/ztp-image-based-upgrade-prep-resources.html)
+- [Red Hat OADP Documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/backup_and_restore/oadp-application-backup-and-restore)
+- [Image-Based Upgrade for SNO](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/edge_computing/image-based-upgrade-for-single-node-openshift-clusters)
+- [cert-manager Operator for Red Hat OpenShift](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift)
 - [Red Hat Article 7057298](https://access.redhat.com/articles/7057298)

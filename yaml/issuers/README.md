@@ -8,7 +8,10 @@ ClusterIssuer configurations for cert-manager. These define how certificates are
 |------|-------------|
 | `pebble-clusterissuer.yaml` | HTTP-01 challenge issuer using ingress |
 | `pebble-dns01-clusterissuer.yaml` | DNS-01 issuer with webhook solver placeholder |
-| `pebble-dns01-simple-clusterissuer.yaml` | DNS-01 issuer using RFC2136 dynamic DNS |
+| `pebble-dns01-simple-clusterissuer.yaml` | DNS-01 issuer using RFC2136 (used by `make create-dns01-issuer`) |
+| `selfsigned-clusterissuer.yaml` | Self-signed issuer for the root CA |
+| `root-ca-certificate.yaml` | Self-signed root CA certificate |
+| `ca-clusterissuer.yaml` | CA issuer that signs with the root CA |
 
 ## Usage
 
@@ -44,7 +47,7 @@ envsubst < yaml/issuers/pebble-clusterissuer.yaml | oc apply -f -
 
 ### DNS-01 Webhook (`pebble-dns01-clusterissuer.yaml`)
 - Placeholder for webhook-based DNS solvers
-- Use with Pebble's `ALWAYS_VALID=1` mode
+- Use with `PEBBLE_ALWAYS_VALID=1`
 
 ### DNS-01 RFC2136 (`pebble-dns01-simple-clusterissuer.yaml`)
 - Uses RFC2136 dynamic DNS updates

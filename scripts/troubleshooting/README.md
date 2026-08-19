@@ -224,6 +224,38 @@ API server certificates are critical for cluster access. This verifies that:
 
 ---
 
+### 8. check-cert-renewal.sh
+**Description:** Certificate renewal status and upcoming renewals  
+**Usage:**
+```bash
+./scripts/troubleshooting/check-cert-renewal.sh
+make check-cert-renewal
+```
+
+---
+
+### 9. verify-monitoring.sh
+**Description:** Verify cert-manager ServiceMonitor and PrometheusRule  
+**Usage:**
+```bash
+./scripts/troubleshooting/verify-monitoring.sh
+make verify-monitoring
+```
+
+---
+
+### 10. check-network-stack.sh
+**Description:** Detect IPv4, IPv6, or dual-stack  
+**Usage:**
+```bash
+./scripts/troubleshooting/check-network-stack.sh
+make check-network-stack
+```
+
+`make check-network` runs the broader `scripts/check-cluster-network.sh` check.
+
+---
+
 ## Common Workflows
 
 ### Diagnosing a Failed Certificate
@@ -287,7 +319,7 @@ Use the guide for step-by-step manual troubleshooting, or use these scripts for 
 ## Requirements
 
 - OpenShift CLI (`oc`) installed and logged in
-- `jq` for JSON parsing (optional, gracefully degrades without it)
+- `jq` for JSON parsing (`make troubleshoot` / `check-all.sh` requires it)
 - Access to the cluster with appropriate permissions
 
 ## Tips
@@ -311,8 +343,8 @@ Use the guide for step-by-step manual troubleshooting, or use these scripts for 
 ## Contributing
 
 When adding new troubleshooting scripts:
-1. Follow the existing format (colors, log functions)
+1. Source `lib/common.sh` — do not redefine colors or logging
 2. Provide clear error messages and suggestions
 3. Update this README
-4. Add corresponding make target to Makefile
+4. Add a Makefile target with a `## Description` comment
 
