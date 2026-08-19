@@ -76,7 +76,7 @@ Pebble (the ACME test server) also supports all network stacks:
 - ✅ DNS-01 challenges (DNS provider must be reachable via IPv4)
 - ✅ Certificate issuance for domains with A records
 - ✅ Wildcard certificates
-- ✅ apiServer certificates
+- ✅ API server certificates
 - ✅ Ingress/Route certificates
 
 **Limitations:**
@@ -90,7 +90,7 @@ Pebble (the ACME test server) also supports all network stacks:
 - ✅ DNS-01 challenges (DNS provider must be reachable via IPv6)
 - ✅ Certificate issuance for domains with AAAA records
 - ✅ Wildcard certificates
-- ✅ apiServer certificates
+- ✅ API server certificates
 - ✅ Ingress/Route certificates
 
 **Considerations:**
@@ -305,7 +305,7 @@ This will detect and display:
 
 ## References
 
-- [OpenShift Dual-Stack Documentation](https://docs.openshift.com/container-platform/latest/networking/ovn_kubernetes_network_provider/about-ovn-kubernetes.html)
+- [OpenShift Dual-Stack Documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ovn-kubernetes_network_plugin/converting-to-dual-stack)
 - [cert-manager Documentation](https://cert-manager.io/docs/)
 - [Kubernetes IPv6 Documentation](https://kubernetes.io/docs/concepts/services-networking/dual-stack/)
 

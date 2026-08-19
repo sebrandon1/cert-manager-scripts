@@ -26,15 +26,17 @@ For DNS-01 with air-gapped fake DNS, use `make quick-dns-test` instead.
 
 ## Guides
 
+See [docs/README.md](docs/README.md) for the full index.
+
 | Guide | Description |
 |-------|-------------|
-| [Installation](docs/installation.md) | Step-by-step setup for cert-manager and Pebble |
-| [Pebble Usage](docs/pebble-usage.md) | Working with the local ACME test server |
-| [DNS-01 Setup](docs/dns01-setup.md) | Air-gapped DNS-01 challenge configuration |
-| [Network Support](docs/network-support.md) | IPv4/IPv6/dual-stack cluster testing |
+| [Getting Started](docs/getting-started.md) | Walkthrough from prerequisites to HTTP-01 and DNS-01 tests |
+| [Installation](docs/installation.md) | Component-by-component install |
+| [Pebble Usage](docs/pebble-usage.md) | Local ACME test server |
+| [DNS-01 Setup](docs/dns01-setup.md) | Air-gapped DNS-01 (fake DNS or acme-dns) |
+| [Network Support](docs/network-support.md) | IPv4/IPv6/dual-stack |
 | [IBU Testing](docs/ibu-testing.md) | Image-Based Upgrade certificate validation |
-| [Troubleshooting](docs/troubleshooting.md) | Common issues and diagnostic commands |
-| [Getting Started](docs/getting-started.md) | Step-by-step walkthrough from prerequisites to testing |
+| [Troubleshooting](docs/troubleshooting.md) | Diagnostics and common failures |
 | [Contributing](CONTRIBUTING.md) | Development setup and pull request process |
 
 ## Prerequisites
@@ -57,8 +59,9 @@ cp .env.example .env
 make help       # Show all available targets
 make preflight  # Check tool dependencies and cluster prerequisites
 make lint       # Run shellcheck + shfmt (CI gate)
+make fmt        # Auto-fix shell formatting
 ```
 
 ## License
 
-Apache 2.0
+Apache 2.0 — see [LICENSE](LICENSE).

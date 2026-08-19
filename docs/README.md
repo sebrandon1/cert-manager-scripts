@@ -7,7 +7,7 @@
 | [Getting Started](getting-started.md) | Step-by-step walkthrough from prerequisites to testing |
 | [Installation](installation.md) | Detailed installation for each component |
 | [Pebble Usage](pebble-usage.md) | Working with the local ACME test server |
-| [DNS-01 Setup](dns01-setup.md) | Air-gapped DNS-01 challenge configuration |
+| [DNS-01 Setup](dns01-setup.md) | Air-gapped DNS-01 (fake DNS or acme-dns) |
 | [Network Support](network-support.md) | IPv4/IPv6/dual-stack cluster testing |
 | [IBU Testing](ibu-testing.md) | Image-Based Upgrade certificate validation |
 | [Troubleshooting](troubleshooting.md) | Common issues and diagnostic commands |
@@ -17,7 +17,7 @@
 | Document | Description |
 |----------|-------------|
 | [IBU-FAQ](IBU-FAQ.md) | Frequently asked questions about IBU certificate testing |
-| [CRC Cluster Health](CRC-CLUSTER-HEALTH-IMPROVEMENTS.md) | CI workflow health check enhancements |
+| [CI Cluster Health](CRC-CLUSTER-HEALTH-IMPROVEMENTS.md) | CRC health checks used by OCP integration tests |
 | [Contributing](../CONTRIBUTING.md) | Development setup and pull request process |
 
 ## Choosing a Challenge Type

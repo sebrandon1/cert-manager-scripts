@@ -35,14 +35,14 @@ Thank you for contributing to cert-manager-scripts! This guide will help you get
 All shell scripts must follow consistent formatting using `shfmt`:
 
 ```bash
-# Check formatting (what CI runs)
-shfmt -d .
+# Check formatting + shellcheck (what you should run locally)
+make lint
 
-# Auto-format all scripts
-shfmt -w .
+# Auto-format scripts
+make fmt
 
-# Format specific file
-shfmt -w script-name.sh
+# Format a specific file
+shfmt -w scripts/your-script.sh
 ```
 
 **Formatting rules:**
@@ -54,13 +54,9 @@ shfmt -w script-name.sh
 
 Before submitting a pull request:
 
-1. **Format check:**
+1. **Format and lint check:**
    ```bash
-   # Using Make (recommended)
    make lint
-   
-   # Or directly with shfmt
-   shfmt -d scripts/
    ```
 
 2. **Test on a real cluster:**
@@ -109,12 +105,12 @@ Before submitting a pull request:
 4. **Open a Pull Request** on GitHub
 
 5. **Ensure CI passes:**
-   - Shell format check must pass
-   - Integration tests must pass (requires `CRC_PULL_SECRET` secret)
+   - `make lint` (shfmt + shellcheck)
+   - Integration tests (Kind always; OCP needs `CRC_PULL_SECRET`)
 
 ### Pull Request Checklist
 
-- [ ] Code follows shell script formatting (shfmt)
+- [ ] `make lint` passes (shfmt + shellcheck)
 - [ ] Tested on a real OpenShift cluster
 - [ ] Scripts are idempotent (can run multiple times safely)
 - [ ] Documentation updated (README.md or relevant .md files)
@@ -129,25 +125,17 @@ This repository uses GitHub Actions to automatically test changes.
 
 ### Workflow: `pre-main.yml`
 
-The CI pipeline runs on every push and pull request with two jobs:
+Runs on every push and pull request to `main`:
 
-#### 1. Shell Format Check
-- Validates all shell scripts with `shfmt`
-- Ensures consistent formatting across the codebase
-- **Must pass** before integration tests run
+1. **Shell format check** — `shfmt -d scripts/ lib/`
+2. **ShellCheck** — `shellcheck --severity=error` on `scripts/` and `lib/`
+3. **Workload partitioning check** — script present, executable, valid syntax
+4. **Structure check** — directory layout, key files, script references
+5. **Version query check** — pebble, acme-dns, operator, minio, ubi9-python
+6. **Kind integration test** — cert-manager v1.19.0 and v1.20.0
+7. **OCP integration test** — CRC via [quick-ocp](https://github.com/palmsoftware/quick-ocp), matrix of OCP 4.20/4.21/4.22 × cert-manager v1.19.0/v1.20.0. Runs `make quick-http-test` (HTTP-01, not DNS-01), API server cert verification, workload partitioning, and network stack detection. Skipped for dependabot.
 
-#### 2. Integration Test (OCP 4.20/4.21 + cert-manager)
-- Deploys a real OpenShift cluster using [quick-ocp](https://github.com/palmsoftware/quick-ocp)
-- Installs cert-manager-operator
-- Runs the complete `make quick-http-test` workflow:
-  - Installs fake DNS for air-gapped testing
-  - Installs Pebble ACME server
-  - Creates DNS-01 ClusterIssuer
-  - Requests wildcard certificate
-  - Validates certificate issuance
-- Displays detailed results and logs on failure
-
-**Note:** Integration tests require the `CRC_PULL_SECRET` GitHub secret for deploying the OCP cluster. This is only available in the upstream repository.
+OCP integration tests need the `CRC_PULL_SECRET` GitHub secret (upstream only). See [CI cluster health](docs/CRC-CLUSTER-HEALTH-IMPROVEMENTS.md) for the CRC health-check flow.
 
 ### Running CI Tests Locally
 
@@ -166,9 +154,8 @@ make quick-http-test
 
 If CI fails:
 
-1. **Format check failure:**
-   - Run `shfmt -w scripts/` to auto-format all scripts
-   - Or check what needs fixing with `make lint`
+1. **Format or ShellCheck failure:**
+   - Run `make fmt` then `make lint`
    - Commit the formatting changes
 
 2. **Integration test failure:**
@@ -189,14 +176,16 @@ Update documentation when you:
 
 ### Documentation Files
 
-- **README.md** - Overview, quick start, and key links
-- **[docs/installation.md](docs/installation.md)** - Detailed installation instructions
-- **[docs/troubleshooting.md](docs/troubleshooting.md)** - Common issues and solutions
-- **[docs/pebble-usage.md](docs/pebble-usage.md)** - Pebble-specific usage and examples
-- **[docs/network-support.md](docs/network-support.md)** - IPv4/IPv6/dual-stack testing
-- **[docs/dns01-setup.md](docs/dns01-setup.md)** - DNS-01 challenge configuration
-- **[docs/ibu-testing.md](docs/ibu-testing.md)** - Image-Based Upgrade certificate loss validation
-- **CONTRIBUTING.md** - This file
+- **README.md** — overview and quick start
+- **[docs/README.md](docs/README.md)** — documentation index
+- **[docs/getting-started.md](docs/getting-started.md)** — first-time walkthrough
+- **[docs/installation.md](docs/installation.md)** — component install
+- **[docs/troubleshooting.md](docs/troubleshooting.md)** — diagnostics
+- **[docs/pebble-usage.md](docs/pebble-usage.md)** — Pebble
+- **[docs/dns01-setup.md](docs/dns01-setup.md)** — DNS-01
+- **[docs/network-support.md](docs/network-support.md)** — IPv4/IPv6/dual-stack
+- **[docs/ibu-testing.md](docs/ibu-testing.md)** — IBU certificate validation
+- **CONTRIBUTING.md** — this file
 
 ### Documentation Style
 
@@ -255,9 +244,8 @@ When adding a new script:
 
 ## Getting Help
 
-- **Issues:** Open an issue for bugs or feature requests
-- **Discussions:** Use GitHub Discussions for questions
-- **Pull Requests:** Reference related issues in your PR description
+- **Issues:** bugs and feature requests
+- **Pull Requests:** reference related issues in the description
 
 ## Code of Conduct
 

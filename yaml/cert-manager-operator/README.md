@@ -19,6 +19,7 @@ make install-cert-manager-operator
 export OPERATOR_NAMESPACE="cert-manager-operator"
 export OPERATOR_NAME="openshift-cert-manager-operator"
 export CHANNEL="stable-v1"
+export CERT_MANAGER_VERSION="v1.19.0"
 
 envsubst < yaml/cert-manager-operator/operatorgroup.yaml | oc apply -f -
 envsubst < yaml/cert-manager-operator/subscription.yaml | oc apply -f -
@@ -31,6 +32,7 @@ envsubst < yaml/cert-manager-operator/subscription.yaml | oc apply -f -
 | `OPERATOR_NAMESPACE` | `cert-manager-operator` | Namespace for the operator |
 | `OPERATOR_NAME` | `openshift-cert-manager-operator` | Operator subscription name |
 | `CHANNEL` | `stable-v1` | Update channel |
+| `CERT_MANAGER_VERSION` | `v1.19.0` | `startingCSV` pin |
 
 ## Related Documentation
 

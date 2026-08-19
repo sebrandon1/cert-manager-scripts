@@ -45,9 +45,9 @@ This enables testing DNS-01 challenges without public DNS or internet connectivi
 
 ## Use Case
 
-Combined with Pebble's `ALWAYS_VALID=1` mode, the fake DNS server allows complete air-gapped testing of cert-manager DNS-01 workflows.
+Combined with `PEBBLE_ALWAYS_VALID=1`, the fake DNS server allows complete air-gapped testing of cert-manager DNS-01 workflows.
 
 ## Related Documentation
 
 - [DNS-01 Setup](../../docs/dns01-setup.md) - DNS-01 challenge configuration
-- [Network Support](../../docs/network-support.md) - Air-gapped setup
+- [Network Support](../../docs/network-support.md) - IPv4/IPv6/dual-stack

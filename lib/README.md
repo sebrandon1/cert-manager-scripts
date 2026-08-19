@@ -10,13 +10,15 @@ Shared shell library functions for cert-manager-scripts.
 
 ## Usage
 
-Source `common.sh` at the top of your scripts:
+Source `common.sh` at the top of scripts in `scripts/`:
 
 ```bash
 #!/bin/bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$SCRIPT_DIR/lib/common.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
 ```
+
+Scripts in `scripts/troubleshooting/` and `scripts/workflows/` use `source "$SCRIPT_DIR/../../lib/common.sh"`. Most `scripts/ibu/` files set `SCRIPT_DIR` to the parent `scripts/` directory and then `source "$SCRIPT_DIR/../lib/common.sh"`.
 
 ## Available Functions
 
@@ -56,7 +58,9 @@ source "$SCRIPT_DIR/lib/common.sh"
 | Function | Description |
 |----------|-------------|
 | `retry 3 5 cmd args...` | Retry command with exponential backoff |
-| `wait_for_resource type/name ns timeout` | Wait for resource readiness |
+| `wait_for_resource type/name ns timeout` | Wait for resource readiness (progress every 15s) |
+| `print_header "Title"` | Section header |
+| `apply_yaml_template file.yaml "Kind"` | envsubst + oc apply |
 | `print_summary "Key" "Val" ...` | Print formatted summary table |
 
 ## Log Levels
@@ -80,8 +84,8 @@ LOG_LEVEL=debug ./scripts/install-pebble.sh
 
 ```bash
 #!/bin/bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$SCRIPT_DIR/lib/common.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/common.sh"
 
 setup_cleanup
 load_env

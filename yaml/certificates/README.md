@@ -7,14 +7,18 @@ Test certificate templates for cert-manager. Used to request certificates from C
 | File | Description |
 |------|-------------|
 | `test-certificate.yaml` | Template for requesting a test certificate with 90-day validity |
+| `short-lived-certificate.yaml` | Short-lived cert for renewal testing (`make test-cert-renewal`) |
 
 ## Usage
 
 ```bash
-# Request a test certificate
+# HTTP-01 test certs (test-cert-simple, test-cert-app, test-cert-api)
+make create-certs
+
+# DNS-01 wildcard cert (wildcard-test)
 make test-cert
 
-# Or manually:
+# Or apply the template directly:
 export CERT_NAME="test-cert"
 export CERT_NAMESPACE="default"
 export CERT_SECRET_NAME="test-cert-tls"
@@ -45,10 +49,10 @@ envsubst < yaml/certificates/test-certificate.yaml | oc apply -f -
 ## Verification
 
 ```bash
-# Check certificate status
+# wildcard-test (DNS-01)
 make verify-cert
 
-# View certificate details
+# any certificate
 oc get certificate -n $CERT_NAMESPACE $CERT_NAME -o yaml
 ```
 

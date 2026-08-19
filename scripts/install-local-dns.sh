@@ -55,11 +55,12 @@ display_next_steps() {
 	echo "   oc delete namespace pebble"
 	echo "   DNS_SERVER=${acmedns_dns}:53 PEBBLE_ALWAYS_VALID=1 make install-pebble"
 	echo
-	echo "2. Install cert-manager webhook for acme-dns:"
-	echo "   See docs/dns01-setup.md for Helm-based webhook installation"
+	echo "2. Register an acme-dns account (native cert-manager solver, no webhook):"
+	echo "   make register-acmedns"
+	echo "   See docs/dns01-setup.md"
 	echo
-	echo "3. Create a DNS-01 ClusterIssuer:"
-	echo "   make create-dns01-issuer"
+	echo "3. Create a ClusterIssuer using the native acmeDNS solver:"
+	echo "   See docs/dns01-setup.md"
 	echo
 	echo "4. Test with a wildcard certificate:"
 	echo "   make test-cert"

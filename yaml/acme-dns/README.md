@@ -15,6 +15,12 @@ ACME-DNS server for DNS-01 challenge automation. Provides a specialized DNS serv
 
 ```bash
 # Deploy ACME-DNS
+make install-local-dns
+
+# Register an account and create the credentials Secret
+make register-acmedns
+
+# Or apply manifests directly:
 export ACMEDNS_NAMESPACE="acme-dns"
 envsubst < yaml/acme-dns/namespace.yaml | oc apply -f -
 envsubst < yaml/acme-dns/configmap.yaml | oc apply -f -
@@ -30,7 +36,7 @@ envsubst < yaml/acme-dns/service.yaml | oc apply -f -
 
 ## How It Works
 
-ACME-DNS stores TXT records in sqlite3 and exposes both DNS (port 53) and HTTP API (port 8080) interfaces. cert-manager can use the ACME-DNS webhook solver to automate DNS-01 challenges.
+ACME-DNS stores TXT records in sqlite3 and exposes both DNS (port 53) and HTTP API (port 8080) interfaces. cert-manager uses the native `acmeDNS` solver against that API (`make register-acmedns`).
 
 ## Related Documentation
 

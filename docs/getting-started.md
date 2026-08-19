@@ -9,6 +9,7 @@ Before you begin, ensure you have:
 - OpenShift cluster (4.20+)
 - `oc` CLI installed and configured with cluster-admin privileges
 - `openssl` for certificate inspection
+- `jq` (`brew install jq` or `dnf install jq`)
 - `envsubst` (`brew install gettext` on macOS, `dnf install gettext` on RHEL/Fedora)
 
 Verify cluster access:
@@ -106,7 +107,7 @@ Press `Ctrl+C` once the certificate shows `READY: True`.
 ### Inspect the Certificate
 
 ```bash
-oc get secret test-cert-http01-tls -n default -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
+oc get secret test-cert-simple-tls -n default -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
 ```
 
 ## Step 3b: DNS-01 Wildcard Certificates
