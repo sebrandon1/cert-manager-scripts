@@ -20,11 +20,11 @@ check_single_issuer() {
 
 	# Get issuer status
 	log_info "ClusterIssuer Status:"
-	oc get clusterissuer "$ISSUER_NAME"
+	"$KUBE_CLI" get clusterissuer "$ISSUER_NAME"
 	echo
 
 	# Check if issuer is ready
-	READY=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
+	READY=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
 
 	if [ "$READY" = "True" ]; then
 		echo "✅ ClusterIssuer is READY!"
@@ -37,21 +37,21 @@ check_single_issuer() {
 	echo
 
 	# Get ACME server URL
-	ACME_SERVER=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.server}' 2>/dev/null || echo "N/A")
+	ACME_SERVER=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.server}' 2>/dev/null || echo "N/A")
 	log_debug "ACME Server: $ACME_SERVER"
 
 	# Get email
-	EMAIL=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.email}' 2>/dev/null || echo "N/A")
+	EMAIL=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.email}' 2>/dev/null || echo "N/A")
 	log_debug "Email: $EMAIL"
 
 	# Check solver type
-	SOLVER_TYPE=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].http01}' 2>/dev/null)
+	SOLVER_TYPE=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].http01}' 2>/dev/null)
 	if [ -n "$SOLVER_TYPE" ]; then
 		log_debug "Solver Type: HTTP-01"
-		INGRESS_CLASS=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].http01.ingress.class}' 2>/dev/null || echo "N/A")
+		INGRESS_CLASS=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].http01.ingress.class}' 2>/dev/null || echo "N/A")
 		log_debug "Ingress Class: $INGRESS_CLASS"
 	else
-		SOLVER_TYPE=$(oc get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].dns01}' 2>/dev/null)
+		SOLVER_TYPE=$("$KUBE_CLI" get clusterissuer "$ISSUER_NAME" -o jsonpath='{.spec.acme.solvers[0].dns01}' 2>/dev/null)
 		if [ -n "$SOLVER_TYPE" ]; then
 			log_debug "Solver Type: DNS-01"
 		else
@@ -61,7 +61,7 @@ check_single_issuer() {
 
 	echo
 	log_info "Detailed Configuration:"
-	oc describe clusterissuer "$ISSUER_NAME"
+	"$KUBE_CLI" describe clusterissuer "$ISSUER_NAME"
 
 	print_header "Testing ACME Server Connectivity"
 
@@ -70,8 +70,8 @@ check_single_issuer() {
 		log_info "Testing Pebble connectivity..."
 
 		# Check if Pebble is running
-		if oc get deployment pebble -n pebble &>/dev/null; then
-			READY_REPLICAS=$(oc get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+		if "$KUBE_CLI" get deployment pebble -n pebble &>/dev/null; then
+			READY_REPLICAS=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 			if [ "$READY_REPLICAS" -gt 0 ]; then
 				echo "✅ Pebble deployment is running"
 			else
@@ -80,7 +80,7 @@ check_single_issuer() {
 
 			# Try to access ACME directory
 			log_info "Testing ACME directory endpoint..."
-			if oc run --rm -i --restart=Never test-acme-$RANDOM --image=curlimages/curl -- curl -ks "$ACME_SERVER" 2>/dev/null | grep -q "directory"; then
+			if "$KUBE_CLI" run --rm -i --restart=Never test-acme-$RANDOM --image=curlimages/curl -- curl -ks "$ACME_SERVER" 2>/dev/null | grep -q "directory"; then
 				echo "✅ ACME directory is accessible"
 			else
 				log_warn "Could not access ACME directory"
@@ -94,17 +94,17 @@ check_single_issuer() {
 
 	print_header "Troubleshooting Commands"
 	echo "View full YAML configuration:"
-	echo "  oc get clusterissuer $ISSUER_NAME -o yaml"
+	echo "  $KUBE_CLI get clusterissuer $ISSUER_NAME -o yaml"
 	echo
 	echo "Check ACME account status:"
-	echo "  oc get clusterissuer $ISSUER_NAME -o jsonpath='{.status.acme.uri}'"
+	echo "  $KUBE_CLI get clusterissuer $ISSUER_NAME -o jsonpath='{.status.acme.uri}'"
 	echo
 	echo "Test certificate creation:"
 	echo "  make create-certs"
 	echo
 }
 
-require_cmd oc jq
+require_cmd "$KUBE_CLI" jq
 
 # Main logic
 if [ $# -eq 0 ]; then
@@ -112,7 +112,7 @@ if [ $# -eq 0 ]; then
 	print_header "Checking All ClusterIssuers"
 
 	# Get all ClusterIssuers
-	ISSUERS=$(oc get clusterissuer -o json 2>/dev/null | jq -r '.items[].metadata.name' 2>/dev/null || echo "")
+	ISSUERS=$("$KUBE_CLI" get clusterissuer -o json 2>/dev/null | jq -r '.items[].metadata.name' 2>/dev/null || echo "")
 
 	if [ -z "$ISSUERS" ]; then
 		log_warn "No ClusterIssuers found"
@@ -137,11 +137,11 @@ elif [ $# -eq 1 ]; then
 	ISSUER_NAME=$1
 
 	# Check if issuer exists
-	if ! oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
+	if ! "$KUBE_CLI" get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 		log_error "ClusterIssuer '$ISSUER_NAME' not found"
 		echo
 		log_info "Available ClusterIssuers:"
-		oc get clusterissuer 2>/dev/null || echo "  None found"
+		"$KUBE_CLI" get clusterissuer 2>/dev/null || echo "  None found"
 		exit 1
 	fi
 

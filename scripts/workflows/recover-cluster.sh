@@ -16,7 +16,7 @@ print_header "CRC Cluster Recovery Attempt"
 
 # Test 1: Check if DNS resolution is working
 log_info "Checking DNS resolution..."
-API_HOST=$(oc config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null | sed 's|https://||' | cut -d: -f1 || echo "")
+API_HOST=$("$KUBE_CLI" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null | sed 's|https://||' | cut -d: -f1 || echo "")
 
 if [ -z "$API_HOST" ]; then
 	log_error "Cannot determine API server hostname"
@@ -41,14 +41,19 @@ fi
 
 # Test 2: Check if we can authenticate
 log_info "Checking cluster authentication..."
-if ! oc whoami &>/dev/null; then
+if [[ "$KUBE_CLI" == "oc" ]]; then
+	auth_cmd=("$KUBE_CLI" whoami)
+else
+	auth_cmd=("$KUBE_CLI" get namespace default)
+fi
+if ! "${auth_cmd[@]}" &>/dev/null; then
 	log_warn "Cannot authenticate with cluster"
 	log_info "Attempting to refresh authentication..."
 
 	# Try to force a token refresh
-	oc version &>/dev/null || true
+	"$KUBE_CLI" version &>/dev/null || true
 
-	if retry 3 3 oc whoami; then
+	if retry 3 3 "${auth_cmd[@]}"; then
 		log_info "✅ Authentication recovered"
 	else
 		log_error "❌ Authentication still failing"
@@ -58,7 +63,7 @@ fi
 
 # Test 3: Check API server responsiveness
 log_info "Checking API server responsiveness..."
-if retry 5 5 oc get namespace default; then
+if retry 5 5 "$KUBE_CLI" get namespace default; then
 	log_info "✅ API server is responsive"
 else
 	log_error "❌ API server not responsive after 5 attempts"

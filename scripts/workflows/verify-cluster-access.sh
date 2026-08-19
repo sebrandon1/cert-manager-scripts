@@ -14,18 +14,18 @@ source "$SCRIPT_DIR/../../lib/common.sh"
 
 print_header "CRC Cluster Health Check"
 
-# Test 1: Check oc command is available
-log_info "Checking oc CLI availability..."
-if ! command -v oc &>/dev/null; then
-	log_error "oc command not found"
+# Test 1: Check cluster CLI is available
+log_info "Checking $KUBE_CLI CLI availability..."
+if ! command -v "$KUBE_CLI" &>/dev/null; then
+	log_error "$KUBE_CLI command not found"
 	exit 1
 fi
-oc version --client
+"$KUBE_CLI" version --client
 echo
 
 # Test 2: Check DNS resolution for API server
 log_info "Checking API server DNS resolution..."
-API_HOST=$(oc config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null | sed 's|https://||' | cut -d: -f1)
+API_HOST=$("$KUBE_CLI" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null | sed 's|https://||' | cut -d: -f1)
 if [ -z "$API_HOST" ]; then
 	log_error "Could not determine API server hostname from kubeconfig"
 	exit 1
@@ -58,7 +58,11 @@ echo
 
 # Test 4: Check authentication
 log_info "Checking cluster authentication..."
-USERNAME=$(oc whoami 2>/dev/null || echo "")
+if [[ "$KUBE_CLI" == "oc" ]]; then
+	USERNAME=$("$KUBE_CLI" whoami 2>/dev/null || echo "")
+else
+	USERNAME=$("$KUBE_CLI" config current-context 2>/dev/null || echo "")
+fi
 if [ -n "$USERNAME" ]; then
 	log_info "✅ Authenticated as: $USERNAME"
 else
@@ -70,9 +74,9 @@ echo
 
 # Test 5: Check API server reachability
 log_info "Checking API server reachability..."
-if oc version &>/dev/null; then
+if "$KUBE_CLI" version &>/dev/null; then
 	log_info "✅ API server is reachable"
-	oc version | grep -E "Server Version|Kubernetes Version" || true
+	"$KUBE_CLI" version | grep -E "Server Version|Kubernetes Version" || true
 else
 	log_error "❌ Cannot reach API server"
 	exit 1
@@ -81,10 +85,10 @@ echo
 
 # Test 6: Check cluster nodes
 log_info "Checking cluster nodes..."
-NODE_COUNT=$(oc get nodes --no-headers 2>/dev/null | wc -l | xargs)
+NODE_COUNT=$("$KUBE_CLI" get nodes --no-headers 2>/dev/null | wc -l | xargs)
 if [ "$NODE_COUNT" -gt 0 ]; then
 	log_info "✅ Cluster has $NODE_COUNT node(s)"
-	oc get nodes
+	"$KUBE_CLI" get nodes
 else
 	log_error "❌ No nodes found in cluster"
 	exit 1
@@ -94,31 +98,36 @@ echo
 # Test 7: Check node readiness
 log_info "Checking node readiness..."
 # Use || true to prevent grep from failing when all nodes are Ready (grep returns 1 on no match)
-NOT_READY=$(oc get nodes --no-headers 2>/dev/null | { grep -v " Ready " || true; } | wc -l | xargs)
+NOT_READY=$("$KUBE_CLI" get nodes --no-headers 2>/dev/null | { grep -v " Ready " || true; } | wc -l | xargs)
 if [ "$NOT_READY" -eq 0 ]; then
 	log_info "✅ All nodes are Ready"
 else
 	log_warn "⚠️  $NOT_READY node(s) not ready"
-	oc get nodes | grep -v " Ready " || true
+	"$KUBE_CLI" get nodes | grep -v " Ready " || true
 fi
 echo
 
-# Test 8: Check critical cluster operators
-log_info "Checking critical cluster operators..."
-DEGRADED_OPS=$(oc get clusteroperators --no-headers 2>/dev/null | awk '$3=="True" || $4=="True" || $5=="True"' | wc -l | xargs)
-if [ "$DEGRADED_OPS" -eq 0 ]; then
-	log_info "✅ No degraded cluster operators"
+# Test 8: Check critical cluster operators (OpenShift-only)
+if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+	log_info "Checking critical cluster operators..."
+	DEGRADED_OPS=$("$KUBE_CLI" get clusteroperators --no-headers 2>/dev/null | awk '$3=="True" || $4=="True" || $5=="True"' | wc -l | xargs)
+	if [ "$DEGRADED_OPS" -eq 0 ]; then
+		log_info "✅ No degraded cluster operators"
+	else
+		log_warn "⚠️  $DEGRADED_OPS cluster operator(s) degraded"
+		"$KUBE_CLI" get clusteroperators | grep -E "DEGRADED.*True|PROGRESSING.*True|AVAILABLE.*False" || true
+		log_warn "Continuing despite degraded operators (may cause test issues)"
+	fi
+	echo
 else
-	log_warn "⚠️  $DEGRADED_OPS cluster operator(s) degraded"
-	oc get clusteroperators | grep -E "DEGRADED.*True|PROGRESSING.*True|AVAILABLE.*False" || true
-	log_warn "Continuing despite degraded operators (may cause test issues)"
+	log_info "Skipping cluster operator check (OpenShift-only)"
+	echo
 fi
-echo
 
 # Test 9: Quick API responsiveness check
 log_info "Checking API responsiveness..."
 START_TIME=$(date +%s)
-if oc get namespace default &>/dev/null; then
+if "$KUBE_CLI" get namespace default &>/dev/null; then
 	END_TIME=$(date +%s)
 	DURATION=$((END_TIME - START_TIME))
 	log_info "✅ API responded in ${DURATION}s"
