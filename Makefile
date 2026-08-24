@@ -47,7 +47,8 @@ BG_BLUE := \033[44m
         create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
         quick-multi-algo-test \
         install-pebble-challtestsrv install-local-dns register-acmedns \
-        label-cert-resources simulate-ibu validate-cert-loss validate-post-restore
+        label-cert-resources simulate-ibu validate-cert-loss validate-post-restore \
+        validate-yaml
 
 # Default target
 all: help
@@ -69,7 +70,7 @@ help: banner ## Show this help message
 	@echo "$(BOLD)$(BLUE)Available Commands:$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Setup & Validation:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|fmt|test-unit|check-network|check-workload)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|fmt|test-unit|validate-yaml|check-network|check-workload)"
 	@echo ""
 	@echo "$(YELLOW)Installation:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(install-|register-)"
@@ -129,6 +130,9 @@ test-unit: ## Run BATS unit tests (no cluster)
 	@echo "$(BOLD)$(BLUE)Running BATS unit tests...$(RESET)"
 	@bats --recursive tests/
 	@echo "$(GREEN)Unit tests passed!$(RESET)"
+
+validate-yaml: ## Validate YAML manifests with kubeconform
+	@./scripts/workflows/validate-yaml.sh
 
 _require-shfmt:
 	@if ! command -v shfmt >/dev/null 2>&1; then \
