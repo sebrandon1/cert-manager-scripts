@@ -11,6 +11,7 @@ Automation toolkit for testing cert-manager-operator on OpenShift clusters using
 ### Linting & Validation
 ```bash
 make lint          # Run shellcheck + shfmt on all scripts (CI gate)
+make test-unit     # Run BATS unit tests (no cluster)
 make preflight     # Check all tool dependencies and cluster prerequisites
 ```
 
@@ -173,8 +174,9 @@ CI runs on PRs to main (`.github/workflows/pre-main.yml`):
 3. **workload-partitioning-check** — script exists, is executable, syntax + Makefile/docs mentions
 4. **verify-structure** — directory layout, key files, script references
 5. **version-query-check** — version query scripts for pebble, acme-dns, operator, minio, ubi9-python
-6. **kind-integration-test** — Kind cluster, cert-manager v1.19.0 / v1.20.0
-7. **integration-test** — OCP 4.20/4.21/4.22 × cert-manager v1.19.0/v1.20.0 CRC matrix (skipped for dependabot); `make quick-http-test`, API server cert, workload partitioning, network stack detection
+6. **unit-tests** — BATS (`make test-unit`), no cluster
+7. **kind-integration-test** — Kind cluster, cert-manager v1.19.0 / v1.20.0
+8. **integration-test** — OCP 4.20/4.21/4.22 × cert-manager v1.19.0/v1.20.0 CRC matrix (skipped for dependabot); `make quick-http-test`, API server cert, workload partitioning, network stack detection
 
 ## Requirements
 

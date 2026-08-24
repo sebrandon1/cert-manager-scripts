@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${FOO}
+  namespace: default
+data:
+  value: substituted

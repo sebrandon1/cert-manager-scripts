@@ -30,7 +30,7 @@ BG_BLUE := \033[44m
 # ────────────────────────────────────────────────────────────────────────────────
 # Target Definitions
 # ────────────────────────────────────────────────────────────────────────────────
-.PHONY: all help banner preflight lint fmt _require-shfmt install-cert-manager-operator install-cert-manager-helm install-pebble \
+.PHONY: all help banner preflight lint fmt test-unit _require-shfmt install-cert-manager-operator install-cert-manager-helm install-pebble \
         install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
         create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
@@ -69,7 +69,7 @@ help: banner ## Show this help message
 	@echo "$(BOLD)$(BLUE)Available Commands:$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Setup & Validation:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|fmt|check-network|check-workload)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(preflight|lint|fmt|test-unit|check-network|check-workload)"
 	@echo ""
 	@echo "$(YELLOW)Installation:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(install-|register-)"
@@ -118,6 +118,17 @@ fmt: _require-shfmt ## Auto-fix shell script formatting with shfmt
 	@echo "$(BOLD)$(BLUE)Formatting shell scripts...$(RESET)"
 	@shfmt -w scripts/ lib/
 	@echo "$(GREEN)Shell scripts formatted!$(RESET)"
+
+test-unit: ## Run BATS unit tests (no cluster)
+	@if ! command -v bats >/dev/null 2>&1; then \
+	  echo "$(RED)bats not found. Please install it:$(RESET)"; \
+	  echo "$(DIM)  macOS: brew install bats-core$(RESET)"; \
+	  echo "$(DIM)  Linux: see https://github.com/bats-core/bats-core#install$(RESET)"; \
+	  exit 1; \
+	fi
+	@echo "$(BOLD)$(BLUE)Running BATS unit tests...$(RESET)"
+	@bats --recursive tests/
+	@echo "$(GREEN)Unit tests passed!$(RESET)"
 
 _require-shfmt:
 	@if ! command -v shfmt >/dev/null 2>&1; then \
