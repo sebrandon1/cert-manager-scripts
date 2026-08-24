@@ -24,9 +24,19 @@ CERT_NAME="apiserver-cert"
 SECRET_NAME="apiserver-cert-tls"
 
 check_prerequisites() {
-	require_cmd oc jq
+	require_cmd "$KUBE_CLI" jq
 
-	if ! retry 3 5 oc whoami; then
+	if [[ "$CLUSTER_TYPE" != "openshift" ]]; then
+		log_info "Skipping API server certificate verification (OpenShift-only)"
+		exit 0
+	fi
+
+	if [[ "$KUBE_CLI" == "oc" ]]; then
+		if ! retry 3 5 "$KUBE_CLI" whoami; then
+			log_error "Cluster may be unstable. Please check cluster connectivity."
+			exit 1
+		fi
+	elif ! retry 3 5 "$KUBE_CLI" get namespace default; then
 		log_error "Cluster may be unstable. Please check cluster connectivity."
 		exit 1
 	fi
@@ -37,28 +47,38 @@ verify_api_server_access() {
 	local has_issues=0
 
 	# Test 1: Can we run basic oc commands?
-	if oc version --client &>/dev/null; then
-		log_info "  ✅ oc client works"
+	if "$KUBE_CLI" version --client &>/dev/null; then
+		log_info "  ✅ $KUBE_CLI client works"
 	else
-		log_error "  ❌ oc client failed"
+		log_error "  ❌ $KUBE_CLI client failed"
 		has_issues=1
 	fi
 
 	# Test 2: Can we reach the API server?
-	if oc whoami &>/dev/null; then
+	if [[ "$KUBE_CLI" == "oc" ]]; then
+		if "$KUBE_CLI" whoami &>/dev/null; then
+			log_info "  ✅ API server is accessible (authenticated)"
+			local username
+			username=$("$KUBE_CLI" whoami 2>/dev/null || echo "unknown")
+			log_debug "     Logged in as: $username"
+		else
+			log_error "  ❌ Cannot authenticate with API server"
+			has_issues=1
+		fi
+	elif "$KUBE_CLI" get namespace default &>/dev/null; then
 		log_info "  ✅ API server is accessible (authenticated)"
 		local username
-		username=$(oc whoami 2>/dev/null || echo "unknown")
-		log_debug "     Logged in as: $username"
+		username=$("$KUBE_CLI" config current-context 2>/dev/null || echo "unknown")
+		log_debug "     Context: $username"
 	else
 		log_error "  ❌ Cannot authenticate with API server"
 		has_issues=1
 	fi
 
 	# Test 3: Can we list resources?
-	if oc get nodes &>/dev/null; then
+	if "$KUBE_CLI" get nodes &>/dev/null; then
 		local node_count
-		node_count=$(oc get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
+		node_count=$("$KUBE_CLI" get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
 		log_info "  ✅ Can list cluster resources ($node_count nodes)"
 	else
 		log_error "  ❌ Cannot list cluster resources"
@@ -67,7 +87,11 @@ verify_api_server_access() {
 
 	# Test 4: Can we get API server info?
 	local api_url
-	api_url=$(oc whoami --show-server 2>/dev/null || echo "")
+	if [[ "$KUBE_CLI" == "oc" ]]; then
+		api_url=$("$KUBE_CLI" whoami --show-server 2>/dev/null || echo "")
+	else
+		api_url=$("$KUBE_CLI" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "")
+	fi
 	if [ -n "$api_url" ]; then
 		log_info "  ✅ API server URL: $api_url"
 	else
@@ -82,17 +106,17 @@ verify_certificate_exists() {
 	log_info "Verifying certificate resource..."
 	local has_issues=0
 
-	if ! oc get namespace "$CERT_NAMESPACE" &>/dev/null; then
+	if ! "$KUBE_CLI" get namespace "$CERT_NAMESPACE" &>/dev/null; then
 		log_error "  ❌ Namespace '$CERT_NAMESPACE' not found"
 		return 1
 	fi
 
-	if oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" &>/dev/null; then
+	if "$KUBE_CLI" get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" &>/dev/null; then
 		log_info "  ✅ Certificate '$CERT_NAME' exists"
 
 		# Check if certificate is ready
 		local ready
-		ready=$(oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
+		ready=$("$KUBE_CLI" get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
 
 		if [ "$ready" = "True" ]; then
 			log_info "  ✅ Certificate is READY"
@@ -113,14 +137,14 @@ verify_certificate_secret() {
 	log_info "Verifying certificate secret..."
 	local has_issues=0
 
-	if oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" &>/dev/null; then
+	if "$KUBE_CLI" get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" &>/dev/null; then
 		log_info "  ✅ Secret '$SECRET_NAME' exists"
 
 		# Check if secret has required keys
 		local has_tls_crt
-		has_tls_crt=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null)
+		has_tls_crt=$("$KUBE_CLI" get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null)
 		local has_tls_key
-		has_tls_key=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.key}' 2>/dev/null)
+		has_tls_key=$("$KUBE_CLI" get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.key}' 2>/dev/null)
 
 		if [ -n "$has_tls_crt" ]; then
 			log_info "  ✅ Secret contains tls.crt"
@@ -150,7 +174,7 @@ verify_certificate_details() {
 
 	# Extract and verify certificate
 	local cert_pem
-	cert_pem=$(oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d)
+	cert_pem=$("$KUBE_CLI" get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d)
 
 	if [ -n "$cert_pem" ]; then
 		# Check expiration
@@ -202,7 +226,7 @@ check_apiserver_configuration() {
 
 	# Check if the API server is configured to use our certificate
 	local apiserver_config
-	apiserver_config=$(oc get apiserver cluster -o json 2>/dev/null)
+	apiserver_config=$("$KUBE_CLI" get apiserver cluster -o json 2>/dev/null)
 
 	if [ -n "$apiserver_config" ]; then
 		local serving_certs
@@ -244,16 +268,16 @@ provide_recommendations() {
 		echo
 		log_info "Troubleshooting steps:"
 		echo "  1. Check certificate status:"
-		echo "     oc describe certificate $CERT_NAME -n $CERT_NAMESPACE"
+		echo "     $KUBE_CLI describe certificate $CERT_NAME -n $CERT_NAMESPACE"
 		echo
 		echo "  2. Check certificate secret:"
-		echo "     oc get secret $SECRET_NAME -n $CERT_NAMESPACE"
+		echo "     $KUBE_CLI get secret $SECRET_NAME -n $CERT_NAMESPACE"
 		echo
 		echo "  3. Check API server logs:"
-		echo "     oc logs -n openshift-apiserver -l app=openshift-apiserver"
+		echo "     $KUBE_CLI logs -n openshift-apiserver -l app=openshift-apiserver"
 		echo
 		echo "  4. Verify cert-manager logs:"
-		echo "     oc logs -n cert-manager deployment/cert-manager"
+		echo "     $KUBE_CLI logs -n cert-manager deployment/cert-manager"
 	fi
 
 	echo

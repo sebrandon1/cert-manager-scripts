@@ -11,9 +11,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
+if [[ "$CLUSTER_TYPE" != "openshift" ]]; then
+	log_info "Skipping cluster operator wait (OpenShift-only)"
+	exit 0
+fi
+
 check_operators_healthy() {
 	local degraded
-	degraded=$(oc get clusteroperators --no-headers | awk '($3!="True" || $4=="True" || $5=="True")' | wc -l | xargs)
+	degraded=$("$KUBE_CLI" get clusteroperators --no-headers | awk '($3!="True" || $4=="True" || $5=="True")' | wc -l | xargs)
 	[ "$degraded" -eq 0 ]
 }
 
@@ -24,6 +29,6 @@ else
 	log_warn "Timeout waiting for all cluster operators. Checking critical operators..."
 fi
 log_info "Cluster operator status:"
-oc get clusteroperators || true
+"$KUBE_CLI" get clusteroperators || true
 
 require_healthy_cluster 30 10

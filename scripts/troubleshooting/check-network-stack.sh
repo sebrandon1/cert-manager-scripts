@@ -17,10 +17,14 @@ detect_cluster_network() {
 	echo
 
 	# Get network configuration from cluster
-	local cluster_network
-	cluster_network=$(oc get network.config.openshift.io cluster -o jsonpath='{.spec.clusterNetwork[*].cidr}' 2>/dev/null || echo "")
-	local service_network
-	service_network=$(oc get network.config.openshift.io cluster -o jsonpath='{.spec.serviceNetwork[*]}' 2>/dev/null || echo "")
+	local cluster_network=""
+	local service_network=""
+	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
+		cluster_network=$("$KUBE_CLI" get network.config.openshift.io cluster -o jsonpath='{.spec.clusterNetwork[*].cidr}' 2>/dev/null || echo "")
+		service_network=$("$KUBE_CLI" get network.config.openshift.io cluster -o jsonpath='{.spec.serviceNetwork[*]}' 2>/dev/null || echo "")
+	else
+		log_debug "Skipping OpenShift network.config CRD (not on OpenShift)"
+	fi
 
 	log_debug "Cluster Networks: ${cluster_network:-Not found}"
 	log_debug "Service Networks: ${service_network:-Not found}"
@@ -63,7 +67,7 @@ check_node_addresses() {
 	echo
 
 	local nodes
-	nodes=$(oc get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}')
+	nodes=$("$KUBE_CLI" get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}')
 
 	local has_ipv4_nodes=false
 	local has_ipv6_nodes=false
@@ -102,7 +106,7 @@ check_certmanager_pods() {
 	echo
 
 	local pods
-	pods=$(oc get pods -n cert-manager -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIP}{"\n"}{end}' 2>/dev/null || echo "")
+	pods=$("$KUBE_CLI" get pods -n cert-manager -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIP}{"\n"}{end}' 2>/dev/null || echo "")
 
 	if [ -z "$pods" ]; then
 		log_warn "⚠️  cert-manager pods not found or not running"
@@ -148,9 +152,9 @@ check_webhook_connectivity() {
 	echo
 
 	local webhook_cluster_ip
-	webhook_cluster_ip=$(oc get service cert-manager-webhook -n cert-manager -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
+	webhook_cluster_ip=$("$KUBE_CLI" get service cert-manager-webhook -n cert-manager -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
 	local webhook_cluster_ips
-	webhook_cluster_ips=$(oc get service cert-manager-webhook -n cert-manager -o jsonpath='{.spec.clusterIPs[*]}' 2>/dev/null || echo "")
+	webhook_cluster_ips=$("$KUBE_CLI" get service cert-manager-webhook -n cert-manager -o jsonpath='{.spec.clusterIPs[*]}' 2>/dev/null || echo "")
 
 	if [ -n "$webhook_cluster_ip" ]; then
 		log_debug "Webhook ClusterIP: $webhook_cluster_ip"
@@ -174,7 +178,7 @@ check_webhook_connectivity() {
 main() {
 	print_header "Network Stack Detection"
 
-	require_cmd oc
+	require_cmd "$KUBE_CLI"
 	require_cluster
 
 	# Detect stack type

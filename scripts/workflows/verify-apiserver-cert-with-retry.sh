@@ -13,8 +13,17 @@ source "$SCRIPT_DIR/../../lib/common.sh"
 
 # shellcheck disable=SC2329
 check_cluster() {
-	oc whoami &>/dev/null && oc get nodes &>/dev/null
+	if [[ "$KUBE_CLI" == "oc" ]]; then
+		"$KUBE_CLI" whoami &>/dev/null && "$KUBE_CLI" get nodes &>/dev/null
+	else
+		"$KUBE_CLI" get namespace default &>/dev/null && "$KUBE_CLI" get nodes &>/dev/null
+	fi
 }
+
+if [[ "$CLUSTER_TYPE" != "openshift" ]]; then
+	log_info "Skipping API server certificate verification (OpenShift-only)"
+	exit 0
+fi
 
 log_info "Waiting for cluster connectivity before verification..."
 if wait_for_condition 5 5 check_cluster; then

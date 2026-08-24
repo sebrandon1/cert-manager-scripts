@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/../../lib/common.sh"
 
 # Check if cert-manager is installed
 check_cert_manager_exists() {
-	if ! oc get namespace cert-manager &>/dev/null; then
+	if ! "$KUBE_CLI" get namespace cert-manager &>/dev/null; then
 		log_error "cert-manager namespace not found"
 		log_info "cert-manager does not appear to be installed"
 		exit 1
@@ -33,7 +33,7 @@ check_workload_partitioning() {
 
 	# Get all pods in the cert-manager namespace
 	local pods
-	pods=$(oc get pods -n "$namespace" -o json 2>/dev/null)
+	pods=$("$KUBE_CLI" get pods -n "$namespace" -o json 2>/dev/null)
 
 	if [ -z "$pods" ] || [ "$(echo "$pods" | jq -r '.items | length')" -eq 0 ]; then
 		log_warn "No pods found in namespace $namespace"
@@ -96,7 +96,7 @@ check_deployment_configs() {
 
 	# Check deployments
 	local deployments
-	deployments=$(oc get deployments -n "$namespace" -o json 2>/dev/null)
+	deployments=$("$KUBE_CLI" get deployments -n "$namespace" -o json 2>/dev/null)
 	if [ -n "$deployments" ]; then
 		local deploy_count
 		deploy_count=$(echo "$deployments" | jq -r '.items | length')
@@ -165,7 +165,7 @@ provide_recommendations() {
 # Main execution
 main() {
 	print_header "Workload Partitioning Check"
-	require_cmd oc jq
+	require_cmd "$KUBE_CLI" jq
 	require_cluster
 	check_cert_manager_exists
 
