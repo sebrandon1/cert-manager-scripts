@@ -506,6 +506,57 @@ print_header() {
 	echo
 }
 
+# Fail if a YAML template references environment variables that are unset.
+# envsubst replaces unset ${VAR}/$VAR with empty string, which produces valid-looking
+# YAML (namespace: ) and a confusing API error. Reject unset only (set-but-empty is OK).
+# Usage: require_exported_vars <yaml_file>
+# bash 3.2: use [[ -z "${VAR+x}" ]] (no [[ -v ]]).
+require_exported_vars() {
+	local yaml_file="$1"
+	local missing=""
+	local tok name
+
+	# ${VAR} and $VAR. A trailing '.' is Go/Prometheus template field access
+	# ($labels.name) — skip those so envsubst placeholders are the only hits.
+	local tokens
+	tokens=$(grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$[A-Za-z_][A-Za-z0-9_]*\.?' "$yaml_file" 2>/dev/null | sort -u || true)
+
+	if [[ -n "$tokens" ]]; then
+		while IFS= read -r tok; do
+			[[ -z "$tok" ]] && continue
+			case "$tok" in
+			*.) continue ;;
+			\$\{*\})
+				name="${tok#\$\{}"
+				name="${name%\}}"
+				;;
+			\$*)
+				name="${tok#\$}"
+				;;
+			*)
+				continue
+				;;
+			esac
+			[[ -z "$name" ]] && continue
+			case " $missing " in
+			*" $name "*) continue ;;
+			esac
+			# eval: dynamic unset test; ${name+x} is set -u safe
+			if eval "[[ -z \"\${$name+x}\" ]]"; then
+				missing="$missing $name"
+			fi
+		done <<EOF
+$tokens
+EOF
+	fi
+
+	if [[ -n "$missing" ]]; then
+		log_error "Unexported template variables in $(basename "$yaml_file"):$missing"
+		log_hint "Export them in the calling script (export VAR=\"\${VAR:-default}\")"
+		return 1
+	fi
+}
+
 # Apply a YAML template with envsubst variable substitution
 # Usage: apply_yaml_template <yaml_file> <resource_type>
 apply_yaml_template() {
@@ -516,6 +567,8 @@ apply_yaml_template() {
 		log_error "YAML file not found: $yaml_file"
 		return 1
 	fi
+
+	require_exported_vars "$yaml_file" || return 1
 
 	if [[ "${DRY_RUN:-false}" == "true" ]]; then
 		log_info "[DRY RUN] Would apply $resource_type from $(basename "$yaml_file"):"
