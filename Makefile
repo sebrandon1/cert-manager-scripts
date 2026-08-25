@@ -610,7 +610,7 @@ clean-temp: ## Clean up temporary files
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
 
-clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config ## Clean everything except cert-manager-operator
+clean: clean-certs clean-cert-renewal clean-issuers clean-selfsigned clean-ingress-test clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config clean-ibu ## Clean everything except cert-manager-operator (includes IBU/MinIO/OADP)
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
@@ -618,7 +618,7 @@ clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble 
 	@echo "  ╚═════════════════════════════════════════════════════════════╝"
 	@echo "$(RESET)"
 	@echo ""
-	@echo "cert-manager-operator is still installed."
+	@echo "cert-manager-operator is still installed. IBU/MinIO/OADP resources removed."
 	@echo "To test again, run: make test-dns01"
 
 uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
@@ -631,4 +631,4 @@ uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
 	@oc delete namespace openshift-cert-manager-operator --ignore-not-found=true
 	@echo "$(GREEN)cert-manager-operator uninstalled.$(RESET)"
 
-uninstall-all: clean clean-ibu uninstall-cert-manager-operator ## Full teardown of all components (WARNING!)
+uninstall-all: clean uninstall-cert-manager-operator ## Full teardown of all components (WARNING!)
