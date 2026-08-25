@@ -168,10 +168,7 @@ The API server certificate has been created but NOT yet applied to the cluster.
    - Should be tested in a non-production environment first
 
 To apply this certificate to the API server:
-   1. Backup current API server certificates
-   2. Update the APIServer configuration to reference the new secret
-   3. Wait for the API server to roll out the changes
-   4. Verify cluster access still works
+   make apply-apiserver-cert
 
 To verify the certificate was created:
    make verify-apiserver-cert

@@ -32,7 +32,7 @@ BG_BLUE := \033[44m
 # ────────────────────────────────────────────────────────────────────────────────
 .PHONY: all help banner preflight lint fmt test-unit _require-shfmt install-cert-manager-operator install-cert-manager-helm install-pebble \
         install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
-        create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
+        create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert apply-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
         test-cert verify-cert test-cert-renewal clean-cert-renewal test-ingress-tls clean-ingress-test \
         status \
@@ -222,6 +222,9 @@ create-apiserver-cert: ## Create API server certificate
 
 verify-apiserver-cert: ## Verify API server certificate
 	@./scripts/troubleshooting/verify-apiserver-certificate.sh
+
+apply-apiserver-cert: ## Apply API server certificate to OpenShift APIServer/cluster (OpenShift only)
+	@./scripts/apply-apiserver-certificate.sh
 
 test-cert: ## Create a test wildcard certificate (DNS-01)
 	@echo "Creating test wildcard certificate..."
