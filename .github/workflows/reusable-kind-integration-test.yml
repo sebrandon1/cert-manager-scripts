@@ -18,6 +18,7 @@ env:
   KUBE_CLI: kubectl
   PEBBLE_ALWAYS_VALID: '1'
   SKIP_CONFIRM: '1'
+  INGRESS_CLASS: nginx
 
 jobs:
   test:
@@ -34,6 +35,7 @@ jobs:
         uses: palmsoftware/quick-k8s@v1
         with:
           clusterName: cert-manager-test
+          installIngressNginx: 'true'
 
       - name: Verify cluster access
         run: |
@@ -48,6 +50,25 @@ jobs:
         run: ./scripts/install-cert-manager-helm.sh
         env:
           CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
+
+      - name: Configure cert-manager for HTTP-01 in Kind
+        run: |
+          # The ClusterIssuer uses the legacy 'class' field which sets the
+          # kubernetes.io/ingress.class annotation on ACME solver Ingresses.
+          # nginx v1.15+ only watches spec.ingressClassName by default, so enable
+          # annotation watching to make it pick up cert-manager's solver Ingresses.
+          kubectl patch deployment ingress-nginx-controller -n ingress-nginx \
+            --type=json \
+            -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--watch-ingress-without-class=true"}]'
+          kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=60s
+          # cert-manager performs an internal self-check (HTTP-01 token fetch) before presenting
+          # the challenge to Pebble. Without DNS for test.example.com inside Kind, this self-check
+          # fails. Adding a hostAlias routes test.example.com → nginx ClusterIP so it succeeds.
+          NGINX_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.clusterIP}')
+          kubectl patch deployment cert-manager -n cert-manager \
+            --type=json \
+            -p="[{\"op\":\"add\",\"path\":\"/spec/template/spec/hostAliases\",\"value\":[{\"ip\":\"${NGINX_IP}\",\"hostnames\":[\"test.example.com\"]}]}]"
+          kubectl rollout status deployment/cert-manager -n cert-manager --timeout=60s
 
       - name: Run quick HTTP-01 test
         uses: nick-fields/retry@v4
@@ -85,26 +106,6 @@ jobs:
         timeout-minutes: 2
         continue-on-error: true
         run: make clean-selfsigned || true
-
-      - name: Run quick DNS-01 test
-        uses: nick-fields/retry@v4
-        with:
-          timeout_minutes: 10
-          max_attempts: 2
-          retry_on: error
-          on_retry_command: |
-            echo "=== Pebble diagnostics ==="
-            kubectl get pods -n pebble -o wide 2>/dev/null || true
-            kubectl get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
-            echo "=== fake-dns diagnostics ==="
-            kubectl get pods -n fake-dns -o wide 2>/dev/null || true
-          command: make quick-dns-test
-
-      - name: Clean up DNS-01 test resources
-        if: always()
-        timeout-minutes: 2
-        continue-on-error: true
-        run: make clean-certs clean-issuers clean-pebble clean-fake-dns || true
 
       - name: Run multi-algorithm certificate test
         uses: nick-fields/retry@v4

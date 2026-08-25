@@ -23,6 +23,10 @@ data:
     
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+
+    # cert-manager resolves the SOA MNAME to verify DNS-01. Using the service FQDN
+    # lets cluster DNS resolve it directly so no extra CoreDNS forwarding is needed.
+    NS_HOSTNAME = f'fake-dns-api.{os.environ.get("POD_NAMESPACE", "fake-dns")}.svc.cluster.local'
     
     class HealthCheckHandler(BaseHTTPRequestHandler):
         """HTTP server for health checks"""
@@ -82,56 +86,55 @@ data:
                         
                         # NS query (qtype=2) - Return fake NS record
                         if qtype == 2:
-                            logger.info(f"Received NS query for {qname} from {addr} - returning fake NS")
-                            
+                            logger.info(f"Received NS query for {qname} from {addr} - returning fake NS ({NS_HOSTNAME})")
+
                             # Build minimal NS response
                             # QR=1, AA=1 (authoritative), OPCODE=0, RCODE=0
                             response_flags = 0x8400
                             response = transaction_id + struct.pack('>H', response_flags)
                             response += struct.pack('>HHHH', 1, 1, 0, 0)  # 1 question, 1 answer, 0 authority, 0 additional
                             response += data[12:offset+4]  # Copy question section
-                            
+
                             # Answer section: name pointer + NS record
                             response += b'\xc0\x0c'  # Name pointer to question
                             response += struct.pack('>HHI', 2, 1, 300)  # TYPE=NS, CLASS=IN, TTL=300
-                            
-                            # NS RDATA: ns.fake-dns.local
+
+                            # NS RDATA: NS_HOSTNAME (cluster-resolvable FQDN)
                             ns_data = b''
-                            for part in ['ns', 'fake-dns', 'local']:
+                            for part in NS_HOSTNAME.split('.'):
                                 ns_data += bytes([len(part)]) + part.encode()
                             ns_data += b'\x00'
-                            
+
                             response += struct.pack('>H', len(ns_data)) + ns_data
                             return response
-                        
+
                         # SOA query (qtype=6)
                         elif qtype == 6:
-                            logger.info(f"Received SOA query for {qname} from {addr} - returning fake SOA")
-                            
+                            logger.info(f"Received SOA query for {qname} from {addr} - returning fake SOA (mname={NS_HOSTNAME})")
+
                             # Build minimal SOA response
                             # QR=1, AA=1 (authoritative), OPCODE=0, RCODE=0
                             response_flags = 0x8400
                             response = transaction_id + struct.pack('>H', response_flags)
                             response += struct.pack('>HHHH', 1, 1, 0, 0)  # 1 question, 1 answer, 0 authority, 0 additional
                             response += data[12:offset+4]  # Copy question section
-                            
+
                             # Answer section: name pointer + SOA record
                             response += b'\xc0\x0c'  # Name pointer to question
                             response += struct.pack('>HHI', 6, 1, 300)  # TYPE=SOA, CLASS=IN, TTL=300
-                            
+
                             # SOA RDATA
                             soa_data = b''
-                            # MNAME: ns.fake-dns.local
-                            for part in ['ns', 'fake-dns', 'local']:
+                            # MNAME: NS_HOSTNAME (cluster-resolvable FQDN so cert-manager can reach us)
+                            for part in NS_HOSTNAME.split('.'):
                                 soa_data += bytes([len(part)]) + part.encode()
                             soa_data += b'\x00'
-                            # RNAME: admin.fake-dns.local
                             for part in ['admin', 'fake-dns', 'local']:
                                 soa_data += bytes([len(part)]) + part.encode()
                             soa_data += b'\x00'
                             # SERIAL, REFRESH, RETRY, EXPIRE, MINIMUM
                             soa_data += struct.pack('>IIIII', 1, 3600, 600, 86400, 300)
-                            
+
                             response += struct.pack('>H', len(soa_data)) + soa_data
                             return response
                         
@@ -150,8 +153,6 @@ data:
                             response += b'\xc0\x0c'  # Name pointer to question
                             response += struct.pack('>HHI', 16, 1, 300)  # TYPE=TXT, CLASS=IN, TTL=300
                             
-                            # TXT RDATA: fake challenge token
-                            # For ACME DNS-01 challenges, return a dummy token
                             txt_value = b'fake-acme-challenge-token'
                             txt_data = bytes([len(txt_value)]) + txt_value
                             

@@ -32,7 +32,7 @@ BG_BLUE := \033[44m
 # ────────────────────────────────────────────────────────────────────────────────
 .PHONY: all help banner preflight lint fmt test-unit _require-shfmt install-cert-manager-operator install-cert-manager-helm install-pebble \
         install-fake-dns install-all install-monitoring create-issuer create-dns01-issuer \
-        create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert apply-apiserver-cert \
+        create-selfsigned-issuer create-certs create-apiserver-cert verify-apiserver-cert \
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
         test-cert verify-cert test-cert-renewal clean-cert-renewal test-ingress-tls clean-ingress-test \
         status \
@@ -223,9 +223,6 @@ create-apiserver-cert: ## Create API server certificate
 verify-apiserver-cert: ## Verify API server certificate
 	@./scripts/troubleshooting/verify-apiserver-certificate.sh
 
-apply-apiserver-cert: ## Apply API server certificate to OpenShift APIServer/cluster (OpenShift only)
-	@./scripts/apply-apiserver-certificate.sh
-
 test-cert: ## Create a test wildcard certificate (DNS-01)
 	@echo "Creating test wildcard certificate..."
 	@printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: wildcard-test\n  namespace: default\nspec:\n  secretName: wildcard-test-tls\n  issuerRef:\n    name: pebble-dns01-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - "*.example.com"\n  - "example.com"\n' | $(KUBE_CLI) apply -f -
@@ -283,8 +280,8 @@ quick-http-test: ## Quick end-to-end HTTP-01 test
 	@echo "$(BOLD)$(BLUE)Quick HTTP-01 Test Running...$(RESET)"
 	@echo ""
 	@if [ "$(CLUSTER_TYPE)" = "openshift" ]; then $(MAKE) install-cert-manager-operator; else $(MAKE) install-cert-manager-helm; fi
-	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble || true
-	@$(MAKE) create-issuer || true
+	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble
+	@$(MAKE) create-issuer
 	@CLUSTER_DOMAIN=$$($(KUBE_CLI) get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "example.com"); \
 	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | $(KUBE_CLI) apply -f -
 	@echo ""
@@ -293,13 +290,15 @@ quick-http-test: ## Quick end-to-end HTTP-01 test
 	while [ $$elapsed -lt $$timeout ]; do \
 		if $(KUBE_CLI) get certificate test-cert-http01 -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
 			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
-			break; \
+			echo "Quick HTTP-01 test complete! Run 'make clean' to clean up."; \
+			exit 0; \
 		fi; \
 		if [ $$((elapsed % 10)) -eq 0 ]; then echo "  Still waiting... ($$elapsed seconds)"; fi; \
 		sleep 2; elapsed=$$((elapsed + 2)); \
-	done
-	@echo ""
-	@echo "Quick HTTP-01 test complete! Run 'make clean' to clean up."
+	done; \
+	echo "$(RED)Certificate test-cert-http01 not Ready after $${timeout}s$(RESET)"; \
+	$(KUBE_CLI) get certificate test-cert-http01 -n default 2>/dev/null || true; \
+	exit 1
 
 quick-selfsigned-test: create-selfsigned-issuer ## Quick end-to-end self-signed CA test
 	@echo ""
@@ -314,31 +313,44 @@ quick-selfsigned-test: create-selfsigned-issuer ## Quick end-to-end self-signed 
 	while [ $$elapsed -lt $$timeout ]; do \
 		if $(KUBE_CLI) get certificate test-cert-selfsigned -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
 			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
-			break; \
+			echo "Quick self-signed CA test complete! Run 'make clean-selfsigned' to clean up."; \
+			exit 0; \
 		fi; \
 		if [ $$((elapsed % 10)) -eq 0 ]; then echo "  Still waiting... ($$elapsed seconds)"; fi; \
 		sleep 2; elapsed=$$((elapsed + 2)); \
-	done
-	@echo ""
-	@echo "Quick self-signed CA test complete! Run 'make clean-selfsigned' to clean up."
+	done; \
+	echo "$(RED)Certificate test-cert-selfsigned not Ready after $${timeout}s$(RESET)"; \
+	$(KUBE_CLI) get certificate test-cert-selfsigned -n default 2>/dev/null || true; \
+	exit 1
 
-quick-dns-test: test-dns01 test-cert ## Quick end-to-end DNS-01 test
+quick-dns-test: test-dns01 ## Quick end-to-end DNS-01 test
 	@echo ""
 	@echo "$(BOLD)$(BLUE)Quick DNS-01 Test Running...$(RESET)"
+	@echo ""
+	@echo "Ensuring Pebble ACME server is running (required for DNS-01)..."
+	@if ! $(KUBE_CLI) get deployment pebble -n pebble -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -q '^[1-9]'; then \
+		echo "Pebble not running — reinstalling with PEBBLE_ALWAYS_VALID=1..."; \
+		PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble; \
+	else \
+		echo "Pebble is already running."; \
+	fi
+	@$(MAKE) test-cert
 	@echo ""
 	@echo "Waiting for certificate (timeout: 5 minutes)..."
 	@timeout=300; elapsed=0; \
 	while [ $$elapsed -lt $$timeout ]; do \
 		if $(KUBE_CLI) get certificate wildcard-test -n default -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then \
 			echo "$(GREEN)Certificate issued successfully!$(RESET)"; \
-			break; \
+			$(MAKE) verify-cert; \
+			echo "Quick DNS-01 test complete! Run 'make clean' to clean up."; \
+			exit 0; \
 		fi; \
 		if [ $$((elapsed % 10)) -eq 0 ]; then echo "  Still waiting... ($$elapsed seconds)"; fi; \
 		sleep 2; elapsed=$$((elapsed + 2)); \
-	done
-	@$(MAKE) verify-cert
-	@echo ""
-	@echo "Quick DNS-01 test complete! Run 'make clean' to clean up."
+	done; \
+	echo "$(RED)Certificate wildcard-test not Ready after $${timeout}s$(RESET)"; \
+	$(KUBE_CLI) get certificate wildcard-test -n default 2>/dev/null || true; \
+	exit 1
 
 quick-multi-algo-test: create-multi-algo-certs ## Quick multi-algorithm certificate test (ECDSA, RSA, Ed25519)
 	@echo ""
@@ -613,7 +625,7 @@ clean-temp: ## Clean up temporary files
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
 
-clean: clean-certs clean-cert-renewal clean-issuers clean-selfsigned clean-ingress-test clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config clean-ibu ## Clean everything except cert-manager-operator (includes IBU/MinIO/OADP)
+clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config ## Clean everything except cert-manager-operator
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
@@ -621,7 +633,7 @@ clean: clean-certs clean-cert-renewal clean-issuers clean-selfsigned clean-ingre
 	@echo "  ╚═════════════════════════════════════════════════════════════╝"
 	@echo "$(RESET)"
 	@echo ""
-	@echo "cert-manager-operator is still installed. IBU/MinIO/OADP resources removed."
+	@echo "cert-manager-operator is still installed."
 	@echo "To test again, run: make test-dns01"
 
 uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
@@ -634,4 +646,4 @@ uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
 	@oc delete namespace openshift-cert-manager-operator --ignore-not-found=true
 	@echo "$(GREEN)cert-manager-operator uninstalled.$(RESET)"
 
-uninstall-all: clean uninstall-cert-manager-operator ## Full teardown of all components (WARNING!)
+uninstall-all: clean clean-ibu uninstall-cert-manager-operator ## Full teardown of all components (WARNING!)

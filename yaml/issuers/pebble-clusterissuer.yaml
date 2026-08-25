@@ -30,9 +30,4 @@ spec:
     - http01:
         ingress:
           class: ${INGRESS_CLASS}
-          podTemplate:
-            metadata:
-              annotations:
-                # Tell cert-manager to skip self-check
-                acme.cert-manager.io/http01-override-ingress-dns-name: "true"
 
