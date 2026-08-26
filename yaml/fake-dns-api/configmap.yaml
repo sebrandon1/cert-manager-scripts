@@ -27,6 +27,90 @@ data:
     # cert-manager resolves the SOA MNAME to verify DNS-01. Using the service FQDN
     # lets cluster DNS resolve it directly so no extra CoreDNS forwarding is needed.
     NS_HOSTNAME = f'fake-dns-api.{os.environ.get("POD_NAMESPACE", "fake-dns")}.svc.cluster.local'
+
+    # TXT record store: populated from RFC2136 UPDATE messages so cert-manager's
+    # propagation check receives the exact token it expects.
+    txt_store = {}
+    txt_store_lock = threading.Lock()
+
+    def parse_dns_name(data, offset):
+        """Parse a DNS wire-format name. Returns (name_lower, new_offset)."""
+        labels = []
+        jumped = False
+        jump_return = None
+        visited = set()
+        while offset < len(data):
+            length = data[offset]
+            if length == 0:
+                offset += 1
+                break
+            elif length & 0xC0 == 0xC0:
+                if offset + 1 >= len(data):
+                    break
+                ptr = ((length & 0x3F) << 8) | data[offset + 1]
+                if ptr in visited:
+                    break
+                visited.add(ptr)
+                if not jumped:
+                    jump_return = offset + 2
+                jumped = True
+                offset = ptr
+            else:
+                end = offset + 1 + length
+                labels.append(data[offset + 1:end].decode('utf-8', errors='ignore'))
+                offset = end
+        result_offset = jump_return if jumped else offset
+        return '.'.join(labels).lower(), result_offset
+
+    def process_dns_update(data):
+        """Parse RFC2136 UPDATE and store/remove TXT records in txt_store."""
+        if len(data) < 12:
+            return
+        zocount = struct.unpack('>H', data[4:6])[0]
+        prcount = struct.unpack('>H', data[6:8])[0]
+        upcount = struct.unpack('>H', data[8:10])[0]
+        offset = 12
+        try:
+            for _ in range(zocount):
+                _, offset = parse_dns_name(data, offset)
+                offset += 4
+            for _ in range(prcount):
+                _, offset = parse_dns_name(data, offset)
+                if offset + 10 > len(data):
+                    return
+                rdlen = struct.unpack('>H', data[offset + 8:offset + 10])[0]
+                offset += 10 + rdlen
+            for _ in range(upcount):
+                if offset >= len(data):
+                    break
+                name, offset = parse_dns_name(data, offset)
+                if offset + 10 > len(data):
+                    break
+                rtype = struct.unpack('>H', data[offset:offset + 2])[0]
+                rclass = struct.unpack('>H', data[offset + 2:offset + 4])[0]
+                ttl = struct.unpack('>I', data[offset + 4:offset + 8])[0]
+                rdlen = struct.unpack('>H', data[offset + 8:offset + 10])[0]
+                offset += 10
+                rdata = data[offset:offset + rdlen]
+                offset += rdlen
+                if rtype == 16:  # TXT
+                    if rclass == 1 and ttl > 0:
+                        parts = []
+                        pos = 0
+                        while pos < len(rdata):
+                            slen = rdata[pos]
+                            parts.append(rdata[pos + 1:pos + 1 + slen].decode('utf-8', errors='ignore'))
+                            pos += 1 + slen
+                        val = ''.join(parts)
+                        with txt_store_lock:
+                            txt_store[name] = val
+                        logger.info(f"Stored TXT {name!r} = {val!r}")
+                    else:
+                        with txt_store_lock:
+                            txt_store.pop(name, None)
+                        logger.info(f"Deleted TXT {name!r}")
+        except Exception as e:
+            logger.error(f"Error parsing DNS UPDATE: {e}")
     
     class HealthCheckHandler(BaseHTTPRequestHandler):
         """HTTP server for health checks"""
@@ -59,6 +143,7 @@ data:
             # DNS UPDATE has opcode = 5
             if opcode == 5:
                 logger.info(f"Received DNS UPDATE from {addr} - returning success")
+                process_dns_update(data)
                 # Build response: same ID, response flag, opcode=5, no error
                 response_flags = 0x8000 | (5 << 11) | 0x0000  # QR=1, OPCODE=5, RCODE=0 (NOERROR)
                 response = transaction_id + struct.pack('>H', response_flags) + data[4:12]
@@ -138,24 +223,30 @@ data:
                             response += struct.pack('>H', len(soa_data)) + soa_data
                             return response
                         
-                        # TXT query (qtype=16) - Return fake TXT record for ACME challenges
+                        # TXT query (qtype=16) - Return stored ACME challenge token if available
                         elif qtype == 16:
-                            logger.info(f"Received TXT query for {qname} from {addr} - returning fake TXT")
-                            
+                            with txt_store_lock:
+                                stored = txt_store.get(qname.lower())
+                            if stored:
+                                logger.info(f"Received TXT query for {qname} from {addr} - returning stored token")
+                                txt_value = stored.encode('utf-8')
+                            else:
+                                logger.info(f"Received TXT query for {qname} from {addr} - no stored token, returning placeholder")
+                                txt_value = b'fake-acme-challenge-token'
+
                             # Build minimal TXT response
                             # QR=1, AA=1 (authoritative), OPCODE=0, RCODE=0
                             response_flags = 0x8400
                             response = transaction_id + struct.pack('>H', response_flags)
                             response += struct.pack('>HHHH', 1, 1, 0, 0)  # 1 question, 1 answer, 0 authority, 0 additional
                             response += data[12:offset+4]  # Copy question section
-                            
+
                             # Answer section: name pointer + TXT record
                             response += b'\xc0\x0c'  # Name pointer to question
                             response += struct.pack('>HHI', 16, 1, 300)  # TYPE=TXT, CLASS=IN, TTL=300
-                            
-                            txt_value = b'fake-acme-challenge-token'
+
                             txt_data = bytes([len(txt_value)]) + txt_value
-                            
+
                             response += struct.pack('>H', len(txt_data)) + txt_data
                             return response
                         

@@ -323,17 +323,19 @@ quick-selfsigned-test: create-selfsigned-issuer ## Quick end-to-end self-signed 
 	$(KUBE_CLI) get certificate test-cert-selfsigned -n default 2>/dev/null || true; \
 	exit 1
 
-quick-dns-test: test-dns01 ## Quick end-to-end DNS-01 test
+quick-dns-test: ## Quick end-to-end DNS-01 test
 	@echo ""
 	@echo "$(BOLD)$(BLUE)Quick DNS-01 Test Running...$(RESET)"
 	@echo ""
 	@echo "Ensuring Pebble ACME server is running (required for DNS-01)..."
 	@if ! $(KUBE_CLI) get deployment pebble -n pebble -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -q '^[1-9]'; then \
-		echo "Pebble not running — reinstalling with PEBBLE_ALWAYS_VALID=1..."; \
+		echo "Pebble not running — installing with PEBBLE_ALWAYS_VALID=1..."; \
 		PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble; \
 	else \
 		echo "Pebble is already running."; \
 	fi
+	@$(MAKE) install-fake-dns
+	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 	@$(MAKE) test-cert
 	@echo ""
 	@echo "Waiting for certificate (timeout: 5 minutes)..."
@@ -565,6 +567,7 @@ clean-pebble: ## Clean up Pebble ACME test server
 clean-fake-dns: ## Clean up fake DNS API
 	@echo "$(BOLD)$(YELLOW)Cleaning up fake DNS...$(RESET)"
 	@$(KUBE_CLI) delete namespace fake-dns --ignore-not-found=true --timeout=60s --wait=false
+	@$(KUBE_CLI) patch dns.operator.openshift.io/default --type=merge -p '{"spec":{"servers":null}}' 2>/dev/null || true
 	@echo "$(GREEN)Fake DNS cleaned.$(RESET)"
 
 clean-acmedns: ## Clean up acme-dns local DNS server
