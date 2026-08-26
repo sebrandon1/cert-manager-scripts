@@ -64,6 +64,47 @@ configure_coredns() {
 
 	log_info "Fake DNS server IP: $fake_dns_ip"
 
+	if [[ "${CLUSTER_TYPE:-}" == "openshift" ]]; then
+		configure_coredns_openshift "$fake_dns_ip"
+	else
+		configure_coredns_kubernetes "$fake_dns_ip"
+	fi
+}
+
+configure_coredns_openshift() {
+	local fake_dns_ip="$1"
+
+	# Check if already configured via DNS operator CR
+	if "$KUBE_CLI" get dns.operator.openshift.io/default \
+		-o jsonpath='{.spec.servers[*].name}' 2>/dev/null | grep -q "fake-dns-example"; then
+		log_info "DNS operator already configured for example.com"
+		return
+	fi
+
+	log_info "Patching DNS operator CR to forward example.com to fake DNS (stable, won't be reverted)..."
+	"$KUBE_CLI" patch dns.operator.openshift.io/default --type=merge \
+		-p "{\"spec\":{\"servers\":[{\"name\":\"fake-dns-example\",\"zones\":[\"example.com\"],\"forwardPlugin\":{\"upstreams\":[\"${fake_dns_ip}:53\"]}}]}}"
+
+	log_info "Waiting for DNS operator to update CoreDNS ConfigMap..."
+	local attempt=0
+	while [ "$attempt" -lt 18 ]; do
+		if "$KUBE_CLI" get configmap "$DNS_CONFIGMAP" -n "$DNS_NAMESPACE" \
+			-o jsonpath='{.data.Corefile}' 2>/dev/null | grep -q "${fake_dns_ip}"; then
+			log_success "CoreDNS ConfigMap updated by DNS operator"
+			log_info "Waiting 30s for CoreDNS reload plugin to apply changes..."
+			sleep 30
+			return 0
+		fi
+		attempt=$((attempt + 1))
+		log_info "Waiting for DNS operator to propagate config ($attempt/18)..."
+		sleep 10
+	done
+	log_warn "DNS operator may not have updated CoreDNS yet after 180s"
+}
+
+configure_coredns_kubernetes() {
+	local fake_dns_ip="$1"
+
 	if ! "$KUBE_CLI" get configmap "$DNS_CONFIGMAP" -n "$DNS_NAMESPACE" &>/dev/null; then
 		log_warn "CoreDNS configmap not found, skipping CoreDNS configuration"
 		log_warn "You may need to manually configure DNS forwarding for example.com"
@@ -132,13 +173,13 @@ verify_dns_resolution() {
 		return
 	fi
 
-	if retry 5 5 "$KUBE_CLI" exec "$dns_pod" -n "$FAKEDNS_NAMESPACE" -- \
-		sh -c "nslookup test.example.com $dns_service_ip 2>/dev/null || host test.example.com $dns_service_ip 2>/dev/null" >/dev/null 2>&1; then
+	local dns_check_cmd=("$KUBE_CLI" exec "$dns_pod" -n "$FAKEDNS_NAMESPACE" --
+		sh -c "nslookup test.example.com $dns_service_ip 2>/dev/null || host test.example.com $dns_service_ip 2>/dev/null")
+	if wait_for_condition 12 10 "${dns_check_cmd[@]}"; then
 		log_success "DNS resolution for example.com is working through CoreDNS"
 	else
 		log_warn "DNS resolution verification did not succeed yet"
-		log_warn "CoreDNS may need additional time to reload — this is not necessarily a failure"
-		log_info "Manual check: $KUBE_CLI exec $dns_pod -n $FAKEDNS_NAMESPACE -- nslookup test.example.com"
+		log_warn "Check CoreDNS config: $KUBE_CLI get configmap $DNS_CONFIGMAP -n $DNS_NAMESPACE -o yaml"
 	fi
 }
 
@@ -195,7 +236,6 @@ main() {
 	wait_for_resource "deployment/fake-dns-api" "$FAKEDNS_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-600s}"
 	verify_installation
 	configure_coredns
-	verify_dns_resolution
 	display_next_steps
 }
 
