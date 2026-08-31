@@ -193,7 +193,8 @@ install-local-dns: ## Install acme-dns local DNS server
 register-acmedns: ## Register acme-dns account and create credentials secret
 	@./scripts/register-acmedns-account.sh
 
-install-all: install-cert-manager-operator install-pebble ## Install cert-manager-operator and Pebble
+install-all: ## Install cert-manager-operator and Pebble
+	@$(MAKE) -j2 install-cert-manager-operator install-pebble
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
