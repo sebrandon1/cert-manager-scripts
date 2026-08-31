@@ -85,7 +85,7 @@ create_certificate() {
 	fi
 
 	# Create the Certificate CR
-	if cat <<EOF | oc apply -f -
+	if cat <<EOF | oc apply -f -; then
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -103,7 +103,6 @@ spec:
   - key encipherment
   - server auth
 EOF
-	then
 		log_info "Certificate '$CERT_NAME' created successfully in namespace '$CERT_NAMESPACE'"
 	else
 		log_error "Failed to create certificate '$CERT_NAME'"
