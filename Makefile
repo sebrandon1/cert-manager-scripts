@@ -3,6 +3,8 @@
 # ────────────────────────────────────────────────────────────────────────────────
 KUBE_CLI ?= $(shell command -v oc >/dev/null 2>&1 && echo oc || echo kubectl)
 CLUSTER_TYPE ?= $(shell command -v oc >/dev/null 2>&1 && oc whoami >/dev/null 2>&1 && echo openshift || echo kubernetes)
+# Lazily detect if make supports --output-sync
+SYNC_FLAG = $(shell $(MAKE) --help 2>&1 | grep -q "output-sync" && echo "--output-sync=target")
 export KUBE_CLI CLUSTER_TYPE
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -194,7 +196,7 @@ register-acmedns: ## Register acme-dns account and create credentials secret
 	@./scripts/register-acmedns-account.sh
 
 install-all: ## Install cert-manager-operator and Pebble
-	@$(MAKE) -j2 install-cert-manager-operator install-pebble
+	@$(MAKE) -j2 $(SYNC_FLAG) install-cert-manager-operator install-pebble
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
