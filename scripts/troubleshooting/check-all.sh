@@ -36,13 +36,13 @@ check_cert_manager() {
 		else
 			log_warn "cert-manager operator not found or not healthy"
 		fi
+	fi
+
+	log_info "Checking cert-manager deployment..."
+	if "$KUBE_CLI" get deployment cert-manager -n cert-manager &>/dev/null; then
+		echo "✅ cert-manager is installed"
 	else
-		log_info "Checking cert-manager deployment..."
-		if "$KUBE_CLI" get deployment cert-manager -n cert-manager &>/dev/null; then
-			echo "✅ cert-manager is installed"
-		else
-			log_warn "cert-manager deployment not found"
-		fi
+		log_warn "cert-manager deployment not found"
 	fi
 
 	log_info "Checking cert-manager pods..."
@@ -158,14 +158,22 @@ CERT_OUT="$TMP_DIR/certs.txt"
 CHALLENGE_OUT="$TMP_DIR/challenges.txt"
 
 # Run checks in parallel
+PIDS=()
 check_cert_manager >"$CM_OUT" 2>&1 &
+PIDS+=($!)
 check_pebble >"$PEBBLE_OUT" 2>&1 &
+PIDS+=($!)
 check_dns >"$DNS_OUT" 2>&1 &
+PIDS+=($!)
 check_issuers >"$ISSUER_OUT" 2>&1 &
+PIDS+=($!)
 check_certificates >"$CERT_OUT" 2>&1 &
+PIDS+=($!)
 check_challenges >"$CHALLENGE_OUT" 2>&1 &
+PIDS+=($!)
 
-wait
+# Wait for all background jobs (allow errors so we can replay output)
+wait "${PIDS[@]}" || true
 
 # Replay output in order
 cat "$CM_OUT"
