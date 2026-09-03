@@ -3,8 +3,7 @@
 # ────────────────────────────────────────────────────────────────────────────────
 KUBE_CLI ?= $(shell command -v oc >/dev/null 2>&1 && echo oc || echo kubectl)
 CLUSTER_TYPE ?= $(shell command -v oc >/dev/null 2>&1 && oc whoami >/dev/null 2>&1 && echo openshift || echo kubernetes)
-# Lazily detect if make supports --output-sync
-SYNC_FLAG = $(shell $(MAKE) --help 2>&1 | grep -q "output-sync" && echo "--output-sync=target")
+SYNC_FLAG := $(shell $(MAKE) --help 2>&1 | grep -q "output-sync" && echo "--output-sync=target")
 export KUBE_CLI CLUSTER_TYPE
 
 # ────────────────────────────────────────────────────────────────────────────────

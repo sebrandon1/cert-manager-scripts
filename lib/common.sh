@@ -599,6 +599,32 @@ ensure_namespace() {
 	fi
 }
 
+# Wait for a namespace in Terminating phase to be fully deleted before recreating it.
+# Usage: wait_for_namespace_termination <namespace> [timeout_seconds]
+wait_for_namespace_termination() {
+	local namespace="$1"
+	local timeout="${2:-120}"
+
+	local phase
+	phase=$("$KUBE_CLI" get namespace "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+
+	if [[ "$phase" != "Terminating" ]]; then
+		return 0
+	fi
+
+	log_info "Namespace '$namespace' is terminating; waiting up to ${timeout}s for full deletion..."
+	local elapsed=0
+	while "$KUBE_CLI" get namespace "$namespace" &>/dev/null; do
+		if [[ $elapsed -ge $timeout ]]; then
+			log_warn "Namespace '$namespace' still terminating after ${timeout}s — proceeding anyway."
+			return 0
+		fi
+		sleep 5
+		elapsed=$((elapsed + 5))
+	done
+	log_info "Namespace '$namespace' fully terminated."
+}
+
 # Check if a deployment exists and is healthy
 # Usage: check_deployment_exists <deployment> <namespace>
 # Returns 0 if deployment exists and has ready replicas

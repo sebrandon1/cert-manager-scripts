@@ -231,6 +231,7 @@ main() {
 	require_cmd "$KUBE_CLI" envsubst
 	require_cluster
 	require_healthy_cluster
+	wait_for_namespace_termination "$FAKEDNS_NAMESPACE"
 
 	install_fake_dns
 	wait_for_resource "deployment/fake-dns-api" "$FAKEDNS_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-600s}"
