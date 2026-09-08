@@ -44,6 +44,8 @@ jobs:
 
       - name: Install Shfmt
         uses: mfinelli/setup-shfmt@a25fda4c1fe115aec0f85e04126610841bc3141d # v4.0.1
+        with:
+          shfmt-version: "3.14.0"
 
       - name: Shfmt
         run: shfmt -d .
