@@ -30,6 +30,10 @@ Optionally copy the environment template to customize defaults:
 cp .env.example .env
 ```
 
+Key install variables in `.env` (or the environment):
+- `CERT_MANAGER_VERSION` — operator CSV pin (default: `v1.19.0`)
+- `CHANNEL` — OLM subscription channel (default: `stable-v1`)
+
 ## Step 1: Install cert-manager Operator
 
 ```bash
