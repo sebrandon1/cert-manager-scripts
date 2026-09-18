@@ -90,10 +90,76 @@ show_deployment_status "pebble-challtestsrv" "pebble-challtestsrv" "pebble"
 show_deployment_status "MinIO" "minio" "minio"
 show_oadp_status
 
+# Parse RFC3339 / ISO8601 timestamps to epoch (macOS date -j and GNU date -d).
+parse_date_to_epoch() {
+	local datestr="$1"
+	date -jf "%Y-%m-%dT%H:%M:%SZ" "$datestr" +%s 2>/dev/null ||
+		date -d "$datestr" +%s 2>/dev/null || echo ""
+}
+
+# List Certificates with Ready, notAfter, and days remaining.
+show_certificates_status() {
+	local certs_json count now_epoch
+	require_cmd jq
+
+	if ! certs_json=$("$KUBE_CLI" get certificate --all-namespaces -o json 2>/dev/null); then
+		echo -e "  ${DIM}No Certificates found${NC}"
+		return 0
+	fi
+
+	count=$(echo "$certs_json" | jq '.items | length')
+	if [[ "$count" -eq 0 ]]; then
+		echo -e "  ${DIM}No Certificates found${NC}"
+		return 0
+	fi
+
+	printf "  %-20s %-30s %-8s %-22s %-6s\n" \
+		"NAMESPACE" "NAME" "READY" "NOT_AFTER" "DAYS"
+	printf "  %-20s %-30s %-8s %-22s %-6s\n" \
+		"─────────" "────" "─────" "─────────" "────"
+
+	now_epoch=$(date +%s)
+	echo "$certs_json" | jq -c '.items[]' | while IFS= read -r cert_json; do
+		local ns name ready not_after days_str color expiry_epoch days
+		ns=$(echo "$cert_json" | jq -r '.metadata.namespace')
+		name=$(echo "$cert_json" | jq -r '.metadata.name')
+		ready=$(echo "$cert_json" | jq -r '(.status.conditions[]? | select(.type=="Ready") | .status) // "Unknown"')
+		not_after=$(echo "$cert_json" | jq -r '.status.notAfter // empty')
+
+		days_str="—"
+		color=""
+		if [[ -n "$not_after" ]]; then
+			expiry_epoch=$(parse_date_to_epoch "$not_after")
+			if [[ -n "$expiry_epoch" ]]; then
+				days=$(((expiry_epoch - now_epoch) / 86400))
+				days_str="$days"
+				if [[ "$days" -lt 0 ]]; then
+					color="$RED"
+				elif [[ "$days" -le 14 ]]; then
+					color="$YELLOW"
+				else
+					color="$GREEN"
+				fi
+			fi
+			# Display YYYY-MM-DDTHH:MM:SSZ (drop fractional seconds)
+			not_after=$(echo "$not_after" | sed -E 's/\.[0-9]+Z$/Z/')
+		else
+			not_after="—"
+		fi
+
+		printf "  %-20s %-30s %-8s " "$ns" "$name" "$ready"
+		if [[ -n "$color" ]]; then
+			printf "%b%-22s %-6s%b\n" "$color" "$not_after" "$days_str" "$NC"
+		else
+			printf "%-22s %-6s\n" "$not_after" "$days_str"
+		fi
+	done
+}
+
 echo
 echo -e "  ${BOLD}Issuers:${NC}"
 "$KUBE_CLI" get clusterissuer -o wide 2>/dev/null || echo -e "  ${DIM}No ClusterIssuers found${NC}"
 echo
 echo -e "  ${BOLD}Certificates:${NC}"
-"$KUBE_CLI" get certificate --all-namespaces 2>/dev/null || echo -e "  ${DIM}No Certificates found${NC}"
+show_certificates_status
 echo
