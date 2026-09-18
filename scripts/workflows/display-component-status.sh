@@ -11,7 +11,7 @@ set -euo pipefail
 # Get script directory and source common library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
-
+check_help "$@" && exit 0
 print_header "Component Status"
 
 # Check if cluster is accessible

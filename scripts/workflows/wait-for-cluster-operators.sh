@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
-
+check_help "$@" && exit 0
 if [[ "$CLUSTER_TYPE" != "openshift" ]]; then
 	log_info "Skipping cluster operator wait (OpenShift-only)"
 	exit 0
