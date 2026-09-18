@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
-
+check_help "$@" && exit 0
 # Function to detect cluster network configuration
 detect_cluster_network() {
 	log_info "Detecting cluster network configuration..."

@@ -6,6 +6,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
+check_help "$@" && exit 0
+
 FAILURES=0
 
 # 1. Verify all make target references in docs point to real Makefile targets

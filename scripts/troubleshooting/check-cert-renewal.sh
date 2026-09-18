@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
-
+check_help "$@" && exit 0
 parse_date_to_epoch() {
 	local datestr="$1"
 	date -jf "%Y-%m-%dT%H:%M:%SZ" "$datestr" +%s 2>/dev/null ||

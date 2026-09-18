@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=../../lib/common.sh
 source "$SCRIPT_DIR/../../lib/common.sh"
-
+check_help "$@" && exit 0
 cd "$REPO_ROOT"
 
 if ! command -v kubeconform >/dev/null 2>&1; then

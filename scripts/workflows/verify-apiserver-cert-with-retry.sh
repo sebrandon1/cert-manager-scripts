@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
-
+check_help "$@" && exit 0
 # shellcheck disable=SC2329
 check_cluster() {
 	if [[ "$KUBE_CLI" == "oc" ]]; then

@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
-
+check_help "$@" && exit 0
 CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
 METRICS_PORT="${METRICS_PORT:-9402}"
 EXPECTED_ALERTS="CertManagerAbsent CertManagerCertExpirySoon CertManagerCertNotReady CertManagerACMEClientErrors"
