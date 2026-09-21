@@ -11,6 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/fake-dns-api"
 
@@ -33,6 +34,7 @@ install_fake_dns() {
 	log_info "Installing fake DNS API server..."
 
 	apply_yaml_template "$YAML_DIR/namespace.yaml" "Namespace"
+	register_rollback "$KUBE_CLI" delete namespace "$FAKEDNS_NAMESPACE" --ignore-not-found=true --wait=false
 	apply_yaml_template "$YAML_DIR/serviceaccount.yaml" "ServiceAccount"
 	apply_yaml_template "$YAML_DIR/configmap.yaml" "ConfigMap"
 	apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
@@ -81,6 +83,8 @@ configure_coredns_openshift() {
 		return
 	fi
 
+	register_rollback make -C "$SCRIPT_DIR/.." clean-dns-config
+
 	log_info "Patching DNS operator CR to forward example.com to fake DNS (stable, won't be reverted)..."
 	"$KUBE_CLI" patch dns.operator.openshift.io/default --type=merge \
 		-p "{\"spec\":{\"servers\":[{\"name\":\"fake-dns-example\",\"zones\":[\"example.com\"],\"forwardPlugin\":{\"upstreams\":[\"${fake_dns_ip}:53\"]}}]}}"
@@ -117,6 +121,7 @@ configure_coredns_kubernetes() {
 	if echo "$corefile" | grep -q "example.com:53"; then
 		log_info "CoreDNS already configured for example.com"
 	else
+		register_rollback make -C "$SCRIPT_DIR/.." clean-dns-config
 		log_info "Adding example.com zone to CoreDNS..."
 
 		cat <<EOF | "$KUBE_CLI" apply -f -
@@ -238,6 +243,7 @@ main() {
 	verify_installation
 	configure_coredns
 	display_next_steps
+	clear_rollback
 }
 
 main

@@ -11,6 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/acme-dns"
 
@@ -21,6 +22,7 @@ install_acme_dns() {
 	log_info "Installing acme-dns..."
 
 	apply_yaml_template "$YAML_DIR/namespace.yaml" "Namespace"
+	register_rollback "$KUBE_CLI" delete namespace "$ACMEDNS_NAMESPACE" --ignore-not-found=true --wait=false
 	apply_yaml_template "$YAML_DIR/configmap.yaml" "ConfigMap"
 	apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
 	apply_yaml_template "$YAML_DIR/service.yaml" "Service"
@@ -97,6 +99,7 @@ main() {
 	wait_for_resource "deployment/acme-dns" "$ACMEDNS_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-300s}"
 	verify_installation
 	display_next_steps
+	clear_rollback
 }
 
 main

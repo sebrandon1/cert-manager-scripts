@@ -15,6 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/monitoring"
 
@@ -78,6 +79,8 @@ check_existing_resources() {
 install_service_monitor() {
 	log_info "Step 1/2: Creating ServiceMonitor..."
 	apply_yaml_template "$YAML_DIR/service-monitor.yaml" "ServiceMonitor"
+	register_rollback "$KUBE_CLI" delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts \
+		-n "$CERT_MANAGER_NAMESPACE" --ignore-not-found=true
 	log_success "ServiceMonitor created."
 }
 
@@ -149,6 +152,7 @@ main() {
 	install_prometheus_rules
 	verify_monitoring
 	display_next_steps
+	clear_rollback
 }
 
 main

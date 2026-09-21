@@ -10,7 +10,7 @@
 #   - Dependency checking (require_cmd)
 #   - Cluster connectivity validation (require_cluster)
 #   - .env file loading (load_env)
-#   - Cleanup trap setup (setup_cleanup)
+#   - Cleanup trap setup (setup_cleanup, register_temp_file, register_rollback, clear_rollback)
 #   - Retry logic with exponential backoff (retry)
 #   - Summary output (print_summary)
 
@@ -208,6 +208,8 @@ load_env() {
 # Usage: setup_cleanup
 _START_TIME=""
 _TEMP_FILES=()
+_ROLLBACK_CMDS=()
+_CLEANUP_RUNNING=0
 
 setup_cleanup() {
 	_START_TIME=$(date +%s)
@@ -215,7 +217,27 @@ setup_cleanup() {
 	# shellcheck disable=SC2329
 	cleanup() {
 		local exit_code=$?
+		if [[ $_CLEANUP_RUNNING -eq 1 ]]; then
+			return
+		fi
+		_CLEANUP_RUNNING=1
+
 		local duration=$(($(date +%s) - _START_TIME))
+
+		# On failure, run registered cluster rollbacks (best-effort)
+		if [[ $exit_code -ne 0 && ${#_ROLLBACK_CMDS[@]} -gt 0 ]]; then
+			if [[ "${DRY_RUN:-false}" == "true" ]]; then
+				log_warn "DRY_RUN: skipping ${#_ROLLBACK_CMDS[@]} rollback command(s)"
+			else
+				log_warn "Install failed — rolling back registered resources..."
+				local cmd
+				for cmd in "${_ROLLBACK_CMDS[@]}"; do
+					log_info "Rollback: $cmd"
+					# shellcheck disable=SC2086
+					eval "$cmd" || log_warn "Rollback command failed (continuing)"
+				done
+			fi
+		fi
 
 		# Clean up temp files and directories
 		for f in "${_TEMP_FILES[@]:-}"; do
@@ -234,6 +256,20 @@ setup_cleanup() {
 # Usage: register_temp_file /path/to/file
 register_temp_file() {
 	_TEMP_FILES+=("$1")
+}
+
+# Register a cluster rollback command (run only on non-zero exit)
+# Usage: register_rollback oc delete namespace pebble --ignore-not-found=true --wait=false
+register_rollback() {
+	local cmd
+	printf -v cmd '%q ' "$@"
+	_ROLLBACK_CMDS+=("$cmd")
+}
+
+# Clear registered rollbacks after a successful install
+# Usage: clear_rollback
+clear_rollback() {
+	_ROLLBACK_CMDS=()
 }
 
 # ============================================================================
