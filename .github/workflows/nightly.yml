@@ -13,6 +13,11 @@ on:
         description: 'OCP version (leave empty for full matrix)'
         required: false
         type: string
+      run-ibu:
+        description: 'Run dedicated IBU Scenario 1 smoke job'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -63,5 +68,17 @@ jobs:
     with:
       ocp-version: ${{ matrix.ocp-version }}
       cert-manager-version: ${{ matrix.cert-manager-version }}
+    secrets:
+      CRC_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
+
+  ibu-smoke:
+    name: IBU Scenario 1 smoke
+    needs: [lint]
+    if: ${{ github.event_name == 'schedule' || inputs.run-ibu }}
+    uses: ./.github/workflows/reusable-integration-test.yml
+    with:
+      ocp-version: '4.21'
+      cert-manager-version: 'v1.20.0'
+      run-ibu: true
     secrets:
       CRC_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}

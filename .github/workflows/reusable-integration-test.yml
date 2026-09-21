@@ -14,6 +14,11 @@ on:
         required: false
         type: string
         default: ''
+      run-ibu:
+        description: 'Run IBU Scenario 1 smoke (MinIO + OADP backup/restore)'
+        required: false
+        type: boolean
+        default: false
     secrets:
       CRC_PULL_SECRET:
         required: true
@@ -21,6 +26,7 @@ on:
 env:
   SHELL: /bin/bash
   KUBECONFIG: '/home/runner/.crc/machines/crc/kubeconfig'
+  SKIP_CONFIRM: '1'
 
 jobs:
   test:
@@ -196,6 +202,22 @@ jobs:
             ./scripts/workflows/recover-cluster.sh || echo "Recovery attempt failed"
             sleep 10
           command: ./scripts/workflows/verify-apiserver-cert-with-retry.sh
+
+      - name: Install IBU prerequisites
+        if: inputs.run-ibu
+        timeout-minutes: 30
+        run: make install-ibu-prereqs
+
+      - name: Run IBU Scenario 1 smoke (cert loss)
+        if: inputs.run-ibu
+        timeout-minutes: 45
+        run: make test-ibu-certs
+
+      - name: Clean up IBU resources
+        if: ${{ always() && inputs.run-ibu }}
+        timeout-minutes: 10
+        continue-on-error: true
+        run: make clean-ibu || true
 
       - name: Final cluster health check
         if: always()
