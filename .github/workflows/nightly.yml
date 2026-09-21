@@ -32,7 +32,7 @@ jobs:
           cm_versions=${cm_input:+"[\"${cm_input}\"]"}
           cm_versions=${cm_versions:-'["v1.18.1", "v1.19.0", "v1.20.0"]'}
           ocp_versions=${ocp_input:+"[\"${ocp_input}\"]"}
-          ocp_versions=${ocp_versions:-'["4.20", "4.21"]'}
+          ocp_versions=${ocp_versions:-'["4.20", "4.21", "4.22"]'}
           echo "matrix={\"cert-manager-version\":${cm_versions},\"ocp-version\":${ocp_versions}}" >> "$GITHUB_OUTPUT"
 
   lint:
