@@ -37,7 +37,7 @@ BG_BLUE := \033[44m
         test-all test-dns01 quick-http-test quick-dns-test quick-selfsigned-test \
         test-cert verify-cert test-cert-renewal clean-cert-renewal test-ingress-tls clean-ingress-test \
         status \
-        troubleshoot check-cert check-cert-renewal check-issuer verify-monitoring check-network check-network-stack check-workload-partitioning \
+        troubleshoot check-cert check-cert-renewal check-expiry check-issuer verify-monitoring check-network check-network-stack check-workload-partitioning \
         diagnose-http01 diagnose-dns01 clean clean-certs clean-pebble clean-fake-dns \
         clean-dns-config clean-issuers clean-selfsigned clean-monitoring clean-temp \
         delete-certificate delete-issuer \
@@ -83,7 +83,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(quick-|test-all|test-dns01|test-cert-renewal|test-ingress)"
 	@echo ""
 	@echo "$(YELLOW)Status & Troubleshooting:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(status|troubleshoot|diagnose|check-cert|check-issuer|verify-monitoring)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(status|troubleshoot|diagnose|check-cert|check-expiry|check-issuer|verify-monitoring)"
 	@echo ""
 	@echo "$(YELLOW)IBU Testing:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp|label-cert|validate-cert|validate-post)"
@@ -410,6 +410,9 @@ diagnose-dns01: ## Diagnose DNS-01 challenge issues
 
 check-cert-renewal: ## Check certificate renewal status and upcoming renewals
 	@./scripts/troubleshooting/check-cert-renewal.sh $(if $(CERT),$(CERT) $(NS))
+
+check-expiry: ## Highlight Certificates expiring within EXPIRY_DAYS (default 30)
+	@./scripts/troubleshooting/check-expiry.sh
 
 verify-monitoring: ## Verify cert-manager Prometheus monitoring setup
 	@./scripts/troubleshooting/verify-monitoring.sh
