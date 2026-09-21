@@ -38,6 +38,11 @@ Since IBU requires specific operators (Lifecycle Agent, TALM) and seed images, t
 
 ## Quick Start
 
+### CI coverage
+
+Nightly runs a dedicated **IBU Scenario 1 smoke** job (`make install-ibu-prereqs` → `make test-ibu-certs` → `make clean-ibu`) via `run-ibu: true` on the reusable integration workflow. Pre-main leaves `run-ibu` false so PR CI does not pay the OADP/MinIO cost.
+
+
 ```bash
 # Run Scenario 1: Certificate Loss (default behavior)
 make test-ibu-certs
