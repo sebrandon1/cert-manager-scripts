@@ -265,6 +265,15 @@ retry() {
 	done
 }
 
+# Parse an RFC3339 / ISO8601 date string to epoch seconds (macOS + GNU date)
+# Usage: parse_date_to_epoch "2026-09-21T12:00:00Z"
+# Returns empty string on failure
+parse_date_to_epoch() {
+	local datestr="$1"
+	date -jf "%Y-%m-%dT%H:%M:%SZ" "$datestr" +%s 2>/dev/null ||
+		date -d "$datestr" +%s 2>/dev/null || echo ""
+}
+
 # Wait for a condition to become true with fixed polling interval
 # Usage: wait_for_condition <max_attempts> <interval_seconds> <command...>
 # Example: wait_for_condition 30 2 check_issuer_ready
