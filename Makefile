@@ -43,6 +43,7 @@ BG_BLUE := \033[44m
         delete-certificate delete-issuer \
         clean-acmedns clean-challtestsrv \
         uninstall-cert-manager-operator uninstall-monitoring uninstall-all \
+        recover \
         install-minio install-oadp install-ibu-prereqs capture-cert-state \
         test-ibu-certs test-ibu-preserved test-ibu-both quick-ibu-test clean-ibu \
         create-multi-algo-certs verify-key-formats test-ibu-multi-algo clean-multi-algo-certs \
@@ -89,7 +90,7 @@ help: banner ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(ibu|minio|oadp|label-cert|validate-cert|validate-post)"
 	@echo ""
 	@echo "$(YELLOW)Cleanup:$(RESET)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(delete-|clean|uninstall)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(CYAN)%-30s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST) | grep -E "(delete-|clean|uninstall|recover)"
 	@echo ""
 	@echo "$(DIM)Usage: make <command>$(RESET)"
 	@echo ""
@@ -632,6 +633,9 @@ clean-temp: ## Clean up temporary files
 	@find . -name "*.tmp" -delete
 	@find . -name ".*.swp" -delete
 	@echo "Temp files cleaned."
+
+recover: ## Roll back half-installed test components (not the operator)
+	@./scripts/recover-install.sh
 
 clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config ## Clean everything except cert-manager-operator
 	@echo ""

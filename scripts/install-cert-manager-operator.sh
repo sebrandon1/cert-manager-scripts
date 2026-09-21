@@ -156,4 +156,7 @@ main() {
 }
 
 # Run main function
-main
+if ! main; then
+	log_hint "Operator install failed. Check CSV status or run: make uninstall-cert-manager-operator"
+	exit 1
+fi

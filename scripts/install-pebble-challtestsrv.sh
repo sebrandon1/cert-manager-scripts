@@ -11,6 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/pebble-challtestsrv"
 
@@ -32,6 +33,10 @@ fi
 log_info "Installing Challenge Test Server..."
 
 apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
+register_rollback "$KUBE_CLI" delete deployment/pebble-challtestsrv service/pebble-challtestsrv \
+	-n "$PEBBLE_NAMESPACE" --ignore-not-found=true --wait=false
+register_rollback "$KUBE_CLI" delete configmap/pebble-challtestsrv-config \
+	-n "$PEBBLE_NAMESPACE" --ignore-not-found=true --wait=false
 apply_yaml_template "$YAML_DIR/service.yaml" "Service"
 
 log_info "Waiting for Challenge Test Server to be ready..."
@@ -40,6 +45,7 @@ oc wait --for=condition=available --timeout=120s \
 	-n "$PEBBLE_NAMESPACE" || {
 	log_warn "Deployment not ready yet, checking status..."
 	oc get pods -n "$PEBBLE_NAMESPACE" -l app=pebble-challtestsrv
+	exit 1
 }
 
 log_info "Challenge Test Server is ready!"
@@ -56,3 +62,4 @@ echo "   curl -X POST http://pebble-challtestsrv.pebble.svc:8055/set-txt \\"
 echo "     -d '{\"host\":\"_acme-challenge.example.com.\",\"value\":\"test\"}'"
 echo
 log_info "This DNS server works with Pebble's ALWAYS_VALID mode!"
+clear_rollback

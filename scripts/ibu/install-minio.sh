@@ -45,6 +45,7 @@ install_minio() {
 	# Apply resources in order
 	log_info "Creating namespace..."
 	oc apply -f "$YAML_DIR/namespace.yaml"
+	register_rollback "$KUBE_CLI" delete namespace "$MINIO_NAMESPACE" --ignore-not-found=true --wait=false
 
 	log_info "Creating credentials secret..."
 	oc apply -f "$YAML_DIR/secret.yaml"
@@ -116,6 +117,7 @@ main() {
 
 	verify_installation
 	log_success "MinIO installation complete!"
+	clear_rollback
 }
 
 main

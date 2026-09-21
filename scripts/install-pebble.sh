@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/pebble"
 
@@ -24,6 +25,7 @@ install_pebble() {
 	log_info "Installing Pebble ACME test server..."
 
 	apply_yaml_template "$YAML_DIR/namespace.yaml" "Namespace"
+	register_rollback "$KUBE_CLI" delete namespace "$PEBBLE_NAMESPACE" --ignore-not-found=true --wait=false
 	apply_yaml_template "$YAML_DIR/configmap.yaml" "ConfigMap"
 	apply_yaml_template "$YAML_DIR/deployment.yaml" "Deployment"
 	apply_yaml_template "$YAML_DIR/service.yaml" "Service"
@@ -162,6 +164,7 @@ main() {
 	wait_for_resource "deployment/pebble" "$PEBBLE_NAMESPACE" "${DEPLOYMENT_READY_TIMEOUT:-600s}"
 	verify_installation
 	display_next_steps
+	clear_rollback
 }
 
 main
