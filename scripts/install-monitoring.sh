@@ -76,15 +76,38 @@ check_existing_resources() {
 }
 
 install_service_monitor() {
-	log_info "Step 1/2: Creating ServiceMonitor..."
+	log_info "Step 1/3: Creating ServiceMonitor..."
 	apply_yaml_template "$YAML_DIR/service-monitor.yaml" "ServiceMonitor"
 	log_success "ServiceMonitor created."
 }
 
 install_prometheus_rules() {
-	log_info "Step 2/2: Creating PrometheusRule alerts..."
+	log_info "Step 2/3: Creating PrometheusRule alerts..."
 	apply_yaml_template "$YAML_DIR/prometheus-rules.yaml" "PrometheusRule"
 	log_success "PrometheusRule created."
+}
+
+install_grafana_dashboard() {
+	log_info "Step 3/3: Creating Grafana dashboard ConfigMap..."
+	local dashboard_file="$YAML_DIR/dashboards/cert-manager.json"
+	if [ ! -f "$dashboard_file" ]; then
+		log_error "Dashboard JSON not found: $dashboard_file"
+		exit 1
+	fi
+
+	# Apply via --from-file so Grafana $variables are not eaten by envsubst
+	"$KUBE_CLI" create configmap cert-manager-dashboard \
+		-n "$CERT_MANAGER_NAMESPACE" \
+		--from-file=cert-manager.json="$dashboard_file" \
+		--dry-run=client -o yaml |
+		"$KUBE_CLI" apply -f -
+	"$KUBE_CLI" label configmap cert-manager-dashboard \
+		-n "$CERT_MANAGER_NAMESPACE" \
+		grafana_dashboard=true \
+		console.openshift.io/dashboard=true \
+		--overwrite
+
+	log_success "Dashboard ConfigMap 'cert-manager-dashboard' created."
 }
 
 verify_monitoring() {
@@ -97,6 +120,10 @@ verify_monitoring() {
 
 	log_info "PrometheusRule:"
 	oc get prometheusrule -n "$CERT_MANAGER_NAMESPACE" 2>/dev/null || echo "  No PrometheusRules found"
+	echo
+
+	log_info "Dashboard ConfigMap:"
+	oc get configmap cert-manager-dashboard -n "$CERT_MANAGER_NAMESPACE" 2>/dev/null || echo "  No dashboard ConfigMap found"
 	echo
 }
 
@@ -118,7 +145,12 @@ display_next_steps() {
 	echo "2. Check alert rules in the OpenShift console:"
 	echo "   Observe > Alerting > Alerting Rules"
 	echo
-	echo "3. Verify cert-manager metrics (from a Prometheus pod):"
+	echo "3. Import or discover the Grafana dashboard ConfigMap:"
+	echo "   oc get configmap cert-manager-dashboard -n $CERT_MANAGER_NAMESPACE"
+	echo "   OpenShift: Observe > Dashboards (may require import if not in openshift-config-managed)"
+	echo "   Grafana sidecar: labeled grafana_dashboard=true for auto-load"
+	echo
+	echo "4. Verify cert-manager metrics (from a Prometheus pod):"
 	echo "   curl http://cert-manager.$CERT_MANAGER_NAMESPACE.svc:9402/metrics"
 	echo
 }
@@ -147,6 +179,7 @@ main() {
 	check_existing_resources
 	install_service_monitor
 	install_prometheus_rules
+	install_grafana_dashboard
 	verify_monitoring
 	display_next_steps
 }

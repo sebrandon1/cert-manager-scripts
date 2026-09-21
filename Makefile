@@ -619,7 +619,7 @@ clean-ingress-test: ## Clean up ingress TLS test resources
 
 clean-monitoring: ## Clean up cert-manager monitoring resources (alias: uninstall-monitoring)
 	@echo "$(BOLD)$(YELLOW)Cleaning up monitoring resources...$(RESET)"
-	@$(KUBE_CLI) delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts -n cert-manager --ignore-not-found=true
+	@$(KUBE_CLI) delete servicemonitor/cert-manager prometheusrule/cert-manager-alerts configmap/cert-manager-dashboard -n cert-manager --ignore-not-found=true
 	@echo "$(GREEN)Monitoring resources cleaned.$(RESET)"
 
 uninstall-monitoring: clean-monitoring ## Uninstall cert-manager ServiceMonitor and PrometheusRule (alias of clean-monitoring)

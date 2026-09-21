@@ -79,6 +79,14 @@ check_metrics_service() {
 	fi
 }
 
+check_dashboard_configmap() {
+	if "$KUBE_CLI" get configmap cert-manager-dashboard -n "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
+		record_pass "ConfigMap 'cert-manager-dashboard' exists"
+	else
+		record_fail "ConfigMap 'cert-manager-dashboard' not found"
+	fi
+}
+
 require_cmd jq
 require_cluster
 
@@ -94,6 +102,7 @@ fi
 
 check_service_monitor
 check_prometheus_rule
+check_dashboard_configmap
 check_metrics_service
 check_metrics_endpoint
 
