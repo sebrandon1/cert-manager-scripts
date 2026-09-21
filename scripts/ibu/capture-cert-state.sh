@@ -4,6 +4,12 @@
 # Script: capture-cert-state.sh
 # Description: Capture current state of certificates, secrets, and issuers
 #              for before/after comparison in IBU testing
+#
+# Environment:
+#   STATE_DIR       Required. Directory for JSON state files
+#   STATE_LABEL     Label suffix for files (default: before)
+#   TARGET_NAMESPACE Namespace to capture (default: default)
+#   EXPORT_FORMAT   stdout summary format: table (default), json, or csv
 ################################################################################
 
 set -euo pipefail
@@ -131,21 +137,55 @@ EOF
 }
 
 print_capture_summary() {
-	local cert_count
-	cert_count=$(jq 'length' "$STATE_DIR/certificates-${STATE_LABEL}.json" 2>/dev/null || echo "0")
-
-	local secret_count
+	local cert_count secret_count issuer_count
+	local cert_file="$STATE_DIR/certificates-${STATE_LABEL}.json"
+	cert_count=$(jq 'length' "$cert_file" 2>/dev/null || echo "0")
 	secret_count=$(jq 'length' "$STATE_DIR/checksums-${STATE_LABEL}.json" 2>/dev/null || echo "0")
-
-	local issuer_count
 	issuer_count=$(jq 'length' "$STATE_DIR/issuers-${STATE_LABEL}.json" 2>/dev/null || echo "0")
 
-	print_summary \
-		"State Label" "$STATE_LABEL" \
-		"Certificates" "$cert_count" \
-		"TLS Secrets" "$secret_count" \
-		"ClusterIssuers" "$issuer_count" \
-		"State saved to" "$STATE_DIR"
+	local format="${EXPORT_FORMAT:-table}"
+	case "$format" in
+	table | "")
+		print_summary \
+			"State Label" "$STATE_LABEL" \
+			"Certificates" "$cert_count" \
+			"TLS Secrets" "$secret_count" \
+			"ClusterIssuers" "$issuer_count" \
+			"State saved to" "$STATE_DIR"
+		;;
+	json)
+		jq -n \
+			--arg label "$STATE_LABEL" \
+			--arg stateDir "$STATE_DIR" \
+			--arg namespace "$TARGET_NAMESPACE" \
+			--argjson certificates "$cert_count" \
+			--argjson tlsSecrets "$secret_count" \
+			--argjson clusterIssuers "$issuer_count" \
+			'{
+				label: $label,
+				namespace: $namespace,
+				stateDir: $stateDir,
+				certificates: $certificates,
+				tlsSecrets: $tlsSecrets,
+				clusterIssuers: $clusterIssuers,
+				paths: {
+					certificates: ($stateDir + "/certificates-" + $label + ".json"),
+					checksums: ($stateDir + "/checksums-" + $label + ".json"),
+					issuers: ($stateDir + "/issuers-" + $label + ".json")
+				}
+			}'
+		;;
+	csv)
+		echo "name,namespace,ready"
+		if [ -f "$cert_file" ]; then
+			jq -r '.[] | [.name, .namespace, .ready] | @csv' "$cert_file"
+		fi
+		;;
+	*)
+		log_error "Unknown EXPORT_FORMAT='$format' (supported: table, json, csv)"
+		exit 1
+		;;
+	esac
 }
 
 main() {
