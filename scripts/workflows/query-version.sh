@@ -58,15 +58,16 @@ operator)
 	;;
 
 minio)
-	tags=$(curl -sL "https://quay.io/api/v1/repository/minio/minio/tag/?limit=100&onlyActiveTags=true" |
-		jq -r '.tags[].name // empty')
+	# Quay's v1 tag endpoint requires authentication; MinIO publishes the same RELEASE tags publicly on GitHub.
+	tags=$(curl -fsSL "https://api.github.com/repos/minio/minio/tags?per_page=100" |
+		jq -r 'if type == "array" then .[].name // empty else empty end')
 	if [ -z "$tags" ]; then
-		echo "Failed to fetch tags from quay.io"
+		echo "Failed to fetch MinIO release tags from GitHub"
 		exit 1
 	fi
 	latest=$(echo "$tags" | grep -E '^RELEASE\.[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$' | sort -r | head -1)
 	if [ -z "$latest" ]; then
-		echo "No valid RELEASE tags found"
+		echo "No valid MinIO RELEASE tags found"
 		echo "Raw tags:"
 		echo "$tags" | head -20
 		exit 1

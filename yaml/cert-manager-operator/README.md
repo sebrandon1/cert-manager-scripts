@@ -25,6 +25,8 @@ envsubst < yaml/cert-manager-operator/operatorgroup.yaml | oc apply -f -
 envsubst < yaml/cert-manager-operator/subscription.yaml | oc apply -f -
 ```
 
+The Subscription uses manual InstallPlan approval to keep the requested starting CSV from automatically upgrading. When applying these templates manually, approve only the InstallPlan whose CSV matches `CERT_MANAGER_VERSION`; the install script performs this approval automatically.
+
 ## Variables
 
 | Variable | Default | Description |
@@ -32,7 +34,7 @@ envsubst < yaml/cert-manager-operator/subscription.yaml | oc apply -f -
 | `OPERATOR_NAMESPACE` | `cert-manager-operator` | Namespace for the operator |
 | `OPERATOR_NAME` | `openshift-cert-manager-operator` | Operator subscription name |
 | `CHANNEL` | `stable-v1` | Update channel |
-| `CERT_MANAGER_VERSION` | `v1.19.0` | `startingCSV` pin |
+| `CERT_MANAGER_VERSION` | `v1.19.0` | Requested `startingCSV` version |
 
 ## Related Documentation
 

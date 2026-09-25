@@ -76,6 +76,12 @@ jobs:
           retry_wait_seconds: 15
           command: ./scripts/workflows/verify-cluster-access.sh
 
+      - name: Install cert-manager Operator and wait for readiness
+        timeout-minutes: 20
+        run: make install-cert-manager-operator
+        env:
+          CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
+
       - name: Run quick HTTP-01 test
         uses: nick-fields/retry@v4
         with:
@@ -88,7 +94,7 @@ jobs:
             oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
             echo "=== cert-manager diagnostics ==="
             oc get pods -n cert-manager 2>/dev/null || true
-          command: make quick-http-test
+          command: make QUICK_HTTP_SKIP_INSTALL=true quick-http-test
         env:
           CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
 
@@ -206,7 +212,7 @@ jobs:
       - name: Install IBU prerequisites
         if: inputs.run-ibu
         timeout-minutes: 30
-        run: make install-ibu-prereqs
+        run: ./scripts/workflows/install-ibu-prereqs-with-retry.sh
 
       - name: Run IBU Scenario 1 smoke (cert loss)
         if: inputs.run-ibu
