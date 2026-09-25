@@ -24,7 +24,7 @@ jobs:
           echo "version=$current" >> "$GITHUB_OUTPUT"
           echo "Current pinned version: $current"
 
-      - name: Query quay.io for latest MinIO version
+      - name: Query GitHub for latest MinIO release tag
         id: latest
         run: ./scripts/workflows/query-version.sh minio
 
@@ -51,7 +51,7 @@ jobs:
             Changes:
             - Updated MinIO deployment image tag
 
-            Source: [Quay.io](https://quay.io/repository/minio/minio?tab=tags)
+            Source: [MinIO release tags](https://github.com/minio/minio/tags)
           branch: bump-minio-${{ steps.latest.outputs.version }}
           delete-branch: true
           labels: dependencies
