@@ -99,6 +99,21 @@ get_operator_csv_phase() {
 		-o jsonpath='{.status.phase}' 2>/dev/null || true
 }
 
+is_retryable_catalog_resolution_failure() {
+	local resolution_condition
+	resolution_condition=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" \
+		-o jsonpath='{range .status.conditions[?(@.type=="ResolutionFailed")]}{.status}{"|"}{.reason}{"|"}{.message}{end}' 2>/dev/null || true)
+	case "$resolution_condition" in
+	True\|ErrorPreventedResolution\|*)
+		printf '%s' "$resolution_condition" | grep -Eiq \
+			'(code = Unavailable|connect: connection refused|connection reset by peer|i/o timeout|context deadline exceeded|no such host)'
+		;;
+	*)
+		return 1
+		;;
+	esac
+}
+
 olm_has_terminal_failure() {
 	local phase conditions install_plan install_plan_phase
 	phase=$(get_operator_csv_phase)
@@ -110,6 +125,11 @@ olm_has_terminal_failure() {
 	conditions=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" \
 		-o jsonpath='{range .status.conditions[*]}{.type}{"|"}{.status}{"|"}{.reason}{"\n"}{end}' 2>/dev/null || true)
 	if printf '%s\n' "$conditions" | grep -Eq '^(ResolutionFailed|InstallPlanFailed)\|True\|'; then
+		if printf '%s\n' "$conditions" | grep -Fq 'ResolutionFailed|True|' &&
+			is_retryable_catalog_resolution_failure; then
+			return 1
+		fi
+
 		log_error "Subscription '$OPERATOR_NAME' reports a terminal OLM failure:"
 		printf '%s\n' "$conditions" | grep -E '^(ResolutionFailed|InstallPlanFailed)\|True\|' || true
 		return 0
@@ -156,7 +176,7 @@ show_olm_diagnostics() {
 }
 
 wait_for_operator_csv() {
-	local max_attempts=60 attempt=1 phase
+	local max_attempts=60 attempt=1 phase saw_retryable_catalog_failure=false
 	log_info "Waiting up to five minutes for the operator CSV to reach Succeeded phase..."
 	while [ "$attempt" -le "$max_attempts" ]; do
 		phase=$(get_operator_csv_phase)
@@ -165,8 +185,17 @@ wait_for_operator_csv() {
 			return 0
 		fi
 
-		if [ "$phase" = "Failed" ] || olm_has_terminal_failure; then
+		if [ "$phase" = "Failed" ]; then
 			return 2
+		fi
+		if olm_has_terminal_failure; then
+			return 2
+		fi
+		if is_retryable_catalog_resolution_failure; then
+			saw_retryable_catalog_failure=true
+			if [ $((attempt % 6)) -eq 0 ]; then
+				log_warn "Waiting for the catalog connection to recover... ($attempt/$max_attempts)"
+			fi
 		fi
 
 		if [ $((attempt % 6)) -eq 0 ]; then
@@ -179,6 +208,9 @@ wait_for_operator_csv() {
 	done
 
 	log_warn "Timed out waiting for the operator CSV to reach Succeeded phase."
+	if [ "$saw_retryable_catalog_failure" = true ]; then
+		return 3
+	fi
 	return 1
 }
 
@@ -194,23 +226,39 @@ wait_for_operator() {
 		fi
 
 		show_olm_diagnostics
+		if [ "$wait_status" -eq 1 ] && is_retryable_catalog_resolution_failure; then
+			wait_status=3
+		fi
 		if [ "$wait_status" -eq 2 ] || olm_has_terminal_failure; then
 			log_error "OLM reported a terminal failure; the operator installation will not be retried."
 			return 1
 		fi
 
 		if [ "$attempt" -eq 2 ]; then
+			if [ "$wait_status" -eq 3 ]; then
+				log_error "Catalog connectivity did not recover after retrying the operator installation."
+				return 1
+			fi
 			log_error "Operator CSV did not become Succeeded after two five-minute attempts."
 			return 1
 		fi
 
-		log_warn "OLM is still progressing without a terminal failure; retrying the operator install once."
+		if [ "$wait_status" -eq 3 ]; then
+			log_warn "The catalog connection did not recover; recreating the Subscription to request OLM resolution again."
+			oc delete subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" --wait=true || return 1
+		else
+			log_warn "OLM is still progressing without a terminal failure; retrying the operator install once."
+		fi
 		install_operator || return 1
 		attempt=$((attempt + 1))
 	done
 
 	log_info "Waiting for operator controller deployment to become ready..."
-	wait_for_resource "deployment/cert-manager-operator-controller-manager" "$OPERATOR_NAMESPACE" 300s || return 1
+	if ! wait_for_resource "deployment/cert-manager-operator-controller-manager" "$OPERATOR_NAMESPACE" 300s; then
+		log_warn "Operator controller deployment did not become ready."
+		show_olm_diagnostics
+		return 1
+	fi
 	log_success "Operator is ready!"
 }
 
