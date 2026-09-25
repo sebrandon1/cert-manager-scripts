@@ -80,16 +80,11 @@ install_operator() {
 	log_info "Resources applied. Waiting for operator installation to complete..."
 }
 
-# Return the CSV currently selected by the Subscription, falling back to the
-# pinned startingCSV while OLM is still creating the Subscription status.
+# The requested startingCSV is the version this install must verify. OLM's
+# currentCSV can move to a newer channel version even when that version is not
+# approved for installation.
 get_operator_csv_name() {
-	local csv_name
-	csv_name=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" \
-		-o jsonpath='{.status.currentCSV}' 2>/dev/null || true)
-	if [ -z "$csv_name" ]; then
-		csv_name="cert-manager-operator.${CERT_MANAGER_VERSION}"
-	fi
-	printf '%s\n' "$csv_name"
+	printf 'cert-manager-operator.%s\n' "$CERT_MANAGER_VERSION"
 }
 
 get_operator_csv_phase() {
@@ -149,6 +144,31 @@ olm_has_terminal_failure() {
 	return 1
 }
 
+# With Manual installPlanApproval, approve only the plan for the requested CSV.
+# A newer plan may be created by the channel, but remains unapproved.
+approve_pinned_install_plan() {
+	local csv_name install_plans install_plan plan_csvs approved
+	csv_name=$(get_operator_csv_name)
+	install_plans=$(oc get installplan -n "$OPERATOR_NAMESPACE" \
+		-o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+	for install_plan in $install_plans; do
+		plan_csvs=$(oc get installplan "$install_plan" -n "$OPERATOR_NAMESPACE" \
+			-o jsonpath='{.spec.clusterServiceVersionNames[*]}' 2>/dev/null || true)
+		if ! printf ' %s ' "$plan_csvs" | grep -Fq " $csv_name "; then
+			continue
+		fi
+
+		approved=$(oc get installplan "$install_plan" -n "$OPERATOR_NAMESPACE" \
+			-o jsonpath='{.spec.approved}' 2>/dev/null || true)
+		if [ "$approved" != "true" ]; then
+			log_info "Approving InstallPlan '$install_plan' for pinned CSV '$csv_name'."
+			oc patch installplan "$install_plan" -n "$OPERATOR_NAMESPACE" \
+				--type=merge -p '{"spec":{"approved":true}}' || return 1
+		fi
+		return 0
+	done
+}
+
 show_olm_diagnostics() {
 	local csv_name install_plan
 	csv_name=$(get_operator_csv_name)
@@ -179,6 +199,9 @@ wait_for_operator_csv() {
 	local max_attempts=60 attempt=1 phase saw_retryable_catalog_failure=false
 	log_info "Waiting up to five minutes for the operator CSV to reach Succeeded phase..."
 	while [ "$attempt" -le "$max_attempts" ]; do
+		if ! approve_pinned_install_plan; then
+			log_warn "Could not approve the InstallPlan for the pinned CSV yet."
+		fi
 		phase=$(get_operator_csv_phase)
 		if [ "$phase" = "Succeeded" ]; then
 			log_success "Operator CSV $(get_operator_csv_name) is in Succeeded phase."
