@@ -72,27 +72,145 @@ install_operator() {
 	log_info "Installing cert-manager Operator for Red Hat OpenShift..."
 
 	# Create OperatorGroup
-	apply_yaml_template "$YAML_DIR/operatorgroup.yaml" "OperatorGroup"
+	apply_yaml_template "$YAML_DIR/operatorgroup.yaml" "OperatorGroup" || return 1
 
 	# Create Subscription
-	apply_yaml_template "$YAML_DIR/subscription.yaml" "Subscription"
+	apply_yaml_template "$YAML_DIR/subscription.yaml" "Subscription" || return 1
 
 	log_info "Resources applied. Waiting for operator installation to complete..."
 }
 
-# Function to wait for operator to be ready
-wait_for_operator() {
-	# Wait for CSV to reach Succeeded phase
-	wait_for_csv "$OPERATOR_NAMESPACE" "cert-manager" 60
+# Return the CSV currently selected by the Subscription, falling back to the
+# pinned startingCSV while OLM is still creating the Subscription status.
+get_operator_csv_name() {
+	local csv_name
+	csv_name=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" \
+		-o jsonpath='{.status.currentCSV}' 2>/dev/null || true)
+	if [ -z "$csv_name" ]; then
+		csv_name="cert-manager-operator.${CERT_MANAGER_VERSION}"
+	fi
+	printf '%s\n' "$csv_name"
+}
 
-	# Wait for operator deployment to be ready
-	log_info "Waiting for operator deployment to be ready..."
-	if oc get deployment cert-manager-operator-controller-manager -n "$OPERATOR_NAMESPACE" &>/dev/null; then
-		wait_for_resource "deployment/cert-manager-operator-controller-manager" "$OPERATOR_NAMESPACE" 300s
-	else
-		log_warn "Operator deployment not found yet, but CSV is ready."
+get_operator_csv_phase() {
+	local csv_name
+	csv_name=$(get_operator_csv_name)
+	oc get csv "$csv_name" -n "$OPERATOR_NAMESPACE" \
+		-o jsonpath='{.status.phase}' 2>/dev/null || true
+}
+
+olm_has_terminal_failure() {
+	local phase conditions install_plan install_plan_phase
+	phase=$(get_operator_csv_phase)
+	if [ "$phase" = "Failed" ]; then
+		log_error "Operator CSV $(get_operator_csv_name) is in Failed phase."
+		return 0
 	fi
 
+	conditions=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" \
+		-o jsonpath='{range .status.conditions[*]}{.type}{"|"}{.status}{"|"}{.reason}{"\n"}{end}' 2>/dev/null || true)
+	if printf '%s\n' "$conditions" | grep -Eq '^(ResolutionFailed|InstallPlanFailed)\|True\|'; then
+		log_error "Subscription '$OPERATOR_NAME' reports a terminal OLM failure:"
+		printf '%s\n' "$conditions" | grep -E '^(ResolutionFailed|InstallPlanFailed)\|True\|' || true
+		return 0
+	fi
+
+	install_plan=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" \
+		-o jsonpath='{.status.installPlanRef.name}' 2>/dev/null || true)
+	if [ -n "$install_plan" ]; then
+		install_plan_phase=$(oc get installplan "$install_plan" -n "$OPERATOR_NAMESPACE" \
+			-o jsonpath='{.status.phase}' 2>/dev/null || true)
+		if [ "$install_plan_phase" = "Failed" ]; then
+			log_error "InstallPlan '$install_plan' is in Failed phase."
+			return 0
+		fi
+	fi
+
+	return 1
+}
+
+show_olm_diagnostics() {
+	local csv_name install_plan
+	csv_name=$(get_operator_csv_name)
+	install_plan=$(oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" \
+		-o jsonpath='{.status.installPlanRef.name}' 2>/dev/null || true)
+
+	log_warn "--- OLM diagnostics for namespace '$OPERATOR_NAMESPACE' ---"
+	log_info "Subscription:"
+	oc get subscription "$OPERATOR_NAME" -n "$OPERATOR_NAMESPACE" -o yaml 2>/dev/null || true
+	log_info "InstallPlans:"
+	oc get installplan -n "$OPERATOR_NAMESPACE" -o wide 2>/dev/null || true
+	if [ -n "$install_plan" ]; then
+		oc describe installplan "$install_plan" -n "$OPERATOR_NAMESPACE" 2>/dev/null || true
+	fi
+	log_info "CSV:"
+	oc get csv "$csv_name" -n "$OPERATOR_NAMESPACE" -o wide 2>/dev/null || true
+	if oc get csv "$csv_name" -n "$OPERATOR_NAMESPACE" &>/dev/null; then
+		oc describe csv "$csv_name" -n "$OPERATOR_NAMESPACE" 2>/dev/null || true
+	fi
+	log_info "CatalogSources:"
+	oc get catalogsource -n openshift-marketplace -o wide 2>/dev/null || true
+	log_info "Namespace events:"
+	oc get events -n "$OPERATOR_NAMESPACE" --sort-by='.lastTimestamp' 2>/dev/null | tail -40 || true
+	log_warn "--- End OLM diagnostics ---"
+}
+
+wait_for_operator_csv() {
+	local max_attempts=60 attempt=1 phase
+	log_info "Waiting up to five minutes for the operator CSV to reach Succeeded phase..."
+	while [ "$attempt" -le "$max_attempts" ]; do
+		phase=$(get_operator_csv_phase)
+		if [ "$phase" = "Succeeded" ]; then
+			log_success "Operator CSV $(get_operator_csv_name) is in Succeeded phase."
+			return 0
+		fi
+
+		if [ "$phase" = "Failed" ] || olm_has_terminal_failure; then
+			return 2
+		fi
+
+		if [ $((attempt % 6)) -eq 0 ]; then
+			log_info "Still waiting for the operator CSV... ($attempt/$max_attempts)"
+		fi
+		if [ "$attempt" -lt "$max_attempts" ]; then
+			sleep 5
+		fi
+		attempt=$((attempt + 1))
+	done
+
+	log_warn "Timed out waiting for the operator CSV to reach Succeeded phase."
+	return 1
+}
+
+# Function to wait for operator to be ready. A single retry is allowed only
+# when OLM is still progressing and has not reported a terminal failure.
+wait_for_operator() {
+	local attempt=1 wait_status
+	while [ "$attempt" -le 2 ]; do
+		if wait_for_operator_csv; then
+			break
+		else
+			wait_status=$?
+		fi
+
+		show_olm_diagnostics
+		if [ "$wait_status" -eq 2 ] || olm_has_terminal_failure; then
+			log_error "OLM reported a terminal failure; the operator installation will not be retried."
+			return 1
+		fi
+
+		if [ "$attempt" -eq 2 ]; then
+			log_error "Operator CSV did not become Succeeded after two five-minute attempts."
+			return 1
+		fi
+
+		log_warn "OLM is still progressing without a terminal failure; retrying the operator install once."
+		install_operator || return 1
+		attempt=$((attempt + 1))
+	done
+
+	log_info "Waiting for operator controller deployment to become ready..."
+	wait_for_resource "deployment/cert-manager-operator-controller-manager" "$OPERATOR_NAMESPACE" 300s || return 1
 	log_success "Operator is ready!"
 }
 
@@ -102,11 +220,11 @@ verify_installation() {
 
 	# Check operator pod
 	log_info "Checking operator pod status..."
-	oc get pods -n "$OPERATOR_NAMESPACE"
+	oc get pods -n "$OPERATOR_NAMESPACE" || return 1
 
 	# Check CSV
 	log_info "Checking ClusterServiceVersion..."
-	oc get csv -n "$OPERATOR_NAMESPACE"
+	oc get csv -n "$OPERATOR_NAMESPACE" || return 1
 
 	# Check if cert-manager namespace exists (created by operator)
 	if oc get namespace "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
@@ -114,7 +232,7 @@ verify_installation() {
 
 		# Check cert-manager deployments
 		log_info "Checking cert-manager components..."
-		oc get deployments -n "$CERT_MANAGER_NAMESPACE"
+		oc get deployments -n "$CERT_MANAGER_NAMESPACE" || return 1
 	else
 		log_warn "cert-manager namespace not yet created. The operator will create it."
 	fi
@@ -146,12 +264,12 @@ main() {
 	log_info "Version: $CERT_MANAGER_VERSION (channel: $CHANNEL)"
 	echo
 
-	check_prerequisites
-	check_existing_installation
-	ensure_namespace "$OPERATOR_NAMESPACE"
-	install_operator
-	wait_for_operator
-	verify_installation
+	check_prerequisites || return 1
+	check_existing_installation || return 1
+	ensure_namespace "$OPERATOR_NAMESPACE" || return 1
+	install_operator || return 1
+	wait_for_operator || return 1
+	verify_installation || return 1
 	display_next_steps
 }
 

@@ -82,7 +82,9 @@ CHANNEL=stable-v1 make install-cert-manager-operator
 - Creates the `cert-manager-operator` namespace
 - Applies OperatorGroup and Subscription resources from YAML templates
 - Uses `envsubst` for variable substitution in YAML files
-- Waits for operator to be ready
+- Waits up to five minutes for the selected CSV to reach `Succeeded`, and retries once only if OLM has no terminal failure
+- Requires the operator controller deployment to become available before reporting success
+- Prints Subscription, InstallPlan, CSV, CatalogSource, and namespace event diagnostics when OLM fails or times out
 - Verifies the installation
 - Displays next steps
 - **Idempotent**: Safe to run multiple times
@@ -273,4 +275,3 @@ After installing cert-manager-operator and Pebble, you can:
    - Configure DNS-01 challenges with custom DNS servers
    - Test IPv4, IPv6, and dual-stack configurations (see [Network Support](./network-support.md))
    - Set up monitoring and alerting for certificate expiry
-

@@ -282,7 +282,13 @@ quick-http-test: ## Quick end-to-end HTTP-01 test
 	@echo ""
 	@echo "$(BOLD)$(BLUE)Quick HTTP-01 Test Running...$(RESET)"
 	@echo ""
-	@if [ "$(CLUSTER_TYPE)" = "openshift" ]; then $(MAKE) install-cert-manager-operator; else $(MAKE) install-cert-manager-helm; fi
+	@if [ "$(QUICK_HTTP_SKIP_INSTALL)" = "true" ]; then \
+		echo "Using the cert-manager installation prepared by an earlier step"; \
+	elif [ "$(CLUSTER_TYPE)" = "openshift" ]; then \
+		$(MAKE) install-cert-manager-operator; \
+	else \
+		$(MAKE) install-cert-manager-helm; \
+	fi
 	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble
 	@$(MAKE) create-issuer
 	@CLUSTER_DOMAIN=$$($(KUBE_CLI) get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "example.com"); \

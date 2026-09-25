@@ -113,7 +113,6 @@ EOF
 }
 
 check_apiserver_cert_ready() {
-	oc whoami &>/dev/null || return 1
 	local ready
 	ready=$(oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
 	[ "$ready" = "True" ]
@@ -123,13 +122,31 @@ wait_for_certificate() {
 	log_info "Waiting for certificate to be issued..."
 
 	local max_attempts=$(((${CERT_WAIT_TIMEOUT:-60} + 1) / 2))
-	if wait_for_condition "$max_attempts" 2 check_apiserver_cert_ready; then
-		log_success "Certificate is READY!"
-	else
-		log_warn "Timeout waiting for certificate to be ready."
-		log_info "The certificate resource was created - it may become ready later."
-		log_info "Check certificate status: oc describe certificate $CERT_NAME -n $CERT_NAMESPACE"
+	local attempt
+	for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+		if ! oc whoami &>/dev/null; then
+			log_error "Cluster connectivity was lost while waiting for the API server certificate."
+			return 1
+		fi
+
+		if check_apiserver_cert_ready; then
+			log_success "Certificate is READY!"
+			return 0
+		fi
+
+		if [ "$attempt" -lt "$max_attempts" ]; then
+			sleep 2
+		fi
+	done
+
+	if ! oc whoami &>/dev/null; then
+		log_error "Cluster connectivity was lost while waiting for the API server certificate."
+		return 1
 	fi
+
+	log_warn "Timeout waiting for certificate to be ready."
+	log_info "The certificate resource was created - it may become ready later."
+	log_info "Check certificate status: oc describe certificate $CERT_NAME -n $CERT_NAMESPACE"
 }
 
 display_certificate_info() {
@@ -149,10 +166,16 @@ display_certificate_info() {
 	oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" 2>/dev/null || log_warn "Secret not yet created"
 	echo
 
-	# If certificate is ready, show details
+	# If the certificate is ready, show its details without letting a display
+	# failure change the successful issuance result.
 	if oc get certificate "$CERT_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -q "True"; then
 		log_info "Certificate details:"
-		oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null | base64 -d | openssl x509 -text -noout | head -20
+		if ! oc get secret "$SECRET_NAME" -n "$CERT_NAMESPACE" -o jsonpath='{.data.tls\.crt}' 2>/dev/null |
+			base64 -d 2>/dev/null |
+			openssl x509 -text -noout 2>/dev/null |
+			sed -n '1,20p'; then
+			log_warn "Could not read or parse certificate data — skipping details"
+		fi
 	fi
 }
 
@@ -193,7 +216,7 @@ main() {
 	get_api_server_info
 	ensure_namespace "$CERT_NAMESPACE"
 	create_certificate
-	wait_for_certificate || true
+	wait_for_certificate
 	display_certificate_info
 	display_next_steps
 }
