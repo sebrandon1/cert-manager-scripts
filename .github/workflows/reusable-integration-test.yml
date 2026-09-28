@@ -225,6 +225,11 @@ jobs:
         continue-on-error: true
         run: make clean-ibu || true
 
+      - name: Diagnose CRC and runner after failure
+        if: failure()
+        continue-on-error: true
+        run: ./scripts/workflows/diagnose-crc-runner.sh
+
       - name: Final cluster health check
         if: always()
         run: |

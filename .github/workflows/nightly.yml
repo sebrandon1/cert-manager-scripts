@@ -31,14 +31,31 @@ jobs:
     steps:
       - name: Determine matrix
         id: set-matrix
+        env:
+          CERT_MANAGER_INPUT: ${{ inputs.cert-manager-version }}
+          OCP_INPUT: ${{ inputs.ocp-version }}
         run: |
-          cm_input="${{ github.event.inputs.cert-manager-version }}"
-          ocp_input="${{ github.event.inputs.ocp-version }}"
-          cm_versions=${cm_input:+"[\"${cm_input}\"]"}
-          cm_versions=${cm_versions:-'["v1.18.1", "v1.19.0", "v1.20.0"]'}
-          ocp_versions=${ocp_input:+"[\"${ocp_input}\"]"}
-          ocp_versions=${ocp_versions:-'["4.20", "4.21", "4.22"]'}
-          echo "matrix={\"cert-manager-version\":${cm_versions},\"ocp-version\":${ocp_versions}}" >> "$GITHUB_OUTPUT"
+          cm_versions=$(jq -cn --arg input "$CERT_MANAGER_INPUT" \
+            'if $input == "" then ["v1.18.1", "v1.19.0", "v1.20.0"] else [$input] end')
+          ocp_versions=$(jq -cn --arg input "$OCP_INPUT" \
+            'if $input == "" then ["4.20", "4.21", "4.22"] else [$input] end')
+
+          # OCP 4.22 does not publish the cert-manager v1.18.1 bundle. Keep
+          # that unsupported pair out of default/partial-selection matrices,
+          # but preserve an explicitly requested pair so the installer reports
+          # the missing bundle clearly.
+          matrix=$(jq -cn \
+            --argjson cm_versions "$cm_versions" \
+            --argjson ocp_versions "$ocp_versions" \
+            --arg cm_input "$CERT_MANAGER_INPUT" \
+            --arg ocp_input "$OCP_INPUT" \
+            '{include: [
+              $ocp_versions[] as $ocp |
+              $cm_versions[] as $cm |
+              select(($ocp != "4.22" or $cm != "v1.18.1") or ($cm_input != "" and $ocp_input != "")) |
+              {"cert-manager-version": $cm, "ocp-version": $ocp}
+            ]}')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   lint:
     name: Quick lint gate
