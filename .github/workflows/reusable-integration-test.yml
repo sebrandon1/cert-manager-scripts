@@ -29,8 +29,28 @@ env:
   SKIP_CONFIRM: '1'
 
 jobs:
+  olm-precheck:
+    name: OLM precheck (OCP ${{ inputs.ocp-version }} / cert-manager ${{ inputs.cert-manager-version || 'default' }})
+    runs-on: ubuntu-24.04
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout-ref || github.sha }}
+
+      - name: Check operator bundle availability in OLM
+        id: check
+        env:
+          OCP_VERSION: ${{ inputs.ocp-version }}
+          CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
+        run: ./scripts/workflows/check-olm-operator-bundle.sh
+
   test:
     name: OCP ${{ inputs.ocp-version }} / cert-manager ${{ inputs.cert-manager-version || 'default' }}
+    needs: [olm-precheck]
+    if: ${{ needs.olm-precheck.outputs.available == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -55,7 +75,7 @@ jobs:
           ref: ${{ inputs.checkout-ref || github.sha }}
 
       - name: Deploy the OCP Cluster
-        uses: palmsoftware/quick-ocp@v1.0.3
+        uses: palmsoftware/quick-ocp@v1.0.4
         with:
           ocpPullSecret: $OCP_PULL_SECRET
           bundleCache: true
