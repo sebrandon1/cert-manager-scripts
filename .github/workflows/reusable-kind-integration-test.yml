@@ -6,7 +6,7 @@ on:
       cert-manager-version:
         required: false
         type: string
-        default: 'v1.20.0'
+        default: 'v1.20.1'
       checkout-ref:
         required: false
         type: string

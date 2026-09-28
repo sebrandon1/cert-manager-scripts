@@ -133,8 +133,8 @@ Runs on every push and pull request to `main`:
 4. **Structure check** — directory layout, key files, script references
 5. **Version query check** — pebble, acme-dns, operator, minio, ubi9-python
 6. **Unit tests** — BATS (`make test-unit`), no cluster
-7. **Kind integration test** — cert-manager v1.19.0 and v1.20.0
-8. **OCP integration test** — CRC via [quick-ocp](https://github.com/palmsoftware/quick-ocp), matrix of OCP 4.20/4.21/4.22 × cert-manager v1.19.0/v1.20.0. Runs `make quick-http-test` (HTTP-01, not DNS-01), API server cert verification, workload partitioning, and network stack detection. Skipped for dependabot.
+7. **Kind integration test** — cert-manager v1.19.2 and v1.20.1
+8. **OCP integration test** — CRC via [quick-ocp](https://github.com/palmsoftware/quick-ocp), matrix of OCP 4.20/4.21/4.22 × cert-manager v1.19.2/v1.20.1. Runs `make quick-http-test` (HTTP-01, not DNS-01), API server cert verification, workload partitioning, and network stack detection. Skipped for dependabot.
 
 OCP integration tests need the `CRC_PULL_SECRET` GitHub secret (upstream only). See [CI cluster health](docs/CRC-CLUSTER-HEALTH-IMPROVEMENTS.md) for the CRC health-check flow.
 
