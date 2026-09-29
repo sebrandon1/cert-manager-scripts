@@ -1,5 +1,9 @@
 # cert-manager-scripts
 
+[![Pre-Main Testing](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/pre-main.yml/badge.svg?branch=main)](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/pre-main.yml) [![Nightly Integration Tests](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/nightly.yml/badge.svg?branch=main)](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/nightly.yml)
+
+[![Check acme-dns Version](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-acme-dns-version.yml/badge.svg?branch=main)](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-acme-dns-version.yml) [![Check MinIO Version](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-minio-version.yml/badge.svg?branch=main)](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-minio-version.yml) [![Check Operator Version](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-operator-version.yml/badge.svg?branch=main)](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-operator-version.yml) [![Check Pebble Version](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-pebble-version.yml/badge.svg?branch=main)](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-pebble-version.yml) [![Check UBI9 Python Version](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-ubi9-python-version.yml/badge.svg?branch=main)](https://github.com/sebrandon1/cert-manager-scripts/actions/workflows/check-ubi9-python-version.yml)
+
 Automation toolkit for testing cert-manager-operator on OpenShift clusters using
 Pebble, a local ACME test server from Let's Encrypt. Supports HTTP-01 and DNS-01
 challenges, air-gapped environments, and IBU certificate validation — all without
