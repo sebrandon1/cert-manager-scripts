@@ -28,12 +28,8 @@ check_prerequisites() {
 	require_cmd oc
 	require_cluster
 
-	# Check if cert-manager is installed
-	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
-		log_error "cert-manager not found."
-		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
-		exit 1
-	fi
+	# Check if cert-manager is installed and webhook is ready
+	require_cert_manager
 
 	# Check if issuer exists
 	if ! oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
@@ -78,14 +74,16 @@ create_certificate() {
 	# Build DNS names list
 	DNS_NAMES="- \"$API_HOST\""
 
-	# Add additional SANs if we can determine them
-	if [ -n "$BASE_DOMAIN" ]; then
+	# Add api.$BASE_DOMAIN only when it differs from API_HOST (identical on CRC)
+	if [ -n "$BASE_DOMAIN" ] && [ "api.$BASE_DOMAIN" != "$API_HOST" ]; then
 		DNS_NAMES="$DNS_NAMES
   - \"api.$BASE_DOMAIN\""
 	fi
 
-	# Create the Certificate CR
-	if cat <<EOF | oc apply -f -
+	# Write the Certificate CR to a temp file so it can be retried
+	local tmp_yaml
+	tmp_yaml=$(mktemp)
+	cat >"$tmp_yaml" <<EOF
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -103,13 +101,16 @@ spec:
   - key encipherment
   - server auth
 EOF
-	then
+
+	if retry 3 15 oc apply -f "$tmp_yaml"; then
 		log_info "Certificate '$CERT_NAME' created successfully in namespace '$CERT_NAMESPACE'"
 	else
 		log_error "Failed to create certificate '$CERT_NAME'"
 		log_hint "Run 'make troubleshoot' for diagnostics"
+		rm -f "$tmp_yaml"
 		exit 1
 	fi
+	rm -f "$tmp_yaml"
 }
 
 check_apiserver_cert_ready() {
@@ -118,20 +119,42 @@ check_apiserver_cert_ready() {
 	[ "$ready" = "True" ]
 }
 
+cluster_reachable() {
+	oc whoami &>/dev/null && return 0
+	restore_crc_hosts_entry "$API_HOST" && oc whoami &>/dev/null
+}
+
+# On CRC the solver Route removal can drop the api.crc.testing hosts entry
+# shortly after issuance, so keep restoring it until that has settled.
+settle_crc_hosts_entry() {
+	[[ "$API_HOST" == *crc.testing ]] || return 0
+
+	log_info "Watching $API_HOST resolution while HTTP-01 solver resources are cleaned up..."
+	local i
+	for ((i = 1; i <= 30; i++)); do
+		if ! cluster_reachable; then
+			log_error "Cluster connectivity was lost after the API server certificate was issued."
+			return 1
+		fi
+		sleep 2
+	done
+}
+
 wait_for_certificate() {
 	log_info "Waiting for certificate to be issued..."
 
 	local max_attempts=$(((${CERT_WAIT_TIMEOUT:-60} + 1) / 2))
 	local attempt
 	for ((attempt = 1; attempt <= max_attempts; attempt++)); do
-		if ! oc whoami &>/dev/null; then
+		if ! cluster_reachable; then
 			log_error "Cluster connectivity was lost while waiting for the API server certificate."
 			return 1
 		fi
 
 		if check_apiserver_cert_ready; then
 			log_success "Certificate is READY!"
-			return 0
+			settle_crc_hosts_entry
+			return
 		fi
 
 		if [ "$attempt" -lt "$max_attempts" ]; then
@@ -139,7 +162,7 @@ wait_for_certificate() {
 		fi
 	done
 
-	if ! oc whoami &>/dev/null; then
+	if ! cluster_reachable; then
 		log_error "Cluster connectivity was lost while waiting for the API server certificate."
 		return 1
 	fi

@@ -494,6 +494,22 @@ require_cert_manager() {
 	log_info "cert-manager webhook is ready."
 }
 
+# Re-add a missing CRC hostname to /etc/hosts. In CRC user-mode networking the
+# host resolves *.crc.testing only via /etc/hosts entries that CRC syncs with
+# cluster Routes, so deleting an HTTP-01 solver Route for api.crc.testing drops it.
+# Usage: restore_crc_hosts_entry <hostname>
+restore_crc_hosts_entry() {
+	local host="$1"
+
+	[[ "$host" == *crc.testing ]] || return 1
+	command -v getent &>/dev/null || return 1
+	getent hosts "$host" &>/dev/null && return 0
+
+	log_warn "$host no longer resolves; re-adding it to /etc/hosts"
+	echo "127.0.0.1 $host" | sudo -n tee -a /etc/hosts >/dev/null || return 1
+	getent hosts "$host" &>/dev/null
+}
+
 # Wait for cluster health (OpenShift: cluster operators, Kubernetes: node readiness)
 # Usage: require_healthy_cluster [max_attempts] [interval]
 require_healthy_cluster() {

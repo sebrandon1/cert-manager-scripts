@@ -27,6 +27,8 @@ jobs:
       - name: Query GitHub for latest acme-dns version
         id: latest
         run: ./scripts/workflows/query-version.sh acme-dns
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compare versions
         id: compare

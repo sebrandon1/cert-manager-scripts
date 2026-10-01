@@ -30,7 +30,7 @@ if ! getent hosts "$API_HOST" &>/dev/null; then
 	# Try to ping the host to refresh DNS cache
 	ping -c 1 "$API_HOST" &>/dev/null || true
 
-	if retry 3 5 getent hosts "$API_HOST"; then
+	if restore_crc_hosts_entry "$API_HOST" || retry 3 5 getent hosts "$API_HOST"; then
 		log_info "✅ DNS resolution recovered"
 	else
 		log_error "❌ DNS resolution still failing"

@@ -77,7 +77,7 @@ display_configuration() {
 }
 
 create_issuer() {
-	apply_yaml_template "$YAML_DIR/pebble-clusterissuer.yaml" "ClusterIssuer"
+	retry 3 10 apply_yaml_template "$YAML_DIR/pebble-clusterissuer.yaml" "ClusterIssuer"
 }
 
 check_issuer_ready() {

@@ -251,3 +251,26 @@ EOF
 	[ "$status" -eq 1 ]
 	[ "$(<"$COUNTER_FILE")" -eq 3 ]
 }
+
+@test "restore_crc_hosts_entry ignores non-CRC hosts" {
+	sudo() { touch "$BATS_TEST_TMPDIR/sudo-called"; }
+	run restore_crc_hosts_entry api.example.com
+	[ "$status" -eq 1 ]
+	[ ! -e "$BATS_TEST_TMPDIR/sudo-called" ]
+}
+
+@test "restore_crc_hosts_entry is a no-op when the host resolves" {
+	getent() { return 0; }
+	sudo() { touch "$BATS_TEST_TMPDIR/sudo-called"; }
+	run restore_crc_hosts_entry api.crc.testing
+	[ "$status" -eq 0 ]
+	[ ! -e "$BATS_TEST_TMPDIR/sudo-called" ]
+}
+
+@test "restore_crc_hosts_entry re-adds a missing entry" {
+	getent() { [ -e "$BATS_TEST_TMPDIR/hosts" ]; }
+	sudo() { shift 2 && cat >"$BATS_TEST_TMPDIR/hosts"; }
+	run restore_crc_hosts_entry api.crc.testing
+	[ "$status" -eq 0 ]
+	[ "$(<"$BATS_TEST_TMPDIR/hosts")" = "127.0.0.1 api.crc.testing" ]
+}

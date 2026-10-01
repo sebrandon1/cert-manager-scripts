@@ -37,13 +37,15 @@ else
 	exit 1
 fi
 
+require_cert_manager
+
 log_info "Creating dummy RFC2136 secret in cert-manager namespace..."
 "$KUBE_CLI" create secret generic rfc2136-credentials \
 	--from-literal=tsig-secret="$(echo -n "dummy-secret-key" | base64)" \
 	--namespace cert-manager \
 	--dry-run=client -o yaml | "$KUBE_CLI" apply -f -
 
-apply_yaml_template "$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" "DNS-01 ClusterIssuer"
+retry 3 15 apply_yaml_template "$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" "DNS-01 ClusterIssuer"
 
 log_info "Waiting for ClusterIssuer to be ready..."
 retry 5 10 "$KUBE_CLI" wait --for=condition=Ready clusterissuer/"$ISSUER_NAME" --timeout=30s 2>/dev/null
