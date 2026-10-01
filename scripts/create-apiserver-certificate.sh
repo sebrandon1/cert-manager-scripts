@@ -28,12 +28,8 @@ check_prerequisites() {
 	require_cmd oc
 	require_cluster
 
-	# Check if cert-manager is installed
-	if ! oc get deployment -n cert-manager cert-manager &>/dev/null; then
-		log_error "cert-manager not found."
-		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
-		exit 1
-	fi
+	# Check if cert-manager is installed and webhook is ready
+	require_cert_manager
 
 	# Check if issuer exists
 	if ! oc get clusterissuer "$ISSUER_NAME" &>/dev/null; then
@@ -78,14 +74,16 @@ create_certificate() {
 	# Build DNS names list
 	DNS_NAMES="- \"$API_HOST\""
 
-	# Add additional SANs if we can determine them
-	if [ -n "$BASE_DOMAIN" ]; then
+	# Add additional SANs only when distinct from API_HOST (avoids duplicate dnsNames rejection)
+	if [ -n "$BASE_DOMAIN" ] && [ "api.$BASE_DOMAIN" != "$API_HOST" ]; then
 		DNS_NAMES="$DNS_NAMES
   - \"api.$BASE_DOMAIN\""
 	fi
 
-	# Create the Certificate CR
-	if cat <<EOF | oc apply -f -
+	# Write the Certificate CR to a temp file so it can be retried
+	local tmp_yaml
+	tmp_yaml=$(mktemp)
+	cat >"$tmp_yaml" <<EOF
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -103,13 +101,16 @@ spec:
   - key encipherment
   - server auth
 EOF
-	then
+
+	if retry 3 15 oc apply -f "$tmp_yaml"; then
 		log_info "Certificate '$CERT_NAME' created successfully in namespace '$CERT_NAMESPACE'"
 	else
 		log_error "Failed to create certificate '$CERT_NAME'"
 		log_hint "Run 'make troubleshoot' for diagnostics"
+		rm -f "$tmp_yaml"
 		exit 1
 	fi
+	rm -f "$tmp_yaml"
 }
 
 check_apiserver_cert_ready() {

@@ -21,9 +21,17 @@ if [ -z "$component" ]; then
 	exit 1
 fi
 
+_curl_github() {
+	if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+		curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" "$@"
+	else
+		curl -fsSL "$@"
+	fi
+}
+
 query_github_latest() {
 	local repo="$1" label="$2"
-	latest=$(curl -sL "https://api.github.com/repos/${repo}/releases/latest" |
+	latest=$(_curl_github "https://api.github.com/repos/${repo}/releases/latest" |
 		jq -r '.tag_name // empty')
 	if [ -z "$latest" ]; then
 		echo "Failed to fetch latest ${label} release from GitHub"
@@ -59,7 +67,7 @@ operator)
 
 minio)
 	# Quay's v1 tag endpoint requires authentication; MinIO publishes the same RELEASE tags publicly on GitHub.
-	tags=$(curl -fsSL "https://api.github.com/repos/minio/minio/tags?per_page=100" |
+	tags=$(_curl_github "https://api.github.com/repos/minio/minio/tags?per_page=100" |
 		jq -r 'if type == "array" then .[].name // empty else empty end')
 	if [ -z "$tags" ]; then
 		echo "Failed to fetch MinIO release tags from GitHub"

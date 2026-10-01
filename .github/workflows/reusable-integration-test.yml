@@ -97,8 +97,23 @@ jobs:
           command: ./scripts/workflows/verify-cluster-access.sh
 
       - name: Install cert-manager Operator and wait for readiness
-        timeout-minutes: 20
-        run: make install-cert-manager-operator
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 25
+          max_attempts: 3
+          retry_on: error
+          on_retry_command: |
+            echo "=== OLM diagnostics ==="
+            oc get catalogsource -n openshift-marketplace 2>/dev/null || true
+            oc get subscription -n openshift-operators 2>/dev/null || true
+            oc get csv -n openshift-operators 2>/dev/null || true
+            oc get events -n openshift-operators --sort-by='.lastTimestamp' 2>/dev/null | tail -20 || true
+            echo "=== cert-manager namespace diagnostics ==="
+            oc get pods -n cert-manager 2>/dev/null || true
+            echo "=== Attempting cluster recovery ==="
+            ./scripts/workflows/recover-cluster.sh || echo "Recovery attempt failed, retrying install anyway"
+            sleep 30
+          command: make install-cert-manager-operator
         env:
           CERT_MANAGER_VERSION: ${{ inputs.cert-manager-version }}
 
@@ -143,15 +158,26 @@ jobs:
         run: make clean-selfsigned || true
 
       - name: Verify Pebble health before DNS-01 test
-        run: |
-          echo "Checking Pebble pod status before DNS-01 test..."
-          oc get pods -n pebble -o wide 2>/dev/null || true
-          oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -10 || true
-          if ! oc get deployment pebble -n pebble -o jsonpath='{.status.availableReplicas}' 2>/dev/null | grep -q '^[1-9]'; then
-            echo "WARNING: Pebble is not healthy, DNS-01 test may fail"
-          else
-            echo "Pebble is healthy"
-          fi
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 5
+          max_attempts: 6
+          retry_wait_seconds: 15
+          retry_on: error
+          on_retry_command: |
+            echo "=== Pebble not ready, diagnosing ==="
+            oc get pods -n pebble -o wide 2>/dev/null || true
+            oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -10 || true
+            echo "=== Cluster health check ==="
+            ./scripts/workflows/verify-cluster-access.sh || true
+          command: |
+            REPLICAS=$(oc get deployment pebble -n pebble \
+              -o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo "0")
+            if ! echo "$REPLICAS" | grep -qE '^[1-9]'; then
+              echo "ERROR: Pebble not healthy (availableReplicas=${REPLICAS:-0})"
+              exit 1
+            fi
+            echo "Pebble is healthy (availableReplicas=$REPLICAS)"
 
       - name: Run quick DNS-01 test
         uses: nick-fields/retry@v4
@@ -201,8 +227,25 @@ jobs:
           command: ./scripts/workflows/verify-cluster-access.sh
 
       - name: Recreate issuer for API server cert test
-        run: |
-          PEBBLE_ALWAYS_VALID=1 make install-pebble create-issuer || true
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          on_retry_command: |
+            echo "=== Pebble diagnostics ==="
+            oc get pods -n pebble -o wide 2>/dev/null || true
+            oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
+            echo "=== cert-manager webhook status ==="
+            oc get deployment cert-manager-webhook -n cert-manager 2>/dev/null || true
+            echo "=== Existing ClusterIssuers ==="
+            oc get clusterissuer 2>/dev/null || true
+            echo "=== Attempting cluster recovery ==="
+            ./scripts/workflows/recover-cluster.sh || echo "Recovery failed"
+            sleep 15
+          command: make install-pebble create-issuer
+        env:
+          PEBBLE_ALWAYS_VALID: "1"
 
       - name: Create API server certificate
         uses: nick-fields/retry@v4
@@ -236,8 +279,21 @@ jobs:
 
       - name: Run IBU Scenario 1 smoke (cert loss)
         if: inputs.run-ibu
-        timeout-minutes: 45
-        run: make test-ibu-certs
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 50
+          max_attempts: 2
+          retry_on: error
+          on_retry_command: |
+            echo "=== IBU test diagnostics ==="
+            oc get pods -n cert-manager 2>/dev/null || true
+            oc get certificates -A 2>/dev/null || true
+            oc get clusterissuer 2>/dev/null || true
+            echo "=== Cleaning up partial IBU state before retry ==="
+            make clean-ibu || true
+            ./scripts/workflows/verify-cluster-access.sh || true
+            sleep 30
+          command: make test-ibu-certs
 
       - name: Clean up IBU resources
         if: ${{ always() && inputs.run-ibu }}

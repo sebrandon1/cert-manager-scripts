@@ -30,7 +30,7 @@ main() {
 	helm repo update jetstack
 
 	log_info "Installing cert-manager ${CERT_MANAGER_VERSION}..."
-	helm upgrade --install cert-manager jetstack/cert-manager \
+	retry 3 30 helm upgrade --install cert-manager jetstack/cert-manager \
 		--namespace "$CERT_MANAGER_NAMESPACE" \
 		--create-namespace \
 		--version "${CERT_MANAGER_VERSION#v}" \
