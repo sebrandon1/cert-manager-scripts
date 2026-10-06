@@ -43,8 +43,8 @@ operator)
 	sed -i "s/CERT_MANAGER_VERSION=${current}/CERT_MANAGER_VERSION=${latest}/" \
 		.env.example
 	sed -i "s/\`${current}\`/\`${latest}\`/" CLAUDE.md
-	sed -i "s/${current}/${latest}/" \
-		.github/workflows/nightly.yml
+	sed -i "s/CERT_MANAGER_VERSION:-${current}/CERT_MANAGER_VERSION:-${latest}/" \
+		scripts/workflows/check-olm-operator-bundle.sh
 	echo "Updated default version from $current to $latest"
 	;;
 
