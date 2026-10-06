@@ -75,14 +75,12 @@ jobs:
           ref: ${{ inputs.checkout-ref || github.sha }}
 
       - name: Deploy the OCP Cluster
-        uses: palmsoftware/quick-ocp@v1.0.5
+        uses: palmsoftware/quick-ocp@v1.0.6
         with:
-          ocpPullSecret: $OCP_PULL_SECRET
+          ocpPullSecret: ${{ secrets.CRC_PULL_SECRET }}
           bundleCache: true
           desiredOCPVersion: ${{ inputs.ocp-version }}
           waitForOperatorsReady: true
-        env:
-          OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
 
       - name: Wait for cluster operators to stabilize
         run: ./scripts/workflows/wait-for-cluster-operators.sh
