@@ -707,6 +707,19 @@ check_deployment_exists() {
 	return 1
 }
 
+# Print the OLM channel that carries a cert-manager-operator version.
+# Red Hat publishes every release in its minor channel (stable-vX.Y); the
+# floating stable-v1 channel skips z-stream releases such as v1.19.2.
+# Usage: operator_channel_for_version v1.19.2   # -> stable-v1.19
+operator_channel_for_version() {
+	local version="$1"
+	if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		log_error "Invalid operator version '$version'; expected a version such as v1.19.2"
+		return 1
+	fi
+	echo "stable-${version%.*}"
+}
+
 # Wait for a CSV (ClusterServiceVersion) to reach Succeeded phase
 # Usage: wait_for_csv <namespace> <label_or_grep_pattern> <timeout_attempts>
 wait_for_csv() {
