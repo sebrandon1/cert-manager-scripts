@@ -58,16 +58,13 @@ install_oadp() {
 	log_info "Installing OADP operator..."
 
 	# Create namespace
-	log_info "Creating namespace..."
-	oc apply -f "$YAML_DIR/namespace.yaml"
+	apply_yaml_template "$YAML_DIR/namespace.yaml" "OADP namespace"
 
 	# Create OperatorGroup
-	log_info "Creating OperatorGroup..."
-	oc apply -f "$YAML_DIR/operatorgroup.yaml"
+	apply_yaml_template "$YAML_DIR/operatorgroup.yaml" "OADP OperatorGroup"
 
 	# Create Subscription
-	log_info "Creating Subscription..."
-	oc apply -f "$YAML_DIR/subscription.yaml"
+	apply_yaml_template "$YAML_DIR/subscription.yaml" "OADP Subscription"
 
 	# Wait for operator to be ready
 	wait_for_csv "$OADP_NAMESPACE" "redhat-oadp-operator"
@@ -77,12 +74,10 @@ configure_dpa() {
 	log_info "Configuring DataProtectionApplication..."
 
 	# Create cloud credentials secret
-	log_info "Creating cloud credentials secret..."
-	oc apply -f "$YAML_DIR/cloud-credentials-secret.yaml"
+	apply_yaml_template "$YAML_DIR/cloud-credentials-secret.yaml" "cloud credentials secret"
 
 	# Create DPA
-	log_info "Creating DataProtectionApplication..."
-	oc apply -f "$YAML_DIR/dataprotectionapplication.yaml"
+	apply_yaml_template "$YAML_DIR/dataprotectionapplication.yaml" "DataProtectionApplication"
 
 	# Wait for DPA to be ready
 	wait_for_dpa
