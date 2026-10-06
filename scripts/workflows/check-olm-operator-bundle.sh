@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 
 OCP_VERSION="${OCP_VERSION:?OCP_VERSION must be set}"
-CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.19.0}"
+CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.1}"
 OPERATOR_PACKAGE="${OPERATOR_PACKAGE:-openshift-cert-manager-operator}"
 PYXIS_API="${PYXIS_API:-https://catalog.redhat.com/api/containers/v1/operators/bundles}"
 
