@@ -69,13 +69,13 @@ Installs the cert-manager Operator for Red Hat OpenShift following the official 
 # Or using Make (recommended)
 make install-cert-manager-operator
 
-# Override OLM subscription channel (default: stable-v1)
-CHANNEL=stable-v1 make install-cert-manager-operator
+# Override OLM subscription channel (default: minor channel of CERT_MANAGER_VERSION, e.g. stable-v1.19)
+CHANNEL=stable-v1.20 CERT_MANAGER_VERSION=v1.20.1 make install-cert-manager-operator
 ```
 
 **Environment variables:**
 - `CERT_MANAGER_VERSION` — requested startingCSV version (default: `v1.19.0`)
-- `CHANNEL` — OLM Subscription channel (default: `stable-v1`)
+- `CHANNEL` — OLM Subscription channel (default: `stable-vX.Y` derived from `CERT_MANAGER_VERSION`; the floating `stable-v1` channel skips z-stream releases such as v1.19.2)
 
 **What it does:**
 - Checks prerequisites (oc CLI, envsubst, cluster login, admin privileges)

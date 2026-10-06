@@ -95,7 +95,7 @@ Organized by component: `cert-manager-operator/`, `pebble/`, `fake-dns-api/`, `i
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `CERT_MANAGER_VERSION` | `v1.19.0` | Operator version pin (startingCSV in subscription) |
-| `CHANNEL` | `stable-v1` | OLM subscription channel for cert-manager-operator |
+| `CHANNEL` | `stable-vX.Y` from `CERT_MANAGER_VERSION` | OLM subscription channel for cert-manager-operator (minor channel; `stable-v1` skips z-stream releases) |
 | `PEBBLE_ALWAYS_VALID` | `0` | Set to `1` to skip real ACME challenge validation (quick testing) |
 | `DNS_SERVER` | `8.8.8.8:53` | Override for fake DNS: `fake-dns-api.fake-dns.svc.cluster.local:53` |
 | `OPERATOR_NAMESPACE` | `cert-manager-operator` | Operator install namespace |
@@ -138,6 +138,7 @@ Key functions:
 - **Namespace**: `ensure_namespace <namespace>` — idempotent namespace creation
 - **Deployment**: `check_deployment_exists <deployment> <namespace>` — returns 0 if deployment is healthy
 - **OLM**: `wait_for_csv <namespace> <grep_pattern> <max_attempts>` — waits for CSV to reach Succeeded phase
+- **OLM**: `operator_channel_for_version <vX.Y.Z>` — prints the minor OLM channel (`stable-vX.Y`) that carries that operator version
 - **OADP**: `wait_for_backup_restore <type> <name> <namespace> <max_attempts>` — waits for backup/restore completion
 - **IBU**: `build_lca_annotations <namespace>` — builds lca.openshift.io/apply-label annotation value
 - **IBU**: `capture_secret_checksums <namespace> <output_file>` — captures TLS secret checksums and PEM types in a single API call
@@ -176,8 +177,8 @@ CI runs on PRs to main (`.github/workflows/pre-main.yml`):
 4. **verify-structure** — directory layout, key files, script references
 5. **version-query-check** — version query scripts for pebble, acme-dns, operator, minio, ubi9-python
 6. **unit-tests** — BATS (`make test-unit`), no cluster
-7. **kind-integration-test** — Kind cluster, cert-manager v1.19.2 / v1.20.1
-8. **integration-test** — OCP 4.20/4.21/4.22 × cert-manager v1.19.2/v1.20.1 CRC matrix (skipped for dependabot); `make quick-http-test`, API server cert, workload partitioning, network stack detection
+7. **kind-integration-test** — Kind cluster, Helm chart cert-manager v1.19.2 / v1.20.1
+8. **integration-test** — OCP 4.20/4.21/4.22 × OLM cert-manager-operator v1.19.2/v1.20.1 CRC matrix (skipped for dependabot); `make quick-http-test`, API server cert, workload partitioning, network stack detection
 
 ## Requirements
 

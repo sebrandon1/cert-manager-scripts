@@ -274,3 +274,20 @@ EOF
 	[ "$status" -eq 0 ]
 	[ "$(<"$BATS_TEST_TMPDIR/hosts")" = "127.0.0.1 api.crc.testing" ]
 }
+
+@test "operator_channel_for_version maps a z-stream to its minor channel" {
+	run operator_channel_for_version v1.19.2
+	[ "$status" -eq 0 ]
+	[ "$output" = "stable-v1.19" ]
+}
+
+@test "operator_channel_for_version handles multi-digit minors" {
+	run operator_channel_for_version v1.20.1
+	[ "$status" -eq 0 ]
+	[ "$output" = "stable-v1.20" ]
+}
+
+@test "operator_channel_for_version rejects malformed versions" {
+	run operator_channel_for_version 1.19
+	[ "$status" -ne 0 ]
+}

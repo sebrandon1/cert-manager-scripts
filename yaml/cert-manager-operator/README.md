@@ -18,8 +18,8 @@ make install-cert-manager-operator
 # Or manually:
 export OPERATOR_NAMESPACE="cert-manager-operator"
 export OPERATOR_NAME="openshift-cert-manager-operator"
-export CHANNEL="stable-v1"
 export CERT_MANAGER_VERSION="v1.19.0"
+export CHANNEL="stable-v1.19"  # minor channel of CERT_MANAGER_VERSION
 
 envsubst < yaml/cert-manager-operator/operatorgroup.yaml | oc apply -f -
 envsubst < yaml/cert-manager-operator/subscription.yaml | oc apply -f -
@@ -33,7 +33,7 @@ The Subscription uses manual InstallPlan approval to keep the requested starting
 |----------|---------|-------------|
 | `OPERATOR_NAMESPACE` | `cert-manager-operator` | Namespace for the operator |
 | `OPERATOR_NAME` | `openshift-cert-manager-operator` | Operator subscription name |
-| `CHANNEL` | `stable-v1` | Update channel |
+| `CHANNEL` | `stable-vX.Y` from `CERT_MANAGER_VERSION` | Update channel (minor channel; `stable-v1` skips z-stream releases) |
 | `CERT_MANAGER_VERSION` | `v1.19.0` | Requested `startingCSV` version |
 
 ## Related Documentation

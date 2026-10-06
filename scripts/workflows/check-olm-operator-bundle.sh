@@ -2,10 +2,12 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../lib/common.sh"
+
 OCP_VERSION="${OCP_VERSION:?OCP_VERSION must be set}"
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.19.0}"
 OPERATOR_PACKAGE="${OPERATOR_PACKAGE:-openshift-cert-manager-operator}"
-OPERATOR_CHANNEL="${OPERATOR_CHANNEL:-stable-v1}"
 PYXIS_API="${PYXIS_API:-https://catalog.redhat.com/api/containers/v1/operators/bundles}"
 
 if [[ ! "$OCP_VERSION" =~ ^4\.[0-9]+$ ]]; then
@@ -25,6 +27,7 @@ for command in curl jq; do
 	fi
 done
 
+OPERATOR_CHANNEL="${OPERATOR_CHANNEL:-$(operator_channel_for_version "$CERT_MANAGER_VERSION")}"
 csv_name="cert-manager-operator.${CERT_MANAGER_VERSION}"
 index_path="registry.redhat.io/redhat/redhat-operator-index:v${OCP_VERSION}"
 filter="package==\"${OPERATOR_PACKAGE}\" and channel_name==\"${OPERATOR_CHANNEL}\" and ocp_version==\"${OCP_VERSION}\" and csv_name==\"${csv_name}\" and organization==\"redhat-operators\" and source_index_container_path==\"${index_path}\""
