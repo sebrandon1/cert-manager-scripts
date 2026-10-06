@@ -43,24 +43,18 @@ install_minio() {
 	log_info "Installing MinIO..."
 
 	# Apply resources in order
-	log_info "Creating namespace..."
-	oc apply -f "$YAML_DIR/namespace.yaml"
+	apply_yaml_template "$YAML_DIR/namespace.yaml" "MinIO namespace"
 	register_rollback "$KUBE_CLI" delete namespace "$MINIO_NAMESPACE" --ignore-not-found=true --wait=false
 
-	log_info "Creating credentials secret..."
-	oc apply -f "$YAML_DIR/secret.yaml"
+	apply_yaml_template "$YAML_DIR/secret.yaml" "MinIO credentials secret"
 
-	log_info "Creating PVC..."
-	oc apply -f "$YAML_DIR/pvc.yaml"
+	apply_yaml_template "$YAML_DIR/pvc.yaml" "MinIO PVC"
 
-	log_info "Creating deployment..."
-	oc apply -f "$YAML_DIR/deployment.yaml"
+	apply_yaml_template "$YAML_DIR/deployment.yaml" "MinIO deployment"
 
-	log_info "Creating service..."
-	oc apply -f "$YAML_DIR/service.yaml"
+	apply_yaml_template "$YAML_DIR/service.yaml" "MinIO service"
 
-	log_info "Creating console route..."
-	oc apply -f "$YAML_DIR/route.yaml"
+	apply_yaml_template "$YAML_DIR/route.yaml" "MinIO console route"
 }
 
 create_velero_bucket() {
