@@ -1,0 +1,46 @@
+# MinIO: BuildConfig
+#
+# Builds the minio server and mc client from pinned upstream source tags.
+# MinIO community edition is distributed as source only, and its repos are
+# archived, so the pinned tags never move. Base images come from
+# registry.access.redhat.com, which allows anonymous pulls.
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: minio
+  namespace: minio
+  labels:
+    app: minio
+spec:
+  runPolicy: Serial
+  completionDeadlineSeconds: 1800
+  source:
+    type: Dockerfile
+    dockerfile: |
+      FROM registry.access.redhat.com/ubi9/go-toolset:1.26 AS build
+      USER 0
+      ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-p=2
+      WORKDIR /src
+      RUN git clone --depth 1 --branch ${MINIO_VERSION} https://github.com/minio/minio.git minio \
+       && git clone --depth 1 --branch ${MINIO_MC_VERSION} https://github.com/minio/mc.git mc
+      RUN cd minio && go build -trimpath -ldflags "-s -w" -o /out/minio .
+      RUN cd mc && go build -trimpath -ldflags "-s -w" -o /out/mc .
+
+      FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+      COPY --from=build /out/minio /out/mc /usr/bin/
+      ENV HOME=/tmp
+      USER 1001
+      ENTRYPOINT ["/usr/bin/minio"]
+  strategy:
+    type: Docker
+    dockerStrategy: {}
+  output:
+    to:
+      kind: ImageStreamTag
+      name: minio:${MINIO_VERSION}
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 4Gi

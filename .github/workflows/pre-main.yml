@@ -95,7 +95,7 @@ jobs:
       - name: Run all version query scripts
         run: |
           failed=0
-          for component in pebble acme-dns operator minio ubi9-python; do
+          for component in pebble acme-dns operator ubi9-python; do
             echo "--- $component ---"
             if GITHUB_OUTPUT=/dev/null bash scripts/workflows/query-version.sh "$component"; then
               echo "PASS: $component"

@@ -1,6 +1,7 @@
 # MinIO: Deployment
 #
 # Deploys MinIO object storage server with health checks and persistent storage.
+# The image is built in-cluster (buildconfig.yaml) unless MINIO_IMAGE is set.
 # Credentials are sourced from the minio-credentials secret. Uses Recreate
 # strategy to ensure clean storage handoff during updates.
 apiVersion: apps/v1
@@ -24,7 +25,7 @@ spec:
     spec:
       containers:
         - name: minio
-          image: quay.io/minio/minio:${MINIO_VERSION}
+          image: ${MINIO_IMAGE}
           args:
             - server
             - /data

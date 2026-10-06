@@ -1,0 +1,11 @@
+# MinIO: ImageStream
+#
+# Receives the MinIO image built in-cluster by the minio BuildConfig.
+# Upstream MinIO no longer publishes container images (source-only).
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: minio
+  namespace: minio
+  labels:
+    app: minio

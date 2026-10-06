@@ -16,7 +16,13 @@ setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/minio"
 MINIO_NAMESPACE="${MINIO_NAMESPACE:-minio}"
-export MINIO_VERSION="${MINIO_VERSION:-RELEASE.2025-09-07T16-13-09Z}"
+# MinIO is source-only upstream (repos archived); these are the final release tags.
+export MINIO_VERSION="${MINIO_VERSION:-RELEASE.2025-10-15T17-29-55Z}"
+export MINIO_MC_VERSION="${MINIO_MC_VERSION:-RELEASE.2025-08-13T08-35-41Z}"
+MINIO_BUILT_IMAGE="image-registry.openshift-image-registry.svc:5000/${MINIO_NAMESPACE}/minio:${MINIO_VERSION}"
+# Set MINIO_IMAGE to a pre-built image (e.g. a mirror) to skip the in-cluster build.
+export MINIO_IMAGE="${MINIO_IMAGE:-$MINIO_BUILT_IMAGE}"
+MINIO_MC_IMAGE="${MINIO_MC_IMAGE:-$MINIO_IMAGE}"
 export MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minio}"
 export MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minio123}"
 
@@ -39,12 +45,43 @@ check_existing_installation() {
 	return 1
 }
 
+build_minio_image() {
+	if [[ "$MINIO_IMAGE" != "$MINIO_BUILT_IMAGE" ]]; then
+		log_info "Using MINIO_IMAGE=$MINIO_IMAGE; skipping in-cluster build."
+		return 0
+	fi
+
+	if ! "$KUBE_CLI" api-resources --api-group=build.openshift.io -o name 2>/dev/null | grep -q '^buildconfigs\.'; then
+		log_error "The OpenShift Build API is not available, so MinIO cannot be built in-cluster."
+		log_hint "Set MINIO_IMAGE (and MINIO_MC_IMAGE if it lacks mc) to a pre-built MinIO image"
+		return 1
+	fi
+
+	apply_yaml_template "$YAML_DIR/imagestream.yaml" "MinIO ImageStream"
+	apply_yaml_template "$YAML_DIR/buildconfig.yaml" "MinIO BuildConfig"
+
+	if "$KUBE_CLI" get istag "minio:${MINIO_VERSION}" -n "$MINIO_NAMESPACE" &>/dev/null; then
+		log_info "MinIO image minio:${MINIO_VERSION} already built; skipping build."
+		return 0
+	fi
+
+	log_info "Building MinIO ${MINIO_VERSION} and mc ${MINIO_MC_VERSION} from source (this can take several minutes)..."
+	if ! "$KUBE_CLI" start-build minio -n "$MINIO_NAMESPACE" --follow --wait; then
+		log_error "MinIO image build failed."
+		log_hint "Inspect the build: $KUBE_CLI get builds -n $MINIO_NAMESPACE; $KUBE_CLI logs -n $MINIO_NAMESPACE bc/minio"
+		return 1
+	fi
+	log_success "MinIO image built: $MINIO_BUILT_IMAGE"
+}
+
 install_minio() {
 	log_info "Installing MinIO..."
 
 	# Apply resources in order
 	apply_yaml_template "$YAML_DIR/namespace.yaml" "MinIO namespace"
 	register_rollback "$KUBE_CLI" delete namespace "$MINIO_NAMESPACE" --ignore-not-found=true --wait=false
+
+	build_minio_image
 
 	apply_yaml_template "$YAML_DIR/secret.yaml" "MinIO credentials secret"
 
@@ -61,16 +98,20 @@ create_velero_bucket() {
 	log_info "Creating velero bucket in MinIO..."
 
 	# Use a temporary pod to create the bucket
-	oc run minio-mc --rm -i --restart=Never \
-		--image=quay.io/minio/mc:latest \
+	# Velero does not create buckets, so OADP cannot work without this one.
+	if ! "$KUBE_CLI" run minio-mc --rm -i --restart=Never \
+		--image="$MINIO_MC_IMAGE" \
+		--env=HOME=/tmp \
 		-n "$MINIO_NAMESPACE" \
 		--command -- /bin/sh -c "
 			mc alias set myminio http://minio.minio.svc.cluster.local:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY} && \
 			mc mb --ignore-existing myminio/velero && \
 			echo 'Bucket created successfully'
-		" 2>/dev/null || {
-		log_warn "Could not create bucket via mc. Will be created on first backup."
-	}
+		"; then
+		log_error "Could not create the velero bucket via mc."
+		log_hint "MINIO_MC_IMAGE ($MINIO_MC_IMAGE) must provide the mc client"
+		return 1
+	fi
 }
 
 verify_installation() {

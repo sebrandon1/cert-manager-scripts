@@ -4,7 +4,7 @@
 # Script: update-version.sh
 # Description: Update a component's version across repo files
 # Usage: update-version.sh <component> <current_version> <latest_version>
-# Components: pebble, acme-dns, operator, minio, ubi9-python
+# Components: pebble, acme-dns, operator, ubi9-python
 ################################################################################
 
 set -euo pipefail
@@ -48,12 +48,6 @@ operator)
 	echo "Updated default version from $current to $latest"
 	;;
 
-minio)
-	sed -i "s|MINIO_VERSION:-${current}|MINIO_VERSION:-${latest}|" \
-		scripts/ibu/install-minio.sh
-	echo "Updated MinIO from $current to $latest"
-	;;
-
 ubi9-python)
 	sed -i "s|UBI9_PYTHON_VERSION:-${current}|UBI9_PYTHON_VERSION:-${latest}|" \
 		scripts/install-fake-dns.sh
@@ -62,7 +56,7 @@ ubi9-python)
 
 *)
 	echo "Unknown component: $component"
-	echo "Valid components: pebble, acme-dns, operator, minio, ubi9-python"
+	echo "Valid components: pebble, acme-dns, operator, ubi9-python"
 	exit 1
 	;;
 esac

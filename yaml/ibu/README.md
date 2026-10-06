@@ -29,7 +29,7 @@ make clean-ibu
 ## Components
 
 ### MinIO (`minio/`)
-S3-compatible object storage used as the backup destination for Velero. Includes deployment, service, route, PVC, and credentials.
+S3-compatible object storage used as the backup destination for Velero. Includes deployment, service, route, PVC, and credentials, plus an ImageStream and BuildConfig: MinIO no longer publishes container images, so `install-minio.sh` builds `minio` and `mc` from pinned upstream source tags in-cluster.
 
 ### OADP (`oadp/`)
 OpenShift API for Data Protection operator. Configures Velero with AWS, OpenShift, and CSI plugins pointing to the MinIO instance.
