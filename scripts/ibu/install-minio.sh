@@ -68,7 +68,14 @@ build_minio_image() {
 	log_info "Building MinIO ${MINIO_VERSION} and mc ${MINIO_MC_VERSION} from source (this can take several minutes)..."
 	if ! "$KUBE_CLI" start-build minio -n "$MINIO_NAMESPACE" --follow --wait; then
 		log_error "MinIO image build failed."
-		log_hint "Inspect the build: $KUBE_CLI get builds -n $MINIO_NAMESPACE; $KUBE_CLI logs -n $MINIO_NAMESPACE bc/minio"
+		# Capture the reason before the rollback deletes the namespace.
+		"$KUBE_CLI" get builds -n "$MINIO_NAMESPACE" \
+			-o custom-columns='NAME:.metadata.name,PHASE:.status.phase,REASON:.status.reason,MESSAGE:.status.message' || true
+		"$KUBE_CLI" get pods -n "$MINIO_NAMESPACE" -l openshift.io/build.name \
+			-o custom-columns='POD:.metadata.name,PHASE:.status.phase,REASON:.status.containerStatuses[*].state.terminated.reason' || true
+		"$KUBE_CLI" get events -n "$MINIO_NAMESPACE" --sort-by=.lastTimestamp 2>/dev/null | tail -15 || true
+		"$KUBE_CLI" describe node 2>/dev/null | grep -A6 '^Conditions:' || true
+		log_hint "Set MINIO_IMAGE to a pre-built image to skip the in-cluster build"
 		return 1
 	fi
 	log_success "MinIO image built: $MINIO_BUILT_IMAGE"
@@ -76,6 +83,13 @@ build_minio_image() {
 
 install_minio() {
 	log_info "Installing MinIO..."
+
+	# A failed earlier attempt's rollback deletes the namespace without waiting;
+	# applying into a terminating namespace is rejected, so let it finish first.
+	if [[ "$("$KUBE_CLI" get namespace "$MINIO_NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null)" == "Terminating" ]]; then
+		log_info "Waiting for namespace $MINIO_NAMESPACE to finish terminating..."
+		"$KUBE_CLI" wait --for=delete "namespace/$MINIO_NAMESPACE" --timeout=300s
+	fi
 
 	# Apply resources in order
 	apply_yaml_template "$YAML_DIR/namespace.yaml" "MinIO namespace"

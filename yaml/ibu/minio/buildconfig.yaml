@@ -21,10 +21,13 @@ spec:
       USER 0
       ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-p=2
       WORKDIR /src
+      # One layer, caches removed: keeps node ephemeral storage use down.
       RUN git clone --depth 1 --branch ${MINIO_VERSION} https://github.com/minio/minio.git minio \
-       && git clone --depth 1 --branch ${MINIO_MC_VERSION} https://github.com/minio/mc.git mc
-      RUN cd minio && go build -trimpath -ldflags "-s -w" -o /out/minio .
-      RUN cd mc && go build -trimpath -ldflags "-s -w" -o /out/mc .
+       && git clone --depth 1 --branch ${MINIO_MC_VERSION} https://github.com/minio/mc.git mc \
+       && (cd minio && go build -trimpath -ldflags "-s -w" -o /out/minio .) \
+       && (cd mc && go build -trimpath -ldflags "-s -w" -o /out/mc .) \
+       && go clean -cache -modcache \
+       && rm -rf /src
 
       FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
       COPY --from=build /out/minio /out/mc /usr/bin/
@@ -41,6 +44,6 @@ spec:
   resources:
     requests:
       cpu: 500m
-      memory: 1Gi
+      memory: 3Gi
     limits:
       memory: 4Gi
