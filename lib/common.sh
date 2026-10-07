@@ -777,7 +777,15 @@ wait_for_backup_restore() {
 			;;
 		Failed | PartiallyFailed)
 			log_error "${resource_type^} failed with phase: $phase"
-			oc describe "$resource_type" "$name" -n "$namespace"
+			"$KUBE_CLI" describe "$resource_type" "$name" -n "$namespace"
+			# The error details only exist in Velero's logs in object storage;
+			# read them through the velero CLI shipped in the Velero pod.
+			log_warn "--- velero $resource_type describe --details ---"
+			"$KUBE_CLI" exec -n "$namespace" deployment/velero -c velero -- \
+				/velero "$resource_type" describe "$name" --details 2>&1 | tail -60 || true
+			log_warn "--- velero $resource_type logs (errors and warnings) ---"
+			"$KUBE_CLI" exec -n "$namespace" deployment/velero -c velero -- \
+				/velero "$resource_type" logs "$name" 2>&1 | grep -E 'level=(error|warning)' | tail -30 || true
 			return 1
 			;;
 		esac
