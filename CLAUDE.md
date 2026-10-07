@@ -175,7 +175,7 @@ CI runs on PRs to main (`.github/workflows/pre-main.yml`):
 2. **shellcheck** — severity=error on `scripts/` and `lib/`
 3. **workload-partitioning-check** — script exists, is executable, syntax + Makefile/docs mentions
 4. **verify-structure** — directory layout, key files, script references
-5. **version-query-check** — version query scripts for pebble, acme-dns, operator, minio, ubi9-python
+5. **version-query-check** — version query scripts for pebble, acme-dns, operator, ubi9-python
 6. **unit-tests** — BATS (`make test-unit`), no cluster
 7. **kind-integration-test** — Kind cluster, Helm chart cert-manager v1.19.2 / v1.20.1
 8. **integration-test** — OCP 4.20/4.21/4.22 × OLM cert-manager-operator v1.19.2/v1.20.1 CRC matrix (skipped for dependabot); `make quick-http-test`, API server cert, workload partitioning, network stack detection

@@ -78,6 +78,9 @@ jobs:
         uses: palmsoftware/quick-ocp@v1.0.6
         with:
           ocpPullSecret: ${{ secrets.CRC_PULL_SECRET }}
+          # The IBU job builds MinIO from source in-cluster; the default 31GB
+          # disk hits node disk-pressure eviction with the build cache.
+          crcDiskSize: ${{ inputs.run-ibu && '60' || '31' }}
           bundleCache: true
           desiredOCPVersion: ${{ inputs.ocp-version }}
           waitForOperatorsReady: true
@@ -272,7 +275,7 @@ jobs:
 
       - name: Install IBU prerequisites
         if: inputs.run-ibu
-        timeout-minutes: 30
+        timeout-minutes: 45
         run: ./scripts/workflows/install-ibu-prereqs-with-retry.sh
 
       - name: Run IBU Scenario 1 smoke (cert loss)

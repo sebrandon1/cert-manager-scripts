@@ -253,9 +253,19 @@ This confirms that using the LCA apply-label mechanism properly preserves certif
 MinIO provides S3-compatible object storage for Velero backups:
 
 - **Namespace**: `minio`
+- **Image**: built in-cluster from source by an OpenShift BuildConfig (MinIO community edition is source-only; its container images are no longer published)
 - **Storage**: 10Gi PVC
 - **Credentials**: `minio` / `minio123`
 - **Console**: Available via Route
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `MINIO_VERSION` | `RELEASE.2025-10-15T17-29-55Z` | MinIO server source tag to build (final upstream release) |
+| `MINIO_MC_VERSION` | `RELEASE.2025-08-13T08-35-41Z` | `mc` client source tag to build (final upstream release) |
+| `MINIO_IMAGE` | in-cluster build | Pre-built MinIO image (e.g. a mirror); skips the build. Needed where the cluster cannot reach github.com / proxy.golang.org |
+| `MINIO_MC_IMAGE` | `MINIO_IMAGE` | Image providing `mc` for bucket creation |
+
+The first install compiles both binaries, which takes several minutes. Later installs reuse the `minio:<MINIO_VERSION>` ImageStreamTag unless the `minio` namespace is deleted (`make clean-ibu` deletes it).
 
 ### OADP (OpenShift API for Data Protection)
 
@@ -280,6 +290,15 @@ The test creates state files in `/tmp/ibu-cert-state/`:
 | `validation-results.json` | Final comparison report |
 
 ## Troubleshooting
+
+### MinIO Image Build Failing
+
+```bash
+oc get builds -n minio
+oc logs -n minio bc/minio
+```
+
+The build needs egress to `github.com` and `proxy.golang.org` and up to 4Gi of memory. If either is unavailable, set `MINIO_IMAGE` to a pre-built image.
 
 ### MinIO Pod Not Starting
 
