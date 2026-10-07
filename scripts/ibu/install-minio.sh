@@ -45,6 +45,51 @@ check_existing_installation() {
 	return 1
 }
 
+# Poll a build until it completes. Fails early if the build pod never starts
+# (e.g. unschedulable) so diagnostics run before any CI step timeout.
+wait_for_minio_build() {
+	local build="$1" phase="" elapsed=0
+	local timeout="${MINIO_BUILD_TIMEOUT:-1500}"
+	local start_timeout="${MINIO_BUILD_START_TIMEOUT:-600}"
+
+	while true; do
+		phase=$("$KUBE_CLI" get "$build" -n "$MINIO_NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo Unknown)
+		case "$phase" in
+		Complete) return 0 ;;
+		Failed | Error | Cancelled)
+			log_error "$build finished with phase $phase"
+			return 1
+			;;
+		New | Pending)
+			if ((elapsed >= start_timeout)); then
+				log_error "$build has not started after ${elapsed}s (phase $phase)"
+				return 1
+			fi
+			;;
+		esac
+		if ((elapsed >= timeout)); then
+			log_error "$build timed out after ${elapsed}s (phase $phase)"
+			return 1
+		fi
+		if ((elapsed % 60 == 0)); then
+			log_info "$build: $phase (${elapsed}s)"
+		fi
+		sleep 15
+		elapsed=$((elapsed + 15))
+	done
+}
+
+# Capture why a build failed before the rollback deletes the namespace.
+show_minio_build_diagnostics() {
+	local build="$1"
+	"$KUBE_CLI" get "$build" -n "$MINIO_NAMESPACE" \
+		-o custom-columns='NAME:.metadata.name,PHASE:.status.phase,REASON:.status.reason,MESSAGE:.status.message' || true
+	"$KUBE_CLI" describe pods -n "$MINIO_NAMESPACE" -l openshift.io/build.name 2>/dev/null | sed -n '/^Status:/p;/State:/,/Exit Code/p;/^Events:/,$p' || true
+	"$KUBE_CLI" get events -n "$MINIO_NAMESPACE" --sort-by=.lastTimestamp 2>/dev/null | tail -15 || true
+	"$KUBE_CLI" describe node 2>/dev/null | sed -n '/^Conditions:/,/^Addresses:/p;/^Allocated resources:/,/^Events:/p' || true
+	"$KUBE_CLI" logs -n "$MINIO_NAMESPACE" "$build" --tail=30 2>/dev/null || true
+}
+
 build_minio_image() {
 	if [[ "$MINIO_IMAGE" != "$MINIO_BUILT_IMAGE" ]]; then
 		log_info "Using MINIO_IMAGE=$MINIO_IMAGE; skipping in-cluster build."
@@ -66,15 +111,12 @@ build_minio_image() {
 	fi
 
 	log_info "Building MinIO ${MINIO_VERSION} and mc ${MINIO_MC_VERSION} from source (this can take several minutes)..."
-	if ! "$KUBE_CLI" start-build minio -n "$MINIO_NAMESPACE" --follow --wait; then
-		log_error "MinIO image build failed."
-		# Capture the reason before the rollback deletes the namespace.
-		"$KUBE_CLI" get builds -n "$MINIO_NAMESPACE" \
-			-o custom-columns='NAME:.metadata.name,PHASE:.status.phase,REASON:.status.reason,MESSAGE:.status.message' || true
-		"$KUBE_CLI" get pods -n "$MINIO_NAMESPACE" -l openshift.io/build.name \
-			-o custom-columns='POD:.metadata.name,PHASE:.status.phase,REASON:.status.containerStatuses[*].state.terminated.reason' || true
-		"$KUBE_CLI" get events -n "$MINIO_NAMESPACE" --sort-by=.lastTimestamp 2>/dev/null | tail -15 || true
-		"$KUBE_CLI" describe node 2>/dev/null | grep -A6 '^Conditions:' || true
+	local build
+	build=$("$KUBE_CLI" start-build minio -n "$MINIO_NAMESPACE" -o name)
+	if ! wait_for_minio_build "$build"; then
+		log_error "MinIO image build did not complete."
+		show_minio_build_diagnostics "$build"
+		"$KUBE_CLI" cancel-build "${build#*/}" -n "$MINIO_NAMESPACE" &>/dev/null || true
 		log_hint "Set MINIO_IMAGE to a pre-built image to skip the in-cluster build"
 		return 1
 	fi
