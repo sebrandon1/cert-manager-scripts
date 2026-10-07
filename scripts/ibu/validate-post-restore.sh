@@ -64,16 +64,18 @@ check_system_pods() {
 		return
 	fi
 
+	# Each namespace holds only that component's pods. Pod labels differ across
+	# OpenShift versions (e.g. app=openshift-apiserver-a), so do not select by label.
 	local checks=(
-		"openshift-apiserver:app=openshift-apiserver:OpenShift API server"
-		"openshift-controller-manager:app=controller-manager:OpenShift controller manager"
+		"openshift-apiserver:OpenShift API server"
+		"openshift-controller-manager:OpenShift controller manager"
 	)
 
 	for check in "${checks[@]}"; do
-		local namespace label description
-		IFS=: read -r namespace label description <<<"$check"
+		local namespace description
+		IFS=: read -r namespace description <<<"$check"
 		local pod_count
-		pod_count=$("$KUBE_CLI" get pods -n "$namespace" -l "$label" \
+		pod_count=$("$KUBE_CLI" get pods -n "$namespace" \
 			--field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | xargs)
 		if [ "$pod_count" -gt 0 ]; then
 			record_pass "$description pods running ($pod_count)"
