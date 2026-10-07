@@ -32,7 +32,7 @@ make clean-ibu
 S3-compatible object storage used as the backup destination for Velero. Includes deployment, service, route, PVC, and credentials, plus an ImageStream and BuildConfig: MinIO no longer publishes container images, so `install-minio.sh` builds `minio` and `mc` from pinned upstream source tags in-cluster.
 
 ### OADP (`oadp/`)
-OpenShift API for Data Protection operator. Configures Velero with AWS, OpenShift, and CSI plugins pointing to the MinIO instance.
+OpenShift API for Data Protection operator. Configures Velero with the AWS and OpenShift plugins pointing to the MinIO instance (no CSI plugin: the tests back up no volumes, and CRC lacks the CSI snapshot CRDs).
 
 ### Backup (`backup/`)
 Velero Backup and Restore CRs that simulate IBU behavior:
