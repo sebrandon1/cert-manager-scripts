@@ -66,8 +66,9 @@ install_oadp() {
 	# Create Subscription
 	apply_yaml_template "$YAML_DIR/subscription.yaml" "OADP Subscription"
 
-	# Wait for operator to be ready
-	wait_for_csv "$OADP_NAMESPACE" "redhat-oadp-operator"
+	# Wait for operator to be ready. Match the CSV name (oadp-operator.vX.Y.Z),
+	# not the package name (redhat-oadp-operator), which never appears in it.
+	wait_for_csv "$OADP_NAMESPACE" "oadp-operator"
 }
 
 configure_dpa() {
