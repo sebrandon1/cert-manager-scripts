@@ -66,8 +66,9 @@ install_oadp() {
 	# Create Subscription
 	apply_yaml_template "$YAML_DIR/subscription.yaml" "OADP Subscription"
 
-	# Wait for operator to be ready
-	wait_for_csv "$OADP_NAMESPACE" "redhat-oadp-operator"
+	# Wait for operator to be ready. Match the CSV name (oadp-operator.vX.Y.Z),
+	# not the package name (redhat-oadp-operator), which never appears in it.
+	wait_for_csv "$OADP_NAMESPACE" "oadp-operator"
 }
 
 configure_dpa() {
@@ -81,6 +82,10 @@ configure_dpa() {
 
 	# Wait for DPA to be ready
 	wait_for_dpa
+
+	# Velero validates the bucket asynchronously after the DPA reconciles;
+	# backups fail until the BackupStorageLocation reports Available.
+	wait_for_bsl
 }
 
 check_dpa_reconciled() {
@@ -97,6 +102,27 @@ wait_for_dpa() {
 	else
 		log_error "Timeout waiting for DPA to reconcile."
 		log_hint "Check status: $KUBE_CLI describe dpa velero -n $OADP_NAMESPACE"
+		return 1
+	fi
+}
+
+check_bsl_available() {
+	local phase
+	phase=$("$KUBE_CLI" get backupstoragelocation -n "$OADP_NAMESPACE" -o jsonpath='{.items[0].status.phase}')
+	[ "$phase" = "Available" ]
+}
+
+wait_for_bsl() {
+	log_info "Waiting for BackupStorageLocation to become Available..."
+
+	if wait_for_condition 60 5 check_bsl_available; then
+		log_success "BackupStorageLocation is Available!"
+	else
+		log_error "Timeout waiting for BackupStorageLocation to become Available."
+		"$KUBE_CLI" get backupstoragelocation -n "$OADP_NAMESPACE" \
+			-o custom-columns='NAME:.metadata.name,PHASE:.status.phase,MESSAGE:.status.message' || true
+		"$KUBE_CLI" logs -n "$OADP_NAMESPACE" deployment/velero --tail=20 2>/dev/null || true
+		log_hint "Check that MinIO is running and the velero bucket exists: $KUBE_CLI get pods -n minio"
 		return 1
 	fi
 }

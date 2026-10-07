@@ -96,7 +96,9 @@ build_minio_image() {
 		return 0
 	fi
 
-	if ! "$KUBE_CLI" api-resources --api-group=build.openshift.io -o name 2>/dev/null | grep -q '^buildconfigs\.'; then
+	# Query the group directly: 'api-resources' exits non-zero when any
+	# unrelated API group fails discovery, which pipefail turns into a miss.
+	if ! "$KUBE_CLI" get --raw /apis/build.openshift.io/v1 &>/dev/null; then
 		log_error "The OpenShift Build API is not available, so MinIO cannot be built in-cluster."
 		log_hint "Set MINIO_IMAGE (and MINIO_MC_IMAGE if it lacks mc) to a pre-built MinIO image"
 		return 1

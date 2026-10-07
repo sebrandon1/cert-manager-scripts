@@ -291,3 +291,26 @@ EOF
 	run operator_channel_for_version 1.19
 	[ "$status" -ne 0 ]
 }
+
+# Stub KUBE_CLI whose `get csv` prints the OLM CSV table OADP actually produces.
+oadp_csv_cli() {
+	cat <<'CSV'
+NAME                   DISPLAY         VERSION   REPLACES               PHASE
+oadp-operator.v1.5.8   OADP Operator   1.5.8     oadp-operator.v1.5.7   Succeeded
+CSV
+}
+
+@test "wait_for_csv matches the OADP CSV name" {
+	KUBE_CLI=oadp_csv_cli
+	sleep() { :; }
+	run wait_for_csv openshift-adp oadp-operator 2
+	[ "$status" -eq 0 ]
+}
+
+@test "wait_for_csv does not match the OADP package name" {
+	KUBE_CLI=oadp_csv_cli
+	sleep() { :; }
+	run wait_for_csv openshift-adp redhat-oadp-operator 2
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"oadp-operator.v1.5.8"* ]]
+}

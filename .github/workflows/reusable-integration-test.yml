@@ -294,6 +294,8 @@ jobs:
             make clean-ibu || true
             ./scripts/workflows/verify-cluster-access.sh || true
             sleep 30
+            # clean-ibu removes MinIO and OADP; reinstall them for the retry.
+            ./scripts/workflows/install-ibu-prereqs-with-retry.sh
           command: make test-ibu-certs
 
       - name: Clean up IBU resources
