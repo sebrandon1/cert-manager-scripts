@@ -74,7 +74,7 @@ CHANNEL=stable-v1.20 CERT_MANAGER_VERSION=v1.20.1 make install-cert-manager-oper
 ```
 
 **Environment variables:**
-- `CERT_MANAGER_VERSION` — requested startingCSV version (default: `v1.19.0`)
+- `CERT_MANAGER_VERSION` — requested startingCSV version (default: `v1.20.1`)
 - `CHANNEL` — OLM Subscription channel (default: `stable-vX.Y` derived from `CERT_MANAGER_VERSION`; the floating `stable-v1` channel skips z-stream releases such as v1.19.2)
 
 **What it does:**

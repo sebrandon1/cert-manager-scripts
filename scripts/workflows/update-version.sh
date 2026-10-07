@@ -45,6 +45,11 @@ operator)
 	sed -i "s/\`${current}\`/\`${latest}\`/" CLAUDE.md
 	sed -i "s/CERT_MANAGER_VERSION:-${current}/CERT_MANAGER_VERSION:-${latest}/" \
 		scripts/workflows/check-olm-operator-bundle.sh
+	sed -i "s/\`${current}\`/\`${latest}\`/" docs/installation.md docs/getting-started.md \
+		yaml/cert-manager-operator/README.md
+	sed -i -e "s/CERT_MANAGER_VERSION=\"${current}\"/CERT_MANAGER_VERSION=\"${latest}\"/" \
+		-e "s/CHANNEL=\"stable-${current%.*}\"/CHANNEL=\"stable-${latest%.*}\"/" \
+		yaml/cert-manager-operator/README.md
 	echo "Updated default version from $current to $latest"
 	;;
 
