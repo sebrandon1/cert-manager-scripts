@@ -22,7 +22,7 @@ YAML_DIR="${SCRIPT_DIR}/yaml/cert-manager-operator"
 export OPERATOR_NAMESPACE="${OPERATOR_NAMESPACE:-cert-manager-operator}"
 export CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
 export OPERATOR_NAME="${OPERATOR_NAME:-openshift-cert-manager-operator}"
-export CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.19.0}"
+export CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.1}"
 CHANNEL="${CHANNEL:-$(operator_channel_for_version "$CERT_MANAGER_VERSION")}"
 export CHANNEL
 
