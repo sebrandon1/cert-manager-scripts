@@ -31,7 +31,7 @@ cp .env.example .env
 ```
 
 Key install variables in `.env` (or the environment):
-- `CERT_MANAGER_VERSION` — requested starting operator CSV (default: `v1.19.0`)
+- `CERT_MANAGER_VERSION` — requested starting operator CSV (default: `v1.20.1`)
 - `CHANNEL` — OLM subscription channel (default: `stable-vX.Y` derived from `CERT_MANAGER_VERSION`)
 
 ## Step 1: Install cert-manager Operator
