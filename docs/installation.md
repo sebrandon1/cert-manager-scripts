@@ -230,6 +230,46 @@ For DNS-01 challenge testing with wildcard certificates, see [DNS-01 Setup](./dn
 - Creating DNS-01 ClusterIssuers
 - Testing wildcard certificates
 
+---
+
+### API Server Certificates
+
+Replace the OpenShift API server's serving certificate with a certificate issued by cert-manager. The workflow has three steps:
+
+```bash
+# 1. Create the Certificate CR (name: apiserver-cert, namespace: openshift-config,
+#    issuing into secret apiserver-cert-tls)
+make create-apiserver-cert
+
+# 2. Verify the certificate is Ready and the secret is populated
+make verify-apiserver-cert
+
+# 3. Patch APIServer/cluster to serve the certificate
+make apply-apiserver-cert
+```
+
+> ⚠️ **Warning:** Applying the certificate patches `APIServer/cluster` and rolls the
+> kube-apiserver pods. API connectivity may be briefly disrupted until the rollout
+> completes, and this step is OpenShift-only. Use with caution on production clusters.
+> If the certificate's CA differs from the cluster's built-in CA (for example, a
+> Pebble-issued certificate), clients must trust the new CA or `oc`/`kubectl` calls
+> fail with `x509: certificate signed by unknown authority` errors.
+
+The apply script (`scripts/apply-apiserver-certificate.sh`):
+
+- Requires the certificate to be `Ready` before patching — run `make create-apiserver-cert` first
+- Backs up `APIServer/cluster` to `/tmp/apiserver-cluster-backup-<timestamp>.yaml` before patching
+- Asks for confirmation before patching (set `SKIP_CONFIRM=1` for CI/automation; auto-confirms when not attached to a TTY)
+- Is idempotent — if `APIServer/cluster` already references `apiserver-cert-tls`, it runs verification and exits without changes
+- Waits for the `kube-apiserver` clusteroperator to become stable after patching
+- Runs the verification script automatically after a successful apply (the same script as `make verify-apiserver-cert`)
+
+**Rollback:** restore the previous API server certificate configuration with:
+
+```bash
+oc apply -f /tmp/apiserver-cluster-backup-<timestamp>.yaml
+```
+
 ## Verification
 
 After installation, verify everything is working:
@@ -268,7 +308,7 @@ After installing cert-manager-operator and Pebble, you can:
    - Verify HTTP-01 challenge handling
 
 2. **Test production-like scenarios:**
-   - Test API server certificate replacement
+   - Test API server certificate replacement (see [API Server Certificates](#api-server-certificates))
    - Test ingress certificate management
    - Test certificate renewal workflows
 
