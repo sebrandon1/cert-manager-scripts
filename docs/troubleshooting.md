@@ -367,6 +367,9 @@ oc get certificate <cert-name> -n <namespace> -o yaml
 
 # View certificate from secret
 oc get secret <secret-name> -n <namespace> -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
+
+# Check API server certificate status
+make verify-apiserver-cert
 ```
 
 ### Additional Resources

@@ -25,7 +25,7 @@ For DNS-01 with air-gapped fake DNS, use `make quick-dns-test` instead.
 - **Air-Gapped DNS** — Fake DNS server for DNS-01 testing without external dependencies
 - **IBU Certificate Validation** — Test cert-manager behavior during Image-Based Upgrade operations
 - **IPv4/IPv6/Dual-Stack** — Automatic network stack detection and configuration
-- **API Server Certificates** — Create and verify certificates for the OpenShift API server
+- **API Server Certificates** — Create, verify, and apply certificates for the OpenShift API server
 - **Automated Diagnostics** — Troubleshoot certs, issuers, DNS, and HTTP challenges
 
 ## Guides
