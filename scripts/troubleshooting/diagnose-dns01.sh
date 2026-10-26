@@ -12,6 +12,9 @@ source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
 require_cmd "$KUBE_CLI" jq
 
+CERT_NAME="${CERT_NAME:-wildcard-test}"
+CERT_NAMESPACE="${CERT_NAMESPACE:-default}"
+
 print_header "DNS-01 Challenge Diagnostics"
 
 # Check cert-manager
@@ -39,9 +42,9 @@ if "$KUBE_CLI" get deployment pebble -n pebble &>/dev/null; then
 		# Check if using ALWAYS_VALID
 		ALWAYS_VALID=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="PEBBLE_VA_ALWAYS_VALID")].value}' 2>/dev/null || echo "0")
 		if [ "$ALWAYS_VALID" = "1" ]; then
-			log_debug "Pebble ALWAYS_VALID: enabled (all challenges auto-succeed)"
+			log_info "Pebble ALWAYS_VALID: enabled (all challenges auto-succeed)"
 		else
-			log_debug "Pebble ALWAYS_VALID: disabled (real DNS validation required)"
+			log_info "Pebble ALWAYS_VALID: disabled (real DNS validation required)"
 		fi
 	else
 		log_error "Pebble has no ready replicas"
@@ -115,27 +118,50 @@ if [ -n "$CHALLENGES" ]; then
 		NAMESPACE=$(echo "$challenge" | cut -d'/' -f1)
 		NAME=$(echo "$challenge" | cut -d'/' -f2)
 
-		log_debug "Challenge: $NAME (namespace: $NAMESPACE)"
+		log_info "Challenge: $NAME (namespace: $NAMESPACE)"
 
 		STATE=$("$KUBE_CLI" get challenge "$NAME" -n "$NAMESPACE" -o jsonpath='{.status.state}' 2>/dev/null || echo "unknown")
-		log_debug "  State: $STATE"
+		log_info "  State: $STATE"
 
 		# Get challenge details
 		DOMAIN=$("$KUBE_CLI" get challenge "$NAME" -n "$NAMESPACE" -o jsonpath='{.spec.dnsName}' 2>/dev/null || echo "unknown")
 		KEY=$("$KUBE_CLI" get challenge "$NAME" -n "$NAMESPACE" -o jsonpath='{.spec.key}' 2>/dev/null || echo "unknown")
 
-		log_debug "  Domain: $DOMAIN"
-		log_debug "  DNS Record: _acme-challenge.$DOMAIN"
+		log_info "  Domain: $DOMAIN"
+		log_info "  DNS Record: _acme-challenge.$DOMAIN"
 
 		# Check if TXT record should exist
 		if [ "$STATE" = "pending" ] || [ "$STATE" = "processing" ]; then
-			log_debug "  Expected TXT record key: ${KEY:0:20}..."
+			log_info "  Expected TXT record key: ${KEY:0:20}..."
 		fi
+
+		echo "--- describe challenge/$NAME ---"
+		"$KUBE_CLI" describe challenge "$NAME" -n "$NAMESPACE" 2>/dev/null || true
 
 		echo
 	done <<<"$CHALLENGES"
 else
 	log_info "No active DNS-01 challenges found"
+fi
+
+echo
+
+# Check certificate and order state
+log_info "Checking certificate $CERT_NAME and its orders..."
+"$KUBE_CLI" describe certificate "$CERT_NAME" -n "$CERT_NAMESPACE" 2>/dev/null || log_warn "Could not describe certificate $CERT_NAME in $CERT_NAMESPACE"
+echo
+ORDERS=$("$KUBE_CLI" get order -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' 2>/dev/null || echo "")
+if [ -n "$ORDERS" ]; then
+	while IFS= read -r order; do
+		[[ -z "$order" ]] && continue
+		ORDER_NS=$(echo "$order" | cut -d'/' -f1)
+		ORDER_NAME=$(echo "$order" | cut -d'/' -f2)
+		echo "--- describe order/$ORDER_NAME (namespace: $ORDER_NS) ---"
+		"$KUBE_CLI" describe order "$ORDER_NAME" -n "$ORDER_NS" 2>/dev/null || true
+		echo
+	done <<<"$ORDERS"
+else
+	log_info "No orders found"
 fi
 
 echo
@@ -150,12 +176,15 @@ fi
 
 print_header "Recent cert-manager Logs"
 "$KUBE_CLI" logs -n cert-manager deployment/cert-manager --tail=20 2>/dev/null || log_warn "Could not fetch logs"
+"$KUBE_CLI" logs -n cert-manager deployment/cert-manager --previous --tail=20 2>/dev/null || true
 
 print_header "Recent Pebble Logs"
 "$KUBE_CLI" logs -n pebble -l app=pebble --tail=20 2>/dev/null || log_warn "Could not fetch Pebble logs"
+"$KUBE_CLI" logs -n pebble -l app=pebble --previous --tail=20 2>/dev/null || true
 
 print_header "Recent Fake DNS API Logs"
 "$KUBE_CLI" logs -n fake-dns -l app=fake-dns-api --tail=20 2>/dev/null || log_warn "Could not fetch fake DNS API logs"
+"$KUBE_CLI" logs -n fake-dns -l app=fake-dns-api --previous --tail=20 2>/dev/null || true
 
 print_header "Recommendations"
 echo "1. For air-gapped DNS-01 testing, ensure Pebble has ALWAYS_VALID=1:"

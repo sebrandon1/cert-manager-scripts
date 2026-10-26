@@ -181,22 +181,30 @@ jobs:
             echo "Pebble is healthy (availableReplicas=$REPLICAS)"
 
       - name: Run quick DNS-01 test
+        id: dns-test
         uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 30
-          max_attempts: 2
+          # One attempt is ~12 min when it fails; 3 x 25 keeps the worst case
+          # (75 min) under the job's 120-minute timeout so the step reports a
+          # failure and the diagnostics/cleanup steps still run.
+          timeout_minutes: 25
+          max_attempts: 3
           retry_on: error
           on_retry_command: |
-            echo "=== Pebble diagnostics ==="
-            oc get pods -n pebble -o wide 2>/dev/null || true
-            oc get events -n pebble --sort-by='.lastTimestamp' 2>/dev/null | tail -15 || true
-            echo "=== fake-dns diagnostics ==="
-            oc get pods -n fake-dns -o wide 2>/dev/null || true
+            echo "=== Collecting DNS-01 diagnostics before retry ==="
+            ./scripts/workflows/collect-dns01-diagnostics.sh || true
+            echo "=== Resetting DNS-01 state and waiting for stability ==="
+            ./scripts/workflows/reset-dns01-state.sh || true
           command: make quick-dns-test
+
+      - name: Collect DNS-01 diagnostics on failure
+        if: ${{ steps.dns-test.outcome == 'failure' }}
+        continue-on-error: true
+        run: ./scripts/workflows/collect-dns01-diagnostics.sh
 
       - name: Clean up DNS-01 test resources
         if: always()
-        timeout-minutes: 2
+        timeout-minutes: 5
         continue-on-error: true
         run: make clean-certs clean-issuers clean-pebble clean-fake-dns || true
 

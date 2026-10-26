@@ -22,12 +22,10 @@ if [[ "${CLUSTER_TYPE:-}" == "openshift" ]]; then
 	DNS_NAMESPACE="openshift-dns"
 	DNS_CONFIGMAP="dns-default"
 	DNS_ROLLOUT_TARGET="daemonset/dns-default"
-	DNS_SERVICE="dns-default"
 else
 	DNS_NAMESPACE="kube-system"
 	DNS_CONFIGMAP="coredns"
 	DNS_ROLLOUT_TARGET="deployment/coredns"
-	DNS_SERVICE="kube-dns"
 fi
 
 install_fake_dns() {
@@ -154,37 +152,6 @@ EOF
 
 		log_info "CoreDNS configured. Waiting for DNS pods to restart..."
 		"$KUBE_CLI" rollout status "$DNS_ROLLOUT_TARGET" -n "$DNS_NAMESPACE" --timeout=60s 2>/dev/null || log_warn "DNS rollout may still be in progress"
-	fi
-}
-
-verify_dns_resolution() {
-	log_info "Verifying DNS resolution through CoreDNS..."
-
-	local dns_pod
-	dns_pod=$("$KUBE_CLI" get pods -n "$FAKEDNS_NAMESPACE" -l app=fake-dns-api \
-		-o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-
-	if [ -z "$dns_pod" ]; then
-		log_warn "Could not find fake-dns-api pod for DNS verification"
-		return
-	fi
-
-	local dns_service_ip
-	dns_service_ip=$("$KUBE_CLI" get service "$DNS_SERVICE" -n "$DNS_NAMESPACE" \
-		-o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
-
-	if [ -z "$dns_service_ip" ]; then
-		log_warn "Could not determine cluster DNS service IP, skipping verification"
-		return
-	fi
-
-	local dns_check_cmd=("$KUBE_CLI" exec "$dns_pod" -n "$FAKEDNS_NAMESPACE" --
-		sh -c "nslookup test.example.com $dns_service_ip 2>/dev/null || host test.example.com $dns_service_ip 2>/dev/null")
-	if wait_for_condition 12 10 "${dns_check_cmd[@]}"; then
-		log_success "DNS resolution for example.com is working through CoreDNS"
-	else
-		log_warn "DNS resolution verification did not succeed yet"
-		log_warn "Check CoreDNS config: $KUBE_CLI get configmap $DNS_CONFIGMAP -n $DNS_NAMESPACE -o yaml"
 	fi
 }
 
