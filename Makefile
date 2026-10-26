@@ -269,6 +269,7 @@ test-all: install-all create-issuer create-certs ## Full HTTP-01 environment set
 	@echo "  oc get order,challenge -A"
 
 test-dns01: install-fake-dns ## Complete DNS-01 setup (air-gapped)
+	@./scripts/workflows/preflight-dns01.sh
 	@echo "Creating DNS-01 issuer..."
 	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 	@echo ""
@@ -347,6 +348,7 @@ quick-dns-test: ## Quick end-to-end DNS-01 test
 		echo "Pebble is already running."; \
 	fi
 	@$(MAKE) install-fake-dns
+	@./scripts/workflows/preflight-dns01.sh
 	@DNS_SERVER=fake-dns-api.fake-dns.svc.cluster.local:53 ./scripts/create-dns01-issuer.sh
 	@$(MAKE) test-cert
 	@echo ""

@@ -131,6 +131,13 @@ if [[ -z "${CLUSTER_TYPE:-}" ]]; then
 	detect_cluster_type
 fi
 
+# Run the cluster CLI with a bounded API request timeout so diagnostics on a
+# degraded API server cannot stall for minutes per call.
+# Usage: kube_timed <command...>
+kube_timed() {
+	"$KUBE_CLI" --request-timeout="${KUBE_REQUEST_TIMEOUT:-20s}" "$@"
+}
+
 # ============================================================================
 # DEPENDENCY CHECKING
 # ============================================================================
@@ -478,6 +485,34 @@ dump_resource_diagnostics() {
 	log_warn "--- End diagnostics ---"
 }
 
+# Print names of pods that are Failed or whose containers are in a terminal or
+# crash-looping state, one per line.
+# Usage: unhealthy_pods <namespace>
+unhealthy_pods() {
+	local namespace="$1"
+	kube_timed get pods -n "$namespace" \
+		-o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\t"}{range .status.containerStatuses[*]}{.state.waiting.reason}{" "}{.state.terminated.reason}{" "}{end}{"\n"}{end}' 2>/dev/null |
+		awk -F'\t' '
+			$2 == "Failed" { print $1; next }
+			{
+				n = split($3, reasons, " ")
+				for (i = 1; i <= n; i++) {
+					if (reasons[i] ~ /^(Error|ContainerStatusUnknown|CrashLoopBackOff|OOMKilled)$/) {
+						print $1
+						next
+					}
+				}
+			}' || true
+}
+
+# Print per-node resource pressure as tab-separated fields:
+# <node>  MemoryPressure=<status>  DiskPressure=<status>
+# Usage: node_pressure_conditions
+node_pressure_conditions() {
+	kube_timed get nodes \
+		-o jsonpath='{range .items[*]}{.metadata.name}{"\tMemoryPressure="}{range .status.conditions[?(@.type=="MemoryPressure")]}{.status}{end}{"\tDiskPressure="}{range .status.conditions[?(@.type=="DiskPressure")]}{.status}{end}{"\n"}{end}' 2>/dev/null || true
+}
+
 # Verify cert-manager is installed and webhook is ready
 require_cert_manager() {
 	if ! "$KUBE_CLI" get deployment -n cert-manager cert-manager &>/dev/null; then
@@ -705,6 +740,19 @@ check_deployment_exists() {
 	fi
 
 	return 1
+}
+
+# Check if a deployment has at least one available replica
+# Usage: deployment_has_available_replica <deployment> <namespace>
+deployment_has_available_replica() {
+	local deployment="$1"
+	local namespace="$2"
+
+	local replicas
+	replicas=$(kube_timed get deployment "$deployment" -n "$namespace" \
+		-o jsonpath='{.status.availableReplicas}' 2>/dev/null || echo "")
+
+	[[ "${replicas:-0}" =~ ^[1-9] ]]
 }
 
 # Print the OLM channel that carries a cert-manager-operator version.
