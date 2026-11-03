@@ -525,16 +525,16 @@ clean-multi-algo-certs: ## Clean up multi-algorithm test certificates
 
 clean-ibu: ## Clean up IBU test resources (MinIO, OADP, backups)
 	@echo "$(BOLD)$(YELLOW)Cleaning up IBU test resources...$(RESET)"
-	@oc delete backup -n openshift-adp -l app=ibu-cert-test --ignore-not-found=true 2>/dev/null || true
-	@oc delete restore -n openshift-adp -l app=ibu-cert-test --ignore-not-found=true 2>/dev/null || true
-	@oc delete certificate ibu-test-cert -n default --ignore-not-found=true 2>/dev/null || true
-	@oc delete secret ibu-test-cert-tls -n default --ignore-not-found=true 2>/dev/null || true
-	@oc delete dataprotectionapplication velero -n openshift-adp --ignore-not-found=true 2>/dev/null || true
-	@oc delete secret cloud-credentials -n openshift-adp --ignore-not-found=true 2>/dev/null || true
-	@oc delete subscription redhat-oadp-operator -n openshift-adp --ignore-not-found=true 2>/dev/null || true
-	@oc delete csv -n openshift-adp -l operators.coreos.com/redhat-oadp-operator.openshift-adp --ignore-not-found=true 2>/dev/null || true
-	@oc delete namespace openshift-adp --ignore-not-found=true 2>/dev/null || true
-	@oc delete namespace minio --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete backup -n openshift-adp -l app=ibu-cert-test --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete restore -n openshift-adp -l app=ibu-cert-test --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete certificate ibu-test-cert -n default --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete secret ibu-test-cert-tls -n default --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete dataprotectionapplication velero -n openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete secret cloud-credentials -n openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete subscription redhat-oadp-operator -n openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete csv -n openshift-adp -l operators.coreos.com/redhat-oadp-operator.openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete namespace openshift-adp --ignore-not-found=true 2>/dev/null || true
+	@$(KUBE_CLI) delete namespace minio --ignore-not-found=true 2>/dev/null || true
 	@rm -rf /tmp/ibu-cert-state 2>/dev/null || true
 	@echo "$(GREEN)IBU test resources cleaned.$(RESET)"
 
@@ -568,11 +568,11 @@ delete-issuer: ## Delete a specific ClusterIssuer (ISSUER=name)
 
 clean-certs: ## Clean up certificates, orders, and challenges
 	@echo "$(BOLD)$(YELLOW)Cleaning up certificates...$(RESET)"
-	@$(KUBE_CLI) delete certificates --all -n default --ignore-not-found=true
-	@$(KUBE_CLI) delete certificaterequests --all -n default --ignore-not-found=true
-	@$(KUBE_CLI) delete orders --all -n default --ignore-not-found=true
-	@$(KUBE_CLI) delete challenges --all -n default --ignore-not-found=true
-	@$(KUBE_CLI) delete secrets wildcard-test-tls test-cert-simple-tls test-cert-app-tls test-cert-api-tls test-cert-http01-tls -n default --ignore-not-found=true
+	@$(KUBE_CLI) delete certificates --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete certificaterequests --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete orders --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete challenges --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete secrets wildcard-test-tls test-cert-simple-tls test-cert-app-tls test-cert-api-tls test-cert-http01-tls -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
 	@echo "$(GREEN)Certificates cleaned.$(RESET)"
 
 clean-pebble: ## Clean up Pebble ACME test server
@@ -648,7 +648,7 @@ clean-temp: ## Clean up temporary files
 recover: ## Roll back half-installed test components (not the operator)
 	@./scripts/recover-install.sh
 
-clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config ## Clean everything except cert-manager-operator
+clean: clean-certs clean-multi-algo-certs clean-cert-renewal clean-ingress-test clean-issuers clean-selfsigned clean-monitoring clean-pebble clean-fake-dns clean-acmedns clean-challtestsrv clean-dns-config ## Clean everything except cert-manager-operator
 	@echo ""
 	@echo "$(BOLD)$(BG_GREEN)$(WHITE)"
 	@echo "  ╔═════════════════════════════════════════════════════════════╗"
@@ -656,7 +656,10 @@ clean: clean-certs clean-issuers clean-selfsigned clean-monitoring clean-pebble 
 	@echo "  ╚═════════════════════════════════════════════════════════════╝"
 	@echo "$(RESET)"
 	@echo ""
-	@echo "cert-manager-operator is still installed."
+	@echo "Removed test certificates (including multi-algorithm and renewal certs),"
+	@echo "the ingress TLS test namespace, issuers, the self-signed CA, monitoring,"
+	@echo "Pebble, fake DNS, acme-dns and challtestsrv, and restored the DNS config."
+	@echo "cert-manager-operator is still installed. IBU resources are kept (make clean-ibu)."
 	@echo "To test again, run: make test-dns01"
 
 uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
