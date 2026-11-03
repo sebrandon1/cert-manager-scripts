@@ -13,6 +13,9 @@ source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
 
+# Component namespaces (match the installers' defaults)
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 YAML_DIR="${SCRIPT_DIR}/../yaml/certificates"
 
 # Configuration (exported for envsubst)
@@ -27,7 +30,7 @@ check_prerequisites() {
 	require_cluster
 
 	# Check if cert-manager is installed
-	if ! "$KUBE_CLI" get deployment -n cert-manager cert-manager &>/dev/null; then
+	if ! "$KUBE_CLI" get deployment -n "$CERT_MANAGER_NAMESPACE" cert-manager &>/dev/null; then
 		log_error "cert-manager not found."
 		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
 		exit 1
@@ -175,7 +178,7 @@ display_next_steps() {
 	echo "   watch oc get certificate -n $CERT_NAMESPACE"
 	echo
 	echo "5. Check cert-manager logs if issues occur:"
-	echo "   oc logs -n cert-manager deployment/cert-manager -f"
+	echo "   oc logs -n $CERT_MANAGER_NAMESPACE deployment/cert-manager -f"
 	echo
 
 	# Check if certificates failed

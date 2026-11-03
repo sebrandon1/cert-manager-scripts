@@ -12,6 +12,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 print_header "Component Status"
 
 # Check if cluster is accessible
@@ -36,10 +41,10 @@ log_info "Cluster is accessible, displaying component status..."
 echo
 
 echo "cert-manager pods:"
-"$KUBE_CLI" get pods -n cert-manager || log_warn "Cannot retrieve cert-manager pods"
+"$KUBE_CLI" get pods -n "$CERT_MANAGER_NAMESPACE" || log_warn "Cannot retrieve cert-manager pods"
 echo ""
 echo "Pebble pods:"
-"$KUBE_CLI" get pods -n pebble || log_warn "Cannot retrieve Pebble pods"
+"$KUBE_CLI" get pods -n "$PEBBLE_NAMESPACE" || log_warn "Cannot retrieve Pebble pods"
 echo ""
 echo "ClusterIssuer status:"
 "$KUBE_CLI" get clusterissuer -o wide || log_warn "Cannot retrieve ClusterIssuers"
@@ -57,6 +62,6 @@ echo "Challenge status:"
 "$KUBE_CLI" get challenge -n default || log_warn "Cannot retrieve Challenges"
 echo ""
 echo "Recent cert-manager logs:"
-"$KUBE_CLI" logs -n cert-manager deployment/cert-manager --tail=30 || log_warn "Cannot retrieve cert-manager logs"
+"$KUBE_CLI" logs -n "$CERT_MANAGER_NAMESPACE" deployment/cert-manager --tail=30 || log_warn "Cannot retrieve cert-manager logs"
 echo
 print_header "Status Display Complete"

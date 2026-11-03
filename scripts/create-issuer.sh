@@ -12,10 +12,13 @@ source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
 
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+
 YAML_DIR="${SCRIPT_DIR}/../yaml/issuers"
 
 export ISSUER_NAME="${ISSUER_NAME:-pebble-issuer}"
-export ACME_SERVER_URL="${ACME_SERVER_URL:-https://pebble.pebble.svc.cluster.local:14000/dir}"
+export ACME_SERVER_URL="${ACME_SERVER_URL:-https://pebble.${PEBBLE_NAMESPACE}.svc.cluster.local:14000/dir}"
 export ACME_EMAIL="${ACME_EMAIL:-test@example.com}"
 if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
 	export INGRESS_CLASS="${INGRESS_CLASS:-openshift-default}"
@@ -26,7 +29,7 @@ fi
 check_pebble() {
 	log_info "Checking if Pebble is available..."
 
-	if ! "$KUBE_CLI" get deployment -n pebble pebble &>/dev/null; then
+	if ! "$KUBE_CLI" get deployment -n "$PEBBLE_NAMESPACE" pebble &>/dev/null; then
 		log_warn "Pebble ACME server not found."
 		log_info "This issuer will point to: $ACME_SERVER_URL"
 		log_warn "If using Pebble, install it first: make install-pebble"
@@ -39,7 +42,7 @@ check_pebble() {
 		log_info "Pebble ACME server is available."
 
 		local ready_replicas
-		ready_replicas=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+		ready_replicas=$("$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 		if [ "$ready_replicas" = "0" ]; then
 			log_warn "Pebble deployment exists but no replicas are ready."
 		else

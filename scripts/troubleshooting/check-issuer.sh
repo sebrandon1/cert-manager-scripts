@@ -10,6 +10,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+
 # Function to check a single ClusterIssuer
 check_single_issuer() {
 	local ISSUER_NAME=$1
@@ -70,8 +74,8 @@ check_single_issuer() {
 		log_info "Testing Pebble connectivity..."
 
 		# Check if Pebble is running
-		if "$KUBE_CLI" get deployment pebble -n pebble &>/dev/null; then
-			READY_REPLICAS=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+		if "$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" &>/dev/null; then
+			READY_REPLICAS=$("$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 			if [ "$READY_REPLICAS" -gt 0 ]; then
 				echo "✅ Pebble deployment is running"
 			else

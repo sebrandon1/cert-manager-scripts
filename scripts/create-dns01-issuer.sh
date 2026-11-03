@@ -12,10 +12,15 @@ source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
 
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 YAML_DIR="${SCRIPT_DIR}/../yaml/issuers"
 
 export ISSUER_NAME="${ISSUER_NAME:-pebble-dns01-issuer}"
-export ACME_SERVER_URL="${ACME_SERVER_URL:-https://pebble.pebble.svc.cluster.local:14000/dir}"
+export ACME_SERVER_URL="${ACME_SERVER_URL:-https://pebble.${PEBBLE_NAMESPACE}.svc.cluster.local:14000/dir}"
 export ACME_EMAIL="${ACME_EMAIL:-test@example.com}"
 export DNS_SERVER="${DNS_SERVER:-8.8.8.8:53}"
 
@@ -42,7 +47,7 @@ require_cert_manager
 log_info "Creating dummy RFC2136 secret in cert-manager namespace..."
 "$KUBE_CLI" create secret generic rfc2136-credentials \
 	--from-literal=tsig-secret="$(echo -n "dummy-secret-key" | base64)" \
-	--namespace cert-manager \
+	--namespace "$CERT_MANAGER_NAMESPACE" \
 	--dry-run=client -o yaml | "$KUBE_CLI" apply -f -
 
 retry 3 15 apply_yaml_template "$YAML_DIR/pebble-dns01-simple-clusterissuer.yaml" "DNS-01 ClusterIssuer"

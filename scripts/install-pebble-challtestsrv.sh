@@ -58,7 +58,7 @@ echo "1. Configure Pebble to use this DNS server:"
 echo "   Edit Pebble configmap to set DNS_SERVER"
 echo
 echo "2. Use management API to set DNS records:"
-echo "   curl -X POST http://pebble-challtestsrv.pebble.svc:8055/set-txt \\"
+echo "   curl -X POST http://pebble-challtestsrv.${PEBBLE_NAMESPACE}.svc:8055/set-txt \\"
 echo "     -d '{\"host\":\"_acme-challenge.example.com.\",\"value\":\"test\"}'"
 echo
 log_info "This DNS server works with Pebble's ALWAYS_VALID mode!"

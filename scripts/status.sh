@@ -12,6 +12,11 @@ source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
 
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 # Dim text for "Not installed" (common.sh has no DIM)
 DIM=''
 if [[ -n "$GREEN" ]]; then
@@ -81,12 +86,12 @@ print_header "Component Status Dashboard"
 printf "  %b%-25s %s%b\n" "$BOLD" "Component" "Status" "$NC"
 echo "  ─────────────────────── ──────────────────────────"
 
-show_deployment_status "cert-manager" "cert-manager" "cert-manager"
-show_deployment_status "cert-manager-webhook" "cert-manager-webhook" "cert-manager"
-show_deployment_status "Pebble ACME server" "pebble" "pebble"
-show_deployment_status "Fake DNS API" "fake-dns-api" "fake-dns"
+show_deployment_status "cert-manager" "cert-manager" "$CERT_MANAGER_NAMESPACE"
+show_deployment_status "cert-manager-webhook" "cert-manager-webhook" "$CERT_MANAGER_NAMESPACE"
+show_deployment_status "Pebble ACME server" "pebble" "$PEBBLE_NAMESPACE"
+show_deployment_status "Fake DNS API" "fake-dns-api" "$FAKEDNS_NAMESPACE"
 show_deployment_status "acme-dns" "acme-dns" "acme-dns"
-show_deployment_status "pebble-challtestsrv" "pebble-challtestsrv" "pebble"
+show_deployment_status "pebble-challtestsrv" "pebble-challtestsrv" "$PEBBLE_NAMESPACE"
 show_deployment_status "MinIO" "minio" "minio"
 show_oadp_status
 

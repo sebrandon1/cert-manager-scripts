@@ -11,6 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+
 setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/fake-dns-api"
@@ -167,7 +171,7 @@ display_next_steps() {
 	echo "Next steps:"
 	echo
 	echo "1. Update Pebble to use fake DNS server:"
-	echo "   oc delete namespace pebble"
+	echo "   oc delete namespace $PEBBLE_NAMESPACE"
 	echo "   DNS_SERVER=${dns_server} PEBBLE_ALWAYS_VALID=1 ./install-pebble.sh"
 	echo
 	echo "2. Create DNS-01 ClusterIssuer pointing to fake DNS:"

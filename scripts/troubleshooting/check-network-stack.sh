@@ -11,6 +11,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 # Function to detect cluster network configuration
 detect_cluster_network() {
 	log_info "Detecting cluster network configuration..."
@@ -106,7 +110,7 @@ check_certmanager_pods() {
 	echo
 
 	local pods
-	pods=$("$KUBE_CLI" get pods -n cert-manager -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIP}{"\n"}{end}' 2>/dev/null || echo "")
+	pods=$("$KUBE_CLI" get pods -n "$CERT_MANAGER_NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.podIP}{"\n"}{end}' 2>/dev/null || echo "")
 
 	if [ -z "$pods" ]; then
 		log_warn "⚠️  cert-manager pods not found or not running"
@@ -152,9 +156,9 @@ check_webhook_connectivity() {
 	echo
 
 	local webhook_cluster_ip
-	webhook_cluster_ip=$("$KUBE_CLI" get service cert-manager-webhook -n cert-manager -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
+	webhook_cluster_ip=$("$KUBE_CLI" get service cert-manager-webhook -n "$CERT_MANAGER_NAMESPACE" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
 	local webhook_cluster_ips
-	webhook_cluster_ips=$("$KUBE_CLI" get service cert-manager-webhook -n cert-manager -o jsonpath='{.spec.clusterIPs[*]}' 2>/dev/null || echo "")
+	webhook_cluster_ips=$("$KUBE_CLI" get service cert-manager-webhook -n "$CERT_MANAGER_NAMESPACE" -o jsonpath='{.spec.clusterIPs[*]}' 2>/dev/null || echo "")
 
 	if [ -n "$webhook_cluster_ip" ]; then
 		log_debug "Webhook ClusterIP: $webhook_cluster_ip"

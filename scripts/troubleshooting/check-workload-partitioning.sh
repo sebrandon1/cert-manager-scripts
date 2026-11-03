@@ -14,9 +14,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 # Check if cert-manager is installed
 check_cert_manager_exists() {
-	if ! "$KUBE_CLI" get namespace cert-manager &>/dev/null; then
+	if ! "$KUBE_CLI" get namespace "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
 		log_error "cert-manager namespace not found"
 		log_info "cert-manager does not appear to be installed"
 		exit 1
@@ -169,7 +173,7 @@ main() {
 	require_cluster
 	check_cert_manager_exists
 
-	local namespace="cert-manager"
+	local namespace="$CERT_MANAGER_NAMESPACE"
 	local exit_code=0
 
 	# Check running pods
