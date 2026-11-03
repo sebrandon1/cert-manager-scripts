@@ -57,3 +57,21 @@ setup() {
 
 	grep -qF 'export CHANNEL="stable-v9.98"' yaml/cert-manager-operator/README.md
 }
+
+@test "--dry-run shows the diff without modifying files" {
+	cd "$WORK"
+	local before after
+	before=$(cat "${FILES[@]}" | cksum)
+	CLUSTER_TYPE=kubernetes KUBE_CLI=true run "$REPO_ROOT/scripts/workflows/update-version.sh" --dry-run operator "$CURRENT" v9.98.7
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"+export CERT_MANAGER_VERSION=\"\${CERT_MANAGER_VERSION:-v9.98.7}\""* ]]
+	after=$(cat "${FILES[@]}" | cksum)
+	[ "$before" = "$after" ]
+}
+
+@test "bump fails when the current version is not found" {
+	cd "$WORK"
+	CLUSTER_TYPE=kubernetes KUBE_CLI=true run "$REPO_ROOT/scripts/workflows/update-version.sh" operator v0.0.1 v0.0.2
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"pattern for 'v0.0.1' not found"* ]]
+}
