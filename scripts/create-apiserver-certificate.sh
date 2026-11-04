@@ -15,6 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+setup_cleanup
 
 # Configuration
 ISSUER_NAME="${ISSUER_NAME:-pebble-issuer}"
@@ -83,6 +84,7 @@ create_certificate() {
 	# Write the Certificate CR to a temp file so it can be retried
 	local tmp_yaml
 	tmp_yaml=$(mktemp)
+	register_temp_file "$tmp_yaml"
 	cat >"$tmp_yaml" <<EOF
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -107,10 +109,8 @@ EOF
 	else
 		log_error "Failed to create certificate '$CERT_NAME'"
 		log_hint "Run 'make troubleshoot' for diagnostics"
-		rm -f "$tmp_yaml"
 		exit 1
 	fi
-	rm -f "$tmp_yaml"
 }
 
 check_apiserver_cert_ready() {
