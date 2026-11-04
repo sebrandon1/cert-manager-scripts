@@ -10,6 +10,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 require_cmd "$KUBE_CLI" jq
 
 CERT_NAME="${CERT_NAME:-wildcard-test}"
@@ -19,8 +25,8 @@ print_header "DNS-01 Challenge Diagnostics"
 
 # Check cert-manager
 log_info "Checking cert-manager..."
-if "$KUBE_CLI" get deployment cert-manager -n cert-manager &>/dev/null; then
-	READY=$("$KUBE_CLI" get deployment cert-manager -n cert-manager -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+if "$KUBE_CLI" get deployment cert-manager -n "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
+	READY=$("$KUBE_CLI" get deployment cert-manager -n "$CERT_MANAGER_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 	if [ "$READY" -gt 0 ]; then
 		echo "✅ cert-manager is running"
 	else
@@ -34,13 +40,13 @@ echo
 
 # Check Pebble
 log_info "Checking Pebble ACME server..."
-if "$KUBE_CLI" get deployment pebble -n pebble &>/dev/null; then
-	READY=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+if "$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" &>/dev/null; then
+	READY=$("$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 	if [ "$READY" -gt 0 ]; then
 		echo "✅ Pebble is running"
 
 		# Check if using ALWAYS_VALID
-		ALWAYS_VALID=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="PEBBLE_VA_ALWAYS_VALID")].value}' 2>/dev/null || echo "0")
+		ALWAYS_VALID=$("$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="PEBBLE_VA_ALWAYS_VALID")].value}' 2>/dev/null || echo "0")
 		if [ "$ALWAYS_VALID" = "1" ]; then
 			log_info "Pebble ALWAYS_VALID: enabled (all challenges auto-succeed)"
 		else
@@ -57,8 +63,8 @@ echo
 
 # Check challenge test server
 log_info "Checking Pebble challenge test server..."
-if "$KUBE_CLI" get deployment pebble-challtestsrv -n pebble &>/dev/null; then
-	READY=$("$KUBE_CLI" get deployment pebble-challtestsrv -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+if "$KUBE_CLI" get deployment pebble-challtestsrv -n "$PEBBLE_NAMESPACE" &>/dev/null; then
+	READY=$("$KUBE_CLI" get deployment pebble-challtestsrv -n "$PEBBLE_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 	if [ "$READY" -gt 0 ]; then
 		echo "✅ Challenge test server is running"
 	else
@@ -72,8 +78,8 @@ echo
 
 # Check fake DNS API
 log_info "Checking fake DNS API..."
-if "$KUBE_CLI" get deployment fake-dns-api -n fake-dns &>/dev/null; then
-	READY=$("$KUBE_CLI" get deployment fake-dns-api -n fake-dns -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+if "$KUBE_CLI" get deployment fake-dns-api -n "$FAKEDNS_NAMESPACE" &>/dev/null; then
+	READY=$("$KUBE_CLI" get deployment fake-dns-api -n "$FAKEDNS_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 	if [ "$READY" -gt 0 ]; then
 		echo "✅ Fake DNS API is running"
 	else
@@ -168,23 +174,23 @@ echo
 
 # Check RFC2136 credentials secret
 log_info "Checking RFC2136 credentials..."
-if "$KUBE_CLI" get secret rfc2136-credentials -n cert-manager &>/dev/null; then
+if "$KUBE_CLI" get secret rfc2136-credentials -n "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
 	echo "✅ RFC2136 credentials secret exists"
 else
 	log_warn "RFC2136 credentials secret not found in cert-manager namespace"
 fi
 
 print_header "Recent cert-manager Logs"
-"$KUBE_CLI" logs -n cert-manager deployment/cert-manager --tail=20 2>/dev/null || log_warn "Could not fetch logs"
-"$KUBE_CLI" logs -n cert-manager deployment/cert-manager --previous --tail=20 2>/dev/null || true
+"$KUBE_CLI" logs -n "$CERT_MANAGER_NAMESPACE" deployment/cert-manager --tail=20 2>/dev/null || log_warn "Could not fetch logs"
+"$KUBE_CLI" logs -n "$CERT_MANAGER_NAMESPACE" deployment/cert-manager --previous --tail=20 2>/dev/null || true
 
 print_header "Recent Pebble Logs"
-"$KUBE_CLI" logs -n pebble -l app=pebble --tail=20 2>/dev/null || log_warn "Could not fetch Pebble logs"
-"$KUBE_CLI" logs -n pebble -l app=pebble --previous --tail=20 2>/dev/null || true
+"$KUBE_CLI" logs -n "$PEBBLE_NAMESPACE" -l app=pebble --tail=20 2>/dev/null || log_warn "Could not fetch Pebble logs"
+"$KUBE_CLI" logs -n "$PEBBLE_NAMESPACE" -l app=pebble --previous --tail=20 2>/dev/null || true
 
 print_header "Recent Fake DNS API Logs"
-"$KUBE_CLI" logs -n fake-dns -l app=fake-dns-api --tail=20 2>/dev/null || log_warn "Could not fetch fake DNS API logs"
-"$KUBE_CLI" logs -n fake-dns -l app=fake-dns-api --previous --tail=20 2>/dev/null || true
+"$KUBE_CLI" logs -n "$FAKEDNS_NAMESPACE" -l app=fake-dns-api --tail=20 2>/dev/null || log_warn "Could not fetch fake DNS API logs"
+"$KUBE_CLI" logs -n "$FAKEDNS_NAMESPACE" -l app=fake-dns-api --previous --tail=20 2>/dev/null || true
 
 print_header "Recommendations"
 echo "1. For air-gapped DNS-01 testing, ensure Pebble has ALWAYS_VALID=1:"
@@ -197,8 +203,8 @@ echo "3. Check specific certificate:"
 echo "   ./scripts/troubleshooting/check-certificate.sh <cert-name> <namespace>"
 echo
 echo "4. View fake DNS API logs:"
-echo "   $KUBE_CLI logs -n fake-dns -l app=fake-dns-api -f"
+echo "   $KUBE_CLI logs -n $FAKEDNS_NAMESPACE -l app=fake-dns-api -f"
 echo
 echo "5. View Pebble challenge test server logs:"
-echo "   $KUBE_CLI logs -n pebble -l app=pebble-challtestsrv -f"
+echo "   $KUBE_CLI logs -n $PEBBLE_NAMESPACE -l app=pebble-challtestsrv -f"
 echo

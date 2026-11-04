@@ -10,14 +10,19 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 require_cmd "$KUBE_CLI" jq
 
 print_header "HTTP-01 Challenge Diagnostics"
 
 # Check cert-manager
 log_info "Checking cert-manager..."
-if "$KUBE_CLI" get deployment cert-manager -n cert-manager &>/dev/null; then
-	READY=$("$KUBE_CLI" get deployment cert-manager -n cert-manager -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+if "$KUBE_CLI" get deployment cert-manager -n "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
+	READY=$("$KUBE_CLI" get deployment cert-manager -n "$CERT_MANAGER_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 	if [ "$READY" -gt 0 ]; then
 		echo "✅ cert-manager is running"
 	else
@@ -31,13 +36,13 @@ echo
 
 # Check Pebble
 log_info "Checking Pebble ACME server..."
-if "$KUBE_CLI" get deployment pebble -n pebble &>/dev/null; then
-	READY=$("$KUBE_CLI" get deployment pebble -n pebble -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+if "$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" &>/dev/null; then
+	READY=$("$KUBE_CLI" get deployment pebble -n "$PEBBLE_NAMESPACE" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
 	if [ "$READY" -gt 0 ]; then
 		echo "✅ Pebble is running"
 
 		# Get Pebble route
-		ROUTE=$("$KUBE_CLI" get route pebble-acme -n pebble -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+		ROUTE=$("$KUBE_CLI" get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 		if [ -n "$ROUTE" ]; then
 			log_debug "Pebble route: https://$ROUTE"
 		fi
@@ -120,10 +125,10 @@ else
 fi
 
 print_header "Recent cert-manager Logs"
-"$KUBE_CLI" logs -n cert-manager deployment/cert-manager --tail=20 2>/dev/null || log_warn "Could not fetch logs"
+"$KUBE_CLI" logs -n "$CERT_MANAGER_NAMESPACE" deployment/cert-manager --tail=20 2>/dev/null || log_warn "Could not fetch logs"
 
 print_header "Recent Pebble Logs"
-"$KUBE_CLI" logs -n pebble -l app=pebble --tail=20 2>/dev/null || log_warn "Could not fetch Pebble logs"
+"$KUBE_CLI" logs -n "$PEBBLE_NAMESPACE" -l app=pebble --tail=20 2>/dev/null || log_warn "Could not fetch Pebble logs"
 
 print_header "Recommendations"
 echo "1. Ensure Pebble is configured with PEBBLE_ALWAYS_VALID=1 for testing:"
@@ -136,5 +141,5 @@ echo "3. Check specific certificate:"
 echo "   ./scripts/troubleshooting/check-certificate.sh <cert-name> <namespace>"
 echo
 echo "4. View full cert-manager logs:"
-echo "   $KUBE_CLI logs -n cert-manager deployment/cert-manager -f"
+echo "   $KUBE_CLI logs -n $CERT_MANAGER_NAMESPACE deployment/cert-manager -f"
 echo

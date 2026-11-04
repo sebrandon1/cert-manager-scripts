@@ -23,8 +23,8 @@ CERT_NAME="${CERT_NAME:-wildcard-test}"
 FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
 PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
 
-CERT_MANAGER_NAMESPACE="cert-manager"
-OPERATOR_NAMESPACE="cert-manager-operator"
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+OPERATOR_NAMESPACE="${OPERATOR_NAMESPACE:-cert-manager-operator}"
 
 # Dump pod list, per-pod describe, last termination reason and logs (current
 # and previous) for a namespace, listing the pods only once.

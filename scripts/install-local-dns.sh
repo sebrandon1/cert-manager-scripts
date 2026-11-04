@@ -11,6 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+
 setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/acme-dns"
@@ -54,7 +58,7 @@ display_next_steps() {
 	echo "Next steps:"
 	echo
 	echo "1. Update Pebble to use acme-dns for validation:"
-	echo "   oc delete namespace pebble"
+	echo "   oc delete namespace $PEBBLE_NAMESPACE"
 	echo "   DNS_SERVER=${acmedns_dns}:53 PEBBLE_ALWAYS_VALID=1 make install-pebble"
 	echo
 	echo "2. Register an acme-dns account (native cert-manager solver, no webhook):"

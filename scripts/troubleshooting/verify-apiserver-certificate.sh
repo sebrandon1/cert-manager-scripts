@@ -19,6 +19,9 @@ source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
 load_env
 
+# Component namespaces (match the installers' defaults)
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 # Configuration
 CERT_NAMESPACE="${CERT_NAMESPACE:-openshift-config}"
 CERT_NAME="apiserver-cert"
@@ -278,7 +281,7 @@ provide_recommendations() {
 		echo "     $KUBE_CLI logs -n openshift-apiserver -l app=openshift-apiserver"
 		echo
 		echo "  4. Verify cert-manager logs:"
-		echo "     $KUBE_CLI logs -n cert-manager deployment/cert-manager"
+		echo "     $KUBE_CLI logs -n $CERT_MANAGER_NAMESPACE deployment/cert-manager"
 	fi
 
 	echo

@@ -10,6 +10,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+OPERATOR_NAMESPACE="${OPERATOR_NAMESPACE:-cert-manager-operator}"
+
 setup_cleanup
 
 print_header "Complete System Diagnostics"
@@ -31,7 +38,7 @@ check_cert_manager() {
 	print_header "cert-manager Components"
 	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
 		log_info "Checking cert-manager operator..."
-		if "$KUBE_CLI" get csv -n cert-manager-operator 2>/dev/null | grep -q "Succeeded"; then
+		if "$KUBE_CLI" get csv -n "$OPERATOR_NAMESPACE" 2>/dev/null | grep -q "Succeeded"; then
 			echo "✅ cert-manager operator is installed"
 		else
 			log_warn "cert-manager operator not found or not healthy"
@@ -39,15 +46,15 @@ check_cert_manager() {
 	fi
 
 	log_info "Checking cert-manager deployment..."
-	if "$KUBE_CLI" get deployment cert-manager -n cert-manager &>/dev/null; then
+	if "$KUBE_CLI" get deployment cert-manager -n "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
 		echo "✅ cert-manager is installed"
 	else
 		log_warn "cert-manager deployment not found"
 	fi
 
 	log_info "Checking cert-manager pods..."
-	if "$KUBE_CLI" get pods -n cert-manager &>/dev/null; then
-		"$KUBE_CLI" get pods -n cert-manager
+	if "$KUBE_CLI" get pods -n "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
+		"$KUBE_CLI" get pods -n "$CERT_MANAGER_NAMESPACE"
 	else
 		log_warn "cert-manager namespace not found"
 	fi
@@ -55,15 +62,15 @@ check_cert_manager() {
 
 check_pebble() {
 	print_header "Pebble ACME Server"
-	if "$KUBE_CLI" get namespace pebble &>/dev/null; then
+	if "$KUBE_CLI" get namespace "$PEBBLE_NAMESPACE" &>/dev/null; then
 		log_info "Checking Pebble pods..."
-		"$KUBE_CLI" get pods -n pebble
+		"$KUBE_CLI" get pods -n "$PEBBLE_NAMESPACE"
 
 		if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
 			echo
 			log_info "Checking Pebble route..."
-			if "$KUBE_CLI" get route pebble-acme -n pebble &>/dev/null; then
-				ROUTE=$("$KUBE_CLI" get route pebble-acme -n pebble -o jsonpath='{.spec.host}')
+			if "$KUBE_CLI" get route pebble-acme -n "$PEBBLE_NAMESPACE" &>/dev/null; then
+				ROUTE=$("$KUBE_CLI" get route pebble-acme -n "$PEBBLE_NAMESPACE" -o jsonpath='{.spec.host}')
 				echo "✅ Pebble route: https://$ROUTE"
 			else
 				log_warn "Pebble route not found"
@@ -76,9 +83,9 @@ check_pebble() {
 
 check_dns() {
 	print_header "DNS-01 Components"
-	if "$KUBE_CLI" get namespace fake-dns &>/dev/null; then
+	if "$KUBE_CLI" get namespace "$FAKEDNS_NAMESPACE" &>/dev/null; then
 		log_info "Checking fake DNS API..."
-		"$KUBE_CLI" get pods -n fake-dns
+		"$KUBE_CLI" get pods -n "$FAKEDNS_NAMESPACE"
 	else
 		log_info "Fake DNS not installed (only needed for DNS-01)"
 	fi
@@ -189,7 +196,7 @@ print_header "Health Summary"
 ISSUES=0
 
 # Check cert-manager
-if ! "$KUBE_CLI" get deployment cert-manager -n cert-manager &>/dev/null; then
+if ! "$KUBE_CLI" get deployment cert-manager -n "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
 	log_error "cert-manager not found"
 	ISSUES=$((ISSUES + 1))
 fi

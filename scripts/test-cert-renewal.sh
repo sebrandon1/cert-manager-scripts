@@ -11,6 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
+
+# Component namespaces (match the installers' defaults)
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/certificates"
@@ -123,7 +127,7 @@ main() {
 		log_success "Certificate renewal test passed!"
 	else
 		log_error "Certificate renewal test failed"
-		log_hint "Check logs: $KUBE_CLI logs -n cert-manager deployment/cert-manager --tail=50"
+		log_hint "Check logs: $KUBE_CLI logs -n $CERT_MANAGER_NAMESPACE deployment/cert-manager --tail=50"
 		exit 1
 	fi
 }

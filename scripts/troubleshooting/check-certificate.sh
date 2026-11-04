@@ -10,6 +10,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../lib/common.sh"
 check_help "$@" && exit 0
+
+# Component namespaces (match the installers' defaults)
+PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 # Function to check a single certificate
 check_single_certificate() {
 	local CERT_NAME=$1
@@ -113,10 +118,10 @@ check_single_certificate() {
 
 	print_header "Troubleshooting Commands"
 	echo "Check cert-manager logs:"
-	echo "  $KUBE_CLI logs -n cert-manager deployment/cert-manager --tail=50"
+	echo "  $KUBE_CLI logs -n $CERT_MANAGER_NAMESPACE deployment/cert-manager --tail=50"
 	echo
 	echo "Check Pebble logs:"
-	echo "  $KUBE_CLI logs -n pebble -l app=pebble --tail=50"
+	echo "  $KUBE_CLI logs -n $PEBBLE_NAMESPACE -l app=pebble --tail=50"
 	echo
 	echo "Watch certificate status:"
 	echo "  watch $KUBE_CLI get certificate,certificaterequest,order,challenge -n $NAMESPACE"

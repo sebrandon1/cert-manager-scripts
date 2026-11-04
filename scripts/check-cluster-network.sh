@@ -13,6 +13,9 @@ source "$SCRIPT_DIR/../lib/common.sh"
 check_help "$@" && exit 0
 load_env
 
+# Component namespaces (match the installers' defaults)
+CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+
 # CYAN color not defined in common.sh, add locally
 CYAN='\033[0;36m'
 
@@ -211,12 +214,12 @@ check_cert_manager_compatibility() {
 	log_info "Checking cert-manager compatibility..."
 
 	# Check if cert-manager is installed
-	if oc get namespace cert-manager &>/dev/null; then
+	if oc get namespace "$CERT_MANAGER_NAMESPACE" &>/dev/null; then
 		log_detail "cert-manager namespace found"
 
 		# Check cert-manager pods
 		local cm_pods
-		cm_pods=$(oc get pods -n cert-manager -l app.kubernetes.io/instance=cert-manager --no-headers 2>/dev/null | wc -l | tr -d ' ')
+		cm_pods=$(oc get pods -n "$CERT_MANAGER_NAMESPACE" -l app.kubernetes.io/instance=cert-manager --no-headers 2>/dev/null | wc -l | tr -d ' ')
 		if [ "$cm_pods" -gt 0 ]; then
 			echo "  cert-manager components: $cm_pods pods running"
 		fi
