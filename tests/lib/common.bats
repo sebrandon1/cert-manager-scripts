@@ -314,3 +314,11 @@ CSV
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"oadp-operator.v1.5.8"* ]]
 }
+
+@test "sed_inplace edits the file without leaving a backup" {
+	local f="$BATS_TEST_TMPDIR/sed-target"
+	printf 'version=v1\nother=v1\n' >"$f"
+	sed_inplace -e 's/^version=v1/version=v2/' "$f"
+	[ "$(cat "$f")" = "$(printf 'version=v2\nother=v1')" ]
+	[ "$(find "$BATS_TEST_TMPDIR" -name 'sed-target*' | wc -l | tr -d ' ')" = "1" ]
+}

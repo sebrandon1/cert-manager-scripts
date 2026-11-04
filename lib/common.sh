@@ -317,6 +317,17 @@ parse_date_to_epoch() {
 		date -d "$datestr" +%s 2>/dev/null || echo ""
 }
 
+# Edit a file in place with sed on both GNU sed (Linux) and BSD sed (macOS),
+# which requires an explicit (empty) backup suffix after -i
+# Usage: sed_inplace [sed args...] <file...>
+sed_inplace() {
+	if sed --version >/dev/null 2>&1; then
+		sed -i "$@"
+	else
+		sed -i '' "$@"
+	fi
+}
+
 # Wait for a condition to become true with fixed polling interval
 # Usage: wait_for_condition <max_attempts> <interval_seconds> <command...>
 # Example: wait_for_condition 30 2 check_issuer_ready
