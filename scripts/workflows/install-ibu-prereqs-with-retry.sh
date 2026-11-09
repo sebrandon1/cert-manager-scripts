@@ -12,14 +12,17 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_DIR/lib/common.sh"
 check_help "$@" && exit 0
 
+MINIO_NAMESPACE="${MINIO_NAMESPACE:-minio}"
+OADP_NAMESPACE="${OADP_NAMESPACE:-openshift-adp}"
+
 show_cluster_diagnostics() {
 	log_error "--- Cluster diagnostics after IBU prerequisite failure ---"
 	"$KUBE_CLI" get nodes -o wide 2>/dev/null || true
 	if [[ "$CLUSTER_TYPE" == "openshift" ]]; then
 		"$KUBE_CLI" get clusteroperators 2>/dev/null || true
 	fi
-	"$KUBE_CLI" get pods -n minio -o wide 2>/dev/null || true
-	"$KUBE_CLI" get pods -n openshift-adp -o wide 2>/dev/null || true
+	"$KUBE_CLI" get pods -n "$MINIO_NAMESPACE" -o wide 2>/dev/null || true
+	"$KUBE_CLI" get pods -n "$OADP_NAMESPACE" -o wide 2>/dev/null || true
 	"$KUBE_CLI" get events -A --sort-by='.lastTimestamp' 2>/dev/null | tail -50 || true
 	log_error "--- End cluster diagnostics ---"
 }

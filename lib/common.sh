@@ -526,14 +526,14 @@ node_pressure_conditions() {
 
 # Verify cert-manager is installed and webhook is ready
 require_cert_manager() {
-	if ! "$KUBE_CLI" get deployment -n cert-manager cert-manager &>/dev/null; then
+	if ! "$KUBE_CLI" get deployment -n "${CERT_MANAGER_NAMESPACE:-cert-manager}" cert-manager &>/dev/null; then
 		log_error "cert-manager not found."
 		log_hint "Run 'make install-cert-manager-operator' (OpenShift) or 'make install-cert-manager-helm' (Kubernetes)"
 		exit 1
 	fi
 
 	log_info "Waiting for cert-manager webhook to be ready..."
-	if ! $KUBE_CLI wait --for=condition=available --timeout=120s deployment/cert-manager-webhook -n cert-manager; then
+	if ! $KUBE_CLI wait --for=condition=available --timeout=120s deployment/cert-manager-webhook -n "${CERT_MANAGER_NAMESPACE:-cert-manager}"; then
 		log_error "Timeout waiting for cert-manager webhook to be ready."
 		exit 1
 	fi
@@ -962,13 +962,13 @@ require_ibu_prereqs() {
 	require_cmd oc jq envsubst
 	require_cert_manager
 
-	if ! oc get dataprotectionapplication velero -n openshift-adp &>/dev/null; then
+	if ! oc get dataprotectionapplication velero -n "${OADP_NAMESPACE:-openshift-adp}" &>/dev/null; then
 		log_error "OADP is not installed."
 		log_info "Run 'make install-ibu-prereqs' first."
 		exit 1
 	fi
 
-	if ! oc get deployment minio -n minio &>/dev/null; then
+	if ! oc get deployment minio -n "${MINIO_NAMESPACE:-minio}" &>/dev/null; then
 		log_error "MinIO is not installed."
 		log_info "Run 'make install-minio' first."
 		exit 1

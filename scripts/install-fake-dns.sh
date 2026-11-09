@@ -195,7 +195,7 @@ display_next_steps() {
 	echo "   EOF"
 	echo
 	echo "4. Watch certificate status:"
-	echo "   watch oc get certificate -n default"
+	echo "   watch oc get certificate -n ${CERT_NAMESPACE:-default}"
 	echo
 	log_info "DNS server: ${dns_server}"
 	echo
