@@ -88,5 +88,5 @@ if "$KUBE_CLI" get clusterissuer "$ISSUER_NAME" &>/dev/null; then
 	echo "   EOF"
 	echo
 	echo "2. Monitor certificate status:"
-	echo "   oc get certificate -n default -w"
+	echo "   oc get certificate -n ${CERT_NAMESPACE:-default} -w"
 fi

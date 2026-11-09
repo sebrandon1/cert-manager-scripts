@@ -16,6 +16,7 @@ load_env
 PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
 FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
 CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
+OADP_NAMESPACE="${OADP_NAMESPACE:-openshift-adp}"
 
 # Dim text for "Not installed" (common.sh has no DIM)
 DIM=''
@@ -63,14 +64,14 @@ show_oadp_status() {
 	printf "  %-25s " "OADP"
 
 	local info
-	if info=$("$KUBE_CLI" get deployment velero -n openshift-adp \
+	if info=$("$KUBE_CLI" get deployment velero -n "$OADP_NAMESPACE" \
 		-o jsonpath='{.spec.replicas}{" "}{.status.readyReplicas}' 2>/dev/null) &&
 		[[ -n "${info// /}" ]]; then
 		print_ready_status "$info"
 		return 0
 	fi
 
-	info=$("$KUBE_CLI" get deployment -n openshift-adp -l app.kubernetes.io/name=velero \
+	info=$("$KUBE_CLI" get deployment -n "$OADP_NAMESPACE" -l app.kubernetes.io/name=velero \
 		-o jsonpath='{.items[0].spec.replicas}{" "}{.items[0].status.readyReplicas}' 2>/dev/null || true)
 
 	if [[ -z "${info// /}" ]]; then

@@ -16,6 +16,7 @@ setup_cleanup
 
 YAML_DIR="${SCRIPT_DIR}/../yaml/ibu/oadp"
 OADP_NAMESPACE="${OADP_NAMESPACE:-openshift-adp}"
+MINIO_NAMESPACE="${MINIO_NAMESPACE:-minio}"
 export MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minio}"
 export MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minio123}"
 
@@ -25,7 +26,7 @@ check_prerequisites() {
 	require_cluster
 
 	# Check MinIO is running
-	if ! oc get deployment minio -n minio &>/dev/null; then
+	if ! oc get deployment minio -n "$MINIO_NAMESPACE" &>/dev/null; then
 		log_error "MinIO is not installed."
 		log_hint "Run 'make install-minio' first, or 'make install-ibu-prereqs' for full IBU setup"
 		exit 1
@@ -122,7 +123,7 @@ wait_for_bsl() {
 		"$KUBE_CLI" get backupstoragelocation -n "$OADP_NAMESPACE" \
 			-o custom-columns='NAME:.metadata.name,PHASE:.status.phase,MESSAGE:.status.message' || true
 		"$KUBE_CLI" logs -n "$OADP_NAMESPACE" deployment/velero --tail=20 2>/dev/null || true
-		log_hint "Check that MinIO is running and the velero bucket exists: $KUBE_CLI get pods -n minio"
+		log_hint "Check that MinIO is running and the velero bucket exists: $KUBE_CLI get pods -n $MINIO_NAMESPACE"
 		return 1
 	fi
 }
