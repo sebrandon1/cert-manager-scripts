@@ -4,7 +4,13 @@
 KUBE_CLI ?= $(shell command -v oc >/dev/null 2>&1 && echo oc || echo kubectl)
 CLUSTER_TYPE ?= $(shell command -v oc >/dev/null 2>&1 && oc whoami >/dev/null 2>&1 && echo openshift || echo kubernetes)
 SYNC_FLAG := $(shell $(MAKE) --help 2>&1 | grep -q "output-sync" && echo "--output-sync=target")
-export KUBE_CLI CLUSTER_TYPE
+
+# Operator install coordinates. These must match the defaults in
+# scripts/install-cert-manager-operator.sh.
+OPERATOR_NAMESPACE ?= cert-manager-operator
+OPERATOR_NAME ?= openshift-cert-manager-operator
+OPERATOR_PACKAGE ?= openshift-cert-manager-operator
+export KUBE_CLI CLUSTER_TYPE OPERATOR_NAMESPACE OPERATOR_NAME OPERATOR_PACKAGE
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Color Definitions
@@ -666,10 +672,10 @@ uninstall-cert-manager-operator: ## Uninstall cert-manager Operator (WARNING!)
 	@echo "$(RED)$(BOLD)WARNING: This will uninstall cert-manager-operator!$(RESET)"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read confirm
-	@echo "Uninstalling cert-manager-operator..."
-	@oc delete subscription cert-manager-operator -n openshift-cert-manager-operator --ignore-not-found=true
-	@oc delete csv -n openshift-cert-manager-operator -l operators.coreos.com/cert-manager-operator.openshift-cert-manager-operator --ignore-not-found=true
-	@oc delete namespace openshift-cert-manager-operator --ignore-not-found=true
-	@echo "$(GREEN)cert-manager-operator uninstalled.$(RESET)"
+	@echo "Uninstalling cert-manager-operator from namespace $(OPERATOR_NAMESPACE)..."
+	@$(KUBE_CLI) delete subscription $(OPERATOR_NAME) -n $(OPERATOR_NAMESPACE) --ignore-not-found=true
+	@$(KUBE_CLI) delete csv -n $(OPERATOR_NAMESPACE) -l operators.coreos.com/$(OPERATOR_PACKAGE).$(OPERATOR_NAMESPACE) --ignore-not-found=true
+	@$(KUBE_CLI) delete namespace $(OPERATOR_NAMESPACE) --ignore-not-found=true
+	@echo "$(GREEN)cert-manager-operator uninstalled from namespace $(OPERATOR_NAMESPACE).$(RESET)"
 
 uninstall-all: clean clean-ibu uninstall-cert-manager-operator ## Full teardown of all components (WARNING!)
