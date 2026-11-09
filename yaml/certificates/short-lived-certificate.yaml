@@ -5,6 +5,7 @@ metadata:
   namespace: ${CERT_NAMESPACE}
   labels:
     app: cert-renewal-test
+    app.kubernetes.io/managed-by: cert-manager-scripts
 spec:
   secretName: ${CERT_SECRET_NAME}
   duration: ${CERT_DURATION}

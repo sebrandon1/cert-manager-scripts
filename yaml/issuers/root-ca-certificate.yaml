@@ -5,6 +5,8 @@ kind: Certificate
 metadata:
   name: ${ROOT_CA_NAME}
   namespace: ${ROOT_CA_NAMESPACE}
+  labels:
+    app.kubernetes.io/managed-by: cert-manager-scripts
 spec:
   isCA: true
   commonName: ${ROOT_CA_COMMON_NAME}

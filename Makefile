@@ -231,7 +231,7 @@ apply-apiserver-cert: ## Apply API server certificate (rolls kube-apiserver)
 
 test-cert: ## Create a test wildcard certificate (DNS-01)
 	@echo "Creating test wildcard certificate..."
-	@printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: wildcard-test\n  namespace: default\nspec:\n  secretName: wildcard-test-tls\n  issuerRef:\n    name: pebble-dns01-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - "*.example.com"\n  - "example.com"\n' | $(KUBE_CLI) apply -f -
+	@printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: wildcard-test\n  namespace: default\n  labels:\n    app.kubernetes.io/managed-by: cert-manager-scripts\nspec:\n  secretName: wildcard-test-tls\n  issuerRef:\n    name: pebble-dns01-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - "*.example.com"\n  - "example.com"\n' | $(KUBE_CLI) apply -f -
 	@echo "Certificate created. Run 'make verify-cert' to check status."
 
 verify-cert: ## Verify certificate status
@@ -296,7 +296,7 @@ quick-http-test: ## Quick end-to-end HTTP-01 test
 	@PEBBLE_ALWAYS_VALID=1 $(MAKE) install-pebble
 	@$(MAKE) create-issuer
 	@CLUSTER_DOMAIN=$$($(KUBE_CLI) get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "example.com"); \
-	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | $(KUBE_CLI) apply -f -
+	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-http01\n  namespace: default\n  labels:\n    app.kubernetes.io/managed-by: cert-manager-scripts\nspec:\n  secretName: test-cert-http01-tls\n  issuerRef:\n    name: pebble-issuer\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n' | $(KUBE_CLI) apply -f -
 	@echo ""
 	@echo "Waiting for certificate (timeout: 3 minutes)..."
 	@timeout=180; elapsed=0; \
@@ -319,7 +319,7 @@ quick-selfsigned-test: create-selfsigned-issuer ## Quick end-to-end self-signed 
 	@echo ""
 	@CLUSTER_DOMAIN=$$($(KUBE_CLI) get ingresses.config/cluster -o jsonpath='{.spec.domain}' 2>/dev/null || echo "example.com"); \
 	ISSUER_NAME=$$(echo "$${CA_ISSUER_NAME:-selfsigned-ca-issuer}"); \
-	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-selfsigned\n  namespace: default\nspec:\n  secretName: test-cert-selfsigned-tls\n  issuerRef:\n    name: '"$$ISSUER_NAME"'\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n  - "*.'"$$CLUSTER_DOMAIN"'"\n' | $(KUBE_CLI) apply -f -
+	printf 'apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: test-cert-selfsigned\n  namespace: default\n  labels:\n    app.kubernetes.io/managed-by: cert-manager-scripts\nspec:\n  secretName: test-cert-selfsigned-tls\n  issuerRef:\n    name: '"$$ISSUER_NAME"'\n    kind: ClusterIssuer\n  dnsNames:\n  - test.'"$$CLUSTER_DOMAIN"'\n  - "*.'"$$CLUSTER_DOMAIN"'"\n' | $(KUBE_CLI) apply -f -
 	@echo ""
 	@echo "Waiting for certificate (timeout: 2 minutes)..."
 	@timeout=120; elapsed=0; \
@@ -566,14 +566,18 @@ delete-issuer: ## Delete a specific ClusterIssuer (ISSUER=name)
 	@$(KUBE_CLI) delete clusterissuer "$(ISSUER)" --ignore-not-found=true
 	@echo "$(GREEN)ClusterIssuer $(ISSUER) deleted.$(RESET)"
 
-clean-certs: ## Clean up certificates, orders, and challenges
-	@echo "$(BOLD)$(YELLOW)Cleaning up certificates...$(RESET)"
-	@$(KUBE_CLI) delete certificates --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
-	@$(KUBE_CLI) delete certificaterequests --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
-	@$(KUBE_CLI) delete orders --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
-	@$(KUBE_CLI) delete challenges --all -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+clean-certs: ## Clean up toolkit-owned certificates, orders, and challenges
+	@echo "$(BOLD)$(YELLOW)Cleaning up toolkit certificates...$(RESET)"
+	@$(KUBE_CLI) delete certificates -l app.kubernetes.io/managed-by=cert-manager-scripts -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete certificaterequests -l app.kubernetes.io/managed-by=cert-manager-scripts -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete orders -l app.kubernetes.io/managed-by=cert-manager-scripts -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete challenges -l app.kubernetes.io/managed-by=cert-manager-scripts -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@# Legacy certificates created before the ownership label was added.
+	@$(KUBE_CLI) delete certificate wildcard-test test-cert-http01 test-cert-selfsigned test-cert-simple test-cert-app test-cert-api -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete certificate -l app=ibu-multi-algo-test -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
+	@$(KUBE_CLI) delete certificate -l app=cert-renewal-test -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
 	@$(KUBE_CLI) delete secrets wildcard-test-tls test-cert-simple-tls test-cert-app-tls test-cert-api-tls test-cert-http01-tls -n $${CERT_NAMESPACE:-default} --ignore-not-found=true
-	@echo "$(GREEN)Certificates cleaned.$(RESET)"
+	@echo "$(GREEN)Toolkit certificates cleaned.$(RESET)"
 
 clean-pebble: ## Clean up Pebble ACME test server
 	@echo "$(BOLD)$(YELLOW)Cleaning up Pebble...$(RESET)"

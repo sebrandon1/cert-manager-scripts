@@ -5,6 +5,7 @@ metadata:
   namespace: ${INGRESS_TEST_NAMESPACE}
   labels:
     app: ingress-tls-test
+    app.kubernetes.io/managed-by: cert-manager-scripts
 spec:
   secretName: ingress-tls-test-cert
   issuerRef:

@@ -91,6 +91,8 @@ kind: Certificate
 metadata:
   name: $CERT_NAME
   namespace: $CERT_NAMESPACE
+  labels:
+    app.kubernetes.io/managed-by: cert-manager-scripts
 spec:
   secretName: $SECRET_NAME
   issuerRef:
