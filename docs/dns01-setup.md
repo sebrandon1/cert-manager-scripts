@@ -89,6 +89,27 @@ oc logs -n cert-manager deployment/cert-manager -f
 5. With `PEBBLE_ALWAYS_VALID=1`, Pebble accepts the challenge without checking DNS.
 6. Pebble issues the certificate and cert-manager stores it in a Secret.
 
+## DNS configuration backup and restore
+
+`make install-fake-dns` saves the cluster's DNS configuration before changing it:
+
+- **OpenShift** — the DNS operator's `spec.servers` array is stored in the ConfigMap
+  `<CERT_NAMESPACE>/fake-dns-backup` (default namespace `default`).
+- **Kubernetes** — the CoreDNS `Corefile` is stored in the same ConfigMap.
+
+The fake DNS entry is appended to the existing configuration, so custom forwarders
+and zones stay in place. `make clean-fake-dns` (and therefore `make clean`) restores
+the saved configuration before deleting the fake DNS namespace, and
+`make clean-dns-config` runs only the restore. To inspect the saved state or recover
+manually:
+
+```bash
+oc get configmap fake-dns-backup -n default -o yaml
+```
+
+If no backup exists (for example, after upgrading from an older version), the restore
+step removes only the `fake-dns-example` entry and leaves other DNS servers untouched.
+
 ## References
 
 - [acme-dns](https://github.com/acme-dns/acme-dns)

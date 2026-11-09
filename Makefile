@@ -583,8 +583,8 @@ clean-pebble: ## Clean up Pebble ACME test server
 
 clean-fake-dns: ## Clean up fake DNS API
 	@echo "$(BOLD)$(YELLOW)Cleaning up fake DNS...$(RESET)"
+	@./scripts/restore-fake-dns.sh || true
 	@$(KUBE_CLI) delete namespace fake-dns --ignore-not-found=true --timeout=60s --wait=false
-	@$(KUBE_CLI) patch dns.operator.openshift.io/default --type=merge -p '{"spec":{"servers":null}}' 2>/dev/null || true
 	@echo "$(GREEN)Fake DNS cleaned.$(RESET)"
 
 clean-acmedns: ## Clean up acme-dns local DNS server
@@ -601,9 +601,7 @@ clean-challtestsrv: ## Clean up Pebble challenge test server
 
 clean-dns-config: ## Restore DNS configuration
 	@echo "Restoring DNS configuration..."
-	@if [ "$(CLUSTER_TYPE)" = "openshift" ]; then \
-		$(KUBE_CLI) patch dns.operator.openshift.io/default --type=json -p='[{"op": "remove", "path": "/spec/servers"}]' 2>/dev/null || true; \
-	fi
+	@./scripts/restore-fake-dns.sh
 	@echo "DNS configuration restored."
 
 clean-issuers: ## Clean up ClusterIssuers (ACME/Pebble)
