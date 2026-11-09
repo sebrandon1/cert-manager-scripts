@@ -47,6 +47,20 @@ This enables testing DNS-01 challenges without public DNS or internet connectivi
 
 Combined with `PEBBLE_ALWAYS_VALID=1`, the fake DNS server allows complete air-gapped testing of cert-manager DNS-01 workflows.
 
+## DNS configuration backup and restore
+
+The installer saves the cluster's existing DNS configuration to the ConfigMap
+`<CERT_NAMESPACE>/fake-dns-backup` (default `default/fake-dns-backup`) before adding
+the `example.com` forwarder:
+
+- OpenShift: the DNS operator's `spec.servers` array
+- Kubernetes: the CoreDNS `Corefile`
+
+The fake DNS entry is appended, not substituted. `make clean-fake-dns` restores the
+saved configuration before deleting the namespace, and `make clean-dns-config` runs
+only the restore. Without a backup, restore removes only the `fake-dns-example`
+entry and leaves unrelated DNS servers alone.
+
 ## Related Documentation
 
 - [DNS-01 Setup](../../docs/dns01-setup.md) - DNS-01 challenge configuration
