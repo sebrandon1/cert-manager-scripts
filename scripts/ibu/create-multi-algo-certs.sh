@@ -87,6 +87,7 @@ metadata:
   namespace: $TARGET_NAMESPACE
   labels:
     app: $CERT_LABEL
+    app.kubernetes.io/managed-by: cert-manager-scripts
 spec:
   secretName: $secret_name
   issuerRef:
