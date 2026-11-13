@@ -20,7 +20,7 @@ setup_cleanup
 YAML_DIR="${SCRIPT_DIR}/../yaml/fake-dns-api"
 
 export FAKEDNS_NAMESPACE="${FAKEDNS_NAMESPACE:-fake-dns}"
-export UBI9_PYTHON_VERSION="${UBI9_PYTHON_VERSION:-9.8}"
+export UBI9_PYTHON_VERSION="${UBI9_PYTHON_VERSION:-9.9}"
 
 # The pre-install DNS configuration is stored here so make clean can restore it.
 # Use a namespace that make clean does not delete (clean-fake-dns deletes the
