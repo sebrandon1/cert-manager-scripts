@@ -16,7 +16,7 @@ setup_cleanup
 YAML_DIR="${SCRIPT_DIR}/../yaml/pebble-challtestsrv"
 
 export PEBBLE_NAMESPACE="${PEBBLE_NAMESPACE:-pebble}"
-export PEBBLE_CHALLTESTSRV_VERSION="${PEBBLE_CHALLTESTSRV_VERSION:-v2.10.1}"
+export PEBBLE_CHALLTESTSRV_VERSION="${PEBBLE_CHALLTESTSRV_VERSION:-v2.10.3}"
 
 print_header "Install Pebble Challenge Test Server"
 
